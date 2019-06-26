@@ -65,9 +65,20 @@ void AP_BattMonitor_SMBus_Maxell::timer()
     for (uint8_t i = 0; i < BATTMONITOR_SMBUS_MAXELL_NUM_CELLS; i++) {
         if (read_word(maxell_cell_ids[i], data)) {
             _has_cell_voltages = true;
+            if(_cell_health_counter[i]>0)
+            {
+            	--_cell_health_counter[i];
+            	if(_cell_health_counter[i]>25)
+            		_cell_health_counter[i] = 0;
+            }
             _state.cell_voltages.cells[i] = data;
         } else {
-            _state.cell_voltages.cells[i] = UINT16_MAX;
+        	++_cell_health_counter[i];
+        	if(_cell_health_counter[i]>=75)
+        	{
+        		_cell_health_counter[i] = 75;
+        		_state.cell_voltages.cells[i] = UINT16_MAX;
+        	}
         }
     }
 
