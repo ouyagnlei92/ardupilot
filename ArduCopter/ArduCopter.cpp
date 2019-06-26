@@ -299,7 +299,7 @@ void Copter::throttle_loop()
 void Copter::update_batt_compass(void)
 {
     // read battery before compass because it may be used for motor interference compensation
-    battery.read();
+	battery.read();
 
     if(g.compass_enabled) {
         // update compass with throttle value - used for compassmot
