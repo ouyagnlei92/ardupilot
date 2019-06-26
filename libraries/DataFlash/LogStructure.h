@@ -688,7 +688,8 @@ struct PACKED log_Current_Cells {
     LOG_PACKET_HEADER;
     uint64_t time_us;
     float    voltage;
-    uint16_t cell_voltages[10];
+    float    current;
+    uint16_t cell_voltages[12];
 };
 
 struct PACKED log_Compass {
@@ -1142,10 +1143,10 @@ struct PACKED log_DSTL {
 #define CURR_UNITS  "svvA?JOw"
 #define CURR_MULTS  "F000?/?0"
 
-#define CURR_CELL_LABELS "TimeUS,Volt,V1,V2,V3,V4,V5,V6,V7,V8,V9,V10"
-#define CURR_CELL_FMT    "QfHHHHHHHHHH"
-#define CURR_CELL_UNITS  "svvvvvvvvvvv"
-#define CURR_CELL_MULTS  "F00000000000"
+#define CURR_CELL_LABELS "TimeUS,Volt,C,V1,V2,V3,V4,V5,V6,V7,V8,V9,V10,V11,V12"
+#define CURR_CELL_FMT    "QffHHHHHHHHHHHH"
+#define CURR_CELL_UNITS  "svvvvvvvvvvvvvv"
+#define CURR_CELL_MULTS  "F00000000000000"
 
 #define ARSP_LABELS "TimeUS,Airspeed,DiffPress,Temp,RawPress,Offset,U,Health,Primary"
 #define ARSP_FMT "QffcffBBB"

@@ -5,13 +5,19 @@
 #include "AP_BattMonitor_SMBus_Maxell.h"
 #include <utility>
 
-#define BATTMONITOR_SMBUS_MAXELL_NUM_CELLS 6
+#define BATTMONITOR_SMBUS_MAXELL_NUM_CELLS 12
 uint8_t maxell_cell_ids[] = { 0x3f,  // cell 1
                               0x3e,  // cell 2
                               0x3d,  // cell 3
                               0x3c,  // cell 4
                               0x3b,  // cell 5
-                              0x3a}; // cell 6
+                              0x3a,  // cell 6
+                              0x39,  // cell 7
+                              0x38,  // cell 8
+                              0x37,  // cell 9
+                              0x36,  // cell 10
+                              0x35,  // cell 11
+                              0x34}; // cell 12
 
 #define SMBUS_READ_BLOCK_MAXIMUM_TRANSFER    0x20   // A Block Read or Write is allowed to transfer a maximum of 32 data bytes.
 
@@ -73,7 +79,7 @@ void AP_BattMonitor_SMBus_Maxell::timer()
 
     // read current (A)
     if (read_word(BATTMONITOR_SMBUS_CURRENT, data)) {
-        _state.current_amps = -(float)((int16_t)data) / 1000.0f;
+        _state.current_amps = -(float)((int16_t)data) / 100.0f;
         _state.last_time_micros = tnow;
     }
 

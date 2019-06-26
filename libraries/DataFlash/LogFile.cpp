@@ -1421,7 +1421,8 @@ void DataFlash_Class::Log_Write_Current_instance(const uint64_t time_us,
         struct log_Current_Cells cell_pkt = {
             LOG_PACKET_HEADER_INIT(celltype),
             time_us             : time_us,
-            voltage             : battery.voltage(battery_instance)
+			voltage             : battery.voltage(battery_instance),
+			current				: battery.current_amps(battery_instance)
         };
         for (uint8_t i = 0; i < ARRAY_SIZE(cells.cells); i++) {
             cell_pkt.cell_voltages[i] = cells.cells[i] + 1;

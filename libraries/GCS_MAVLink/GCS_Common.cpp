@@ -194,12 +194,64 @@ void GCS_MAVLINK::send_power_status(void)
                                   hal.analogin->power_status_flags());
 }
 
+bool GCS_MAVLINK::send_battery_status_o10s(void) const//add by awesome
+{
+	static bool first[5] = {false, false, false, false, false };
+	bool have_o10s = false;
+	uint8_t ins = 0;
+	AP_BattMonitor &battery = AP::battery();
+	for(uint8_t i=0; i<battery.num_instances(); ++i){
+		if(battery.get_type(i)==AP_BattMonitor_Params::BattMonitor_TYPE_MAXELL){
+			have_o10s = true;
+			ins = i;
+			break;
+		}
+	}
+	if(have_o10s){
+		float temp;
+		bool got_temperature = battery.get_temperature(temp, ins);
+		CHECK_PAYLOAD_SIZE(BATTERY_STATUS);
+		if(!first[chan])
+		{
+			first[chan] = true;
+			mavlink_msg_battery_status_send(chan,
+											0, // id
+											MAV_BATTERY_FUNCTION_UNKNOWN, // function
+											MAV_BATTERY_TYPE_LIPO, // type
+											got_temperature ? ((int16_t) (temp * 100)) : INT16_MAX, // temperature. INT16_MAX if unknown
+											battery.get_cell_voltages(ins).cells, // cell voltages
+											battery.has_current(ins) ? battery.current_amps(ins) * 100 : -1, // current in centiampere
+											battery.has_current(ins) ? battery.consumed_mah(ins) : -1,       // total consumed current in milliampere.hour
+											battery.has_consumed_energy(ins) ? battery.consumed_wh(ins) * 36 : -1, // consumed energy in hJ (hecto-Joules)
+											battery.capacity_remaining_pct(ins),
+											0, // time remaining, seconds (not provided)
+											MAV_BATTERY_CHARGE_STATE_UNDEFINED);
+		}else{
+			first[chan] = false;
+			mavlink_msg_battery_status_send(chan,
+											1, // id
+											MAV_BATTERY_FUNCTION_UNKNOWN, // function
+											MAV_BATTERY_TYPE_LIPO, // type
+											got_temperature ? ((int16_t) (temp * 100)) : INT16_MAX, // temperature. INT16_MAX if unknown
+											(const uint16_t*)(&(battery.get_cell_voltages(ins).cells[2])), // cell voltages
+											battery.has_current(ins) ? battery.current_amps(ins) * 100 : -1, // current in centiampere
+											battery.has_current(ins) ? battery.consumed_mah(ins) : -1,       // total consumed current in milliampere.hour
+											battery.has_consumed_energy(ins) ? battery.consumed_wh(ins) * 36 : -1, // consumed energy in hJ (hecto-Joules)
+											battery.capacity_remaining_pct(ins),
+											0, // time remaining, seconds (not provided)
+											MAV_BATTERY_CHARGE_STATE_UNDEFINED);
+		}
+		return true;
+	}
+	else return false;
+}
+
 void GCS_MAVLINK::send_battery_status(const AP_BattMonitor &battery,
                                       const uint8_t instance) const
 {
     // catch the battery backend not supporting the required number of cells
-    static_assert(sizeof(AP_BattMonitor::cells) >= (sizeof(uint16_t) * MAVLINK_MSG_BATTERY_STATUS_FIELD_VOLTAGES_LEN),
-                  "Not enough battery cells for the MAVLink message");
+    //static_assert(sizeof(AP_BattMonitor::cells) >= (sizeof(uint16_t) * MAVLINK_MSG_BATTERY_STATUS_FIELD_VOLTAGES_LEN),
+    //              "Not enough battery cells for the MAVLink message");
 
     float temp;
     bool got_temperature = battery.get_temperature(temp, instance);
@@ -220,13 +272,26 @@ void GCS_MAVLINK::send_battery_status(const AP_BattMonitor &battery,
 // returns true if all battery instances were reported
 bool GCS_MAVLINK::send_battery_status() const
 {
-    const AP_BattMonitor &battery = AP::battery();
+    AP_BattMonitor &battery = AP::battery();
 
-    for(uint8_t i = 0; i < battery.num_instances(); i++) {
-        CHECK_PAYLOAD_SIZE(BATTERY_STATUS);
-        send_battery_status(battery, i);
-    }
-    return true;
+	bool have_o10s = false;
+	for(uint8_t i=0; i<battery.num_instances(); ++i){
+		if(battery.get_type(i)==AP_BattMonitor_Params::BattMonitor_TYPE_MAXELL){
+			have_o10s = true;
+			break;
+		}
+	}
+	if(have_o10s)
+	{
+		send_battery_status_o10s();
+		return true;
+	}else{
+		for(uint8_t i = 0; i < battery.num_instances(); i++) {
+			CHECK_PAYLOAD_SIZE(BATTERY_STATUS);
+			send_battery_status(battery, i);
+		}
+	    return true;
+	}
 }
 
 void GCS_MAVLINK::send_distance_sensor(const AP_RangeFinder_Backend *sensor, const uint8_t instance) const

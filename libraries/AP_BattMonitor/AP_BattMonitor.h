@@ -58,7 +58,7 @@ public:
     }
 
     struct cells {
-        uint16_t cells[MAVLINK_MSG_BATTERY_STATUS_FIELD_VOLTAGES_LEN];
+        uint16_t cells[12];
     };
 
     // The BattMonitor_State structure is filled in by the backend driver
