@@ -224,7 +224,7 @@ bool GCS_MAVLINK::send_battery_status_o10s(void) const//add by awesome
 											battery.has_current(ins) ? battery.consumed_mah(ins) : -1,       // total consumed current in milliampere.hour
 											battery.has_consumed_energy(ins) ? battery.consumed_wh(ins) * 36 : -1, // consumed energy in hJ (hecto-Joules)
 											battery.capacity_remaining_pct(ins),
-											0, // time remaining, seconds (not provided)
+											(int32_t)battery.get_cycle_count(ins), // time remaining, seconds (not provided)
 											MAV_BATTERY_CHARGE_STATE_UNDEFINED);
 		}else{
 			first[chan] = false;
@@ -238,7 +238,7 @@ bool GCS_MAVLINK::send_battery_status_o10s(void) const//add by awesome
 											battery.has_current(ins) ? battery.consumed_mah(ins) : -1,       // total consumed current in milliampere.hour
 											battery.has_consumed_energy(ins) ? battery.consumed_wh(ins) * 36 : -1, // consumed energy in hJ (hecto-Joules)
 											battery.capacity_remaining_pct(ins),
-											0, // time remaining, seconds (not provided)
+											(int32_t)battery.get_cycle_count(ins), // time remaining, seconds (not provided)
 											MAV_BATTERY_CHARGE_STATE_UNDEFINED);
 		}
 		return true;

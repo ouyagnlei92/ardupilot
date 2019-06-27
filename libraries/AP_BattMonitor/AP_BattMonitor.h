@@ -76,6 +76,7 @@ public:
         float       voltage_resting_estimate;  // voltage with sag removed based on current and resistance estimate in Volt
         float       resistance;                // resistance, in Ohms, calculated by comparing resting voltage vs in flight voltage
         BatteryFailsafe failsafe;              // stage failsafe the battery is in
+        uint16_t    cycle_count;
         bool        healthy;                   // battery monitor is communicating correctly
     };
 
@@ -163,6 +164,10 @@ public:
     // get battery resistance estimate in ohms
     float get_resistance() const { return get_resistance(AP_BATT_PRIMARY_INSTANCE); }
     float get_resistance(uint8_t instance) const { return state[instance].resistance; }
+
+    // get battery cycle count
+	uint16_t get_cycle_count() const { return get_cycle_count(AP_BATT_PRIMARY_INSTANCE); }
+	uint16_t get_cycle_count(uint8_t instance) const { return state[instance].cycle_count; }
 
     static const struct AP_Param::GroupInfo var_info[];
 

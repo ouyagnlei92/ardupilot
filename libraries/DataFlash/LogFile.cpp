@@ -1411,6 +1411,7 @@ void DataFlash_Class::Log_Write_Current_instance(const uint64_t time_us,
         current_total       : battery.consumed_mah(battery_instance),
         consumed_wh         : battery.consumed_wh(battery_instance),
         temperature         : (int16_t)(has_temp ? (temp * 100) : 0),
+		cycle_count         : battery.get_cycle_count(battery_instance),
         resistance          : battery.get_resistance(battery_instance)
     };
     WriteBlock(&pkt, sizeof(pkt));

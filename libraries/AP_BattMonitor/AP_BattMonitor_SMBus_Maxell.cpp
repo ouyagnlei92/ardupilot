@@ -21,6 +21,7 @@ uint8_t maxell_cell_ids[] = { 0x3f,  // cell 1
 
 #define SMBUS_READ_BLOCK_MAXIMUM_TRANSFER    0x20   // A Block Read or Write is allowed to transfer a maximum of 32 data bytes.
 
+#define BATTMONITOR_SMBUS_MAXELL_BATTERY_CYCLE_COUNT   0x17    // cycle count
 /*
  * Other potentially useful registers, listed here for future use
  * #define BATTMONITOR_SMBUS_MAXELL_CHARGE_STATUS         0x0d    // relative state of charge
@@ -92,6 +93,12 @@ void AP_BattMonitor_SMBus_Maxell::timer()
     if (read_word(BATTMONITOR_SMBUS_CURRENT, data)) {
         _state.current_amps = -(float)((int16_t)data) / 100.0f;
         _state.last_time_micros = tnow;
+    }
+
+    //read cycle count
+    if (read_word(BATTMONITOR_SMBUS_MAXELL_BATTERY_CYCLE_COUNT, data)) {
+            _state.cycle_count = (uint16_t)data;
+            _state.last_time_micros = tnow;
     }
 
     read_full_charge_capacity();
