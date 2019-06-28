@@ -42,7 +42,7 @@ public:
     enum BatteryFailsafe {
         BatteryFailsafe_None = 0,
         BatteryFailsafe_Low,
-        BatteryFailsafe_Critical
+		 BatteryFailsafe_Critical
     };
 
     FUNCTOR_TYPEDEF(battery_failsafe_handler_fn_t, void, const char *, const int8_t);
@@ -168,6 +168,9 @@ public:
     // get battery cycle count
 	uint16_t get_cycle_count() const { return get_cycle_count(AP_BATT_PRIMARY_INSTANCE); }
 	uint16_t get_cycle_count(uint8_t instance) const { return state[instance].cycle_count; }
+
+	int16_t get_max_cycle_count() { return get_max_cycle_count(AP_BATT_PRIMARY_INSTANCE); }
+	int16_t get_max_cycle_count(uint8_t instance) { return _params[instance].batt_max_cycle_count(); }
 
     static const struct AP_Param::GroupInfo var_info[];
 

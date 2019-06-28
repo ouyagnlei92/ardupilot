@@ -313,7 +313,20 @@ void AP_BattMonitor::check_failsafes(void)
 {
     if (hal.util->get_soft_armed()) {
         for (uint8_t i = 0; i < _num_instances; i++) {
-            const BatteryFailsafe type = check_failsafe(i);
+			/* check battery discharge cycle count -- action: waring*/
+			int16_t cCount =  (int16_t)_battery.get_cycle_count(i);
+			if( _params[i]._batt_max_cycle_count>0 && cCount>=(int16_t)(_params[i]._batt_max_cycle_count*0.85) )
+			{
+				static uint8_t cc = 0;
+				if( cc<=30 )
+				{
+					++cc;
+				    gcs().send_text(MAV_SEVERITY_WARNING, "Battery %d use cycleCount %d -- Max %d",
+								    i+1, cCount, _params[i]._batt_max_cycle_count);
+				}
+			}
+
+            const BatteryFailsafe type = check_failsafe(i);  //check the battery£¬return the failsafe type
             if (type <= state[i].failsafe) {
                 continue;
             }
