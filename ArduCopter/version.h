@@ -6,7 +6,7 @@
 
 #include "ap_version.h"
 
-#define THISFIRMWARE "JTCopter1.6.9BAT12S"
+#define THISFIRMWARE "JTCopter1.6.9BAT12SV1.1"
 
 // the following line is parsed by the autotest scripts
 #define FIRMWARE_VERSION 3,6,9,FIRMWARE_VERSION_TYPE_OFFICIAL

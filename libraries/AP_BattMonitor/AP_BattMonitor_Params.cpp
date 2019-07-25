@@ -146,7 +146,7 @@ const AP_Param::GroupInfo AP_BattMonitor_Params::var_info[] = {
     // @User: Standard
     AP_GROUPINFO("FS_CRT_ACT", 17, AP_BattMonitor_Params, _failsafe_critical_action, 0),
 
-	AP_GROUPINFO("FS_CYC_CNT", 18, AP_BattMonitor_Params, _batt_max_cycle_count, 0),
+	AP_GROUPINFO("FS_CYC_CNT", 18, AP_BattMonitor_Params, _batt_max_cycle_count, 150),
 
     AP_GROUPEND
 
