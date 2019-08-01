@@ -472,13 +472,22 @@ bool AP_BattMonitor::has_cell_voltages(const uint8_t instance) const
 }
 
 // return the current cell voltages, returns the first monitor instances cells if the instance is out of range
-const AP_BattMonitor::cells & AP_BattMonitor::get_cell_voltages(const uint8_t instance) const
+const cells& AP_BattMonitor::get_cell_voltages(const uint8_t instance) const
 {
     if (instance >= AP_BATT_MONITOR_MAX_INSTANCES) {
         return state[AP_BATT_PRIMARY_INSTANCE].cell_voltages;
     } else {
         return state[instance].cell_voltages;
     }
+}
+
+uint16_t* AP_BattMonitor::get_tsx(const uint8_t instance) const
+{
+	if (instance >= AP_BATT_MONITOR_MAX_INSTANCES) {
+	        return &state[AP_BATT_PRIMARY_INSTANCE].TSx;
+	} else {
+		return &state[instance].TSx;
+	}
 }
 
 // returns true if there is a temperature reading

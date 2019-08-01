@@ -19,9 +19,10 @@ uint8_t maxell_cell_ids[] = { 0x3f,  // cell 1
                               0x35,  // cell 11
                               0x34}; // cell 12
 
-#define SMBUS_READ_BLOCK_MAXIMUM_TRANSFER    0x20   // A Block Read or Write is allowed to transfer a maximum of 32 data bytes.
+#define SMBUS_READ_BLOCK_MAXIMUM_TRANSFER    36   // A Block Read or Write is allowed to transfer a maximum of 36 data bytes.
 
 #define BATTMONITOR_SMBUS_MAXELL_BATTERY_CYCLE_COUNT   0x17    // cycle count
+#define BATTMONITOR_SMBUS_MAXELL_BATTERY_DASTATUS2     0x72
 /*
  * Other potentially useful registers, listed here for future use
  * #define BATTMONITOR_SMBUS_MAXELL_CHARGE_STATUS         0x0d    // relative state of charge
@@ -54,6 +55,7 @@ void AP_BattMonitor_SMBus_Maxell::timer()
 
     uint16_t data;
     uint32_t tnow = AP_HAL::micros();
+    uint32_t tstime = AP_HAL::micros();
 
     // read voltage (V)
     if (read_word(BATTMONITOR_SMBUS_VOLTAGE, data)) {
@@ -109,6 +111,21 @@ void AP_BattMonitor_SMBus_Maxell::timer()
     read_temp();
 
     read_serial_number();
+
+    if(tnow-tstime>2000000ul)  /* 2s update temp */
+    {
+		char tsbuff[35]={0};
+		if(read_block(BATTMONITOR_SMBUS_MAXELL_BATTERY_DASTATUS2, (uint8_t*)tsbuff, false)>0)
+		{
+			/* aaAA bbBB ccCC ddDD eeEE ffFF ggGG hhHH */
+			/* ExtAveCellVoltage,VAUX Voltage, TS1Temp, TS2Temp, TS3Temp, CellTemp, FETTemp, internal Gauge Temp */
+			_state.TSx[0] = (uint16_t)((string_to_data((char*)&tsbuff[11], (char*)&tsbuff[8]))-2731.5);
+			_state.TSx[1] = (uint16_t)((string_to_data((char*)&tsbuff[15], (char*)&tsbuff[12]))-2731.5);
+			_state.TSx[2] = (uint16_t)((string_to_data((char*)&tsbuff[19], (char*)&tsbuff[16]))-2731.5);
+		}
+		tstime = AP_HAL::micros();
+    }
+
 }
 
 // read_block - returns number of characters read if successful, zero if unsuccessful
@@ -195,5 +212,26 @@ bool AP_BattMonitor_SMBus_Maxell::check_pec_support()
 	_pec_supported = true;
 	_pec_confirmed = true;
 	return true;
+}
+
+uint16_t AP_BattMonitor_SMBus_Maxell::string_to_data(char* startp, char* endp)
+{
+	uint16_t result = 0;
+	if(startp==endp) return *startp-'0';
+	else if(startp<endp)
+	{
+		while(endp>=startp)
+		{
+			result=result*10+(*startp-'0');
+			++startp;
+		}
+	}else{
+		while(startp>=endp)
+		{
+			result=result*10+(*startp-'0');
+			--startp;
+		}
+	}
+	return result;
 }
 

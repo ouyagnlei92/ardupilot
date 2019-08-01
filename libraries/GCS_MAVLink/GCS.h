@@ -83,6 +83,7 @@ enum ap_message : uint8_t {
     MSG_LANDING,
     MSG_ESC_TELEMETRY,
     MSG_NAMED_FLOAT,
+	MSG_DATA64,
     MSG_LAST // MSG_LAST must be the last entry in this enum
 };
 
@@ -167,6 +168,7 @@ public:
     void send_meminfo(void);
     void send_power_status(void);
     bool send_battery_status_o10s(void) const;
+    bool send_battery_by_data64(void) const;
     void send_battery_status(const AP_BattMonitor &battery,
                              const uint8_t instance) const;
     bool send_battery_status() const;

@@ -194,6 +194,49 @@ void GCS_MAVLINK::send_power_status(void)
                                   hal.analogin->power_status_flags());
 }
 
+/* data64 send battery message */
+bool GCS_MAVLINK::send_battery_by_data64(void) const
+{
+	uint8_t ins = 0;
+	AP_BattMonitor &battery = AP::battery();
+	bool have_o10s = false;
+	for(uint8_t i=0; i<battery.num_instances(); ++i){
+		if(battery.get_type(i)==AP_BattMonitor_Params::BattMonitor_TYPE_MAXELL){
+			have_o10s = true;
+			ins = i;
+			break;
+		}
+	}
+	if(have_o10s)
+	{
+	    union batts{
+	    	struct x{
+				float vol;
+				float current;
+				int32_t cap;
+				float recap;
+				uint16_t cycCount;
+				uint16_t cell[12];
+				uint16_t temp[3];
+	    	}batt;
+	    	uint8_t data[64];
+	    }bat;
+	    bat.batt.vol = battery.voltage(ins);
+	    bat.batt.current = battery.current_amps(ins);
+	    bat.batt.cap = battery.pack_capacity_mah(ins);
+	    bat.batt.recap = battery.consumed_mah(ins);
+	    bat.batt.cycCount = battery.get_cycle_count(ins);
+	    const cells& cel = battery.get_cell_voltages(ins);
+	    for(i=0; i<12; ++i) bat.batt.cell[i] = cel[i];
+        uint16_t* ts = battery.get_tsx(ins);
+        for(i=0; i<3; ++i) bat.batt.temp[i] = ts[i];
+
+        CHECK_PAYLOAD_SIZE(DATA64);
+        mavlink_msg_data64_send(chan, 1, sizeof(bat.batt)/sizeof(uint8_t), (const uint8_t *)bat.data);
+	}
+	return true;
+}
+
 bool GCS_MAVLINK::send_battery_status_o10s(void) const//add by awesome
 {
 
@@ -208,8 +251,6 @@ bool GCS_MAVLINK::send_battery_status_o10s(void) const//add by awesome
 			break;
 		}
 	}
-
-       
 
 	if(have_o10s){
 		float temp;
@@ -2972,6 +3013,10 @@ bool GCS_MAVLINK::try_send_message(const enum ap_message id)
     case MSG_BATTERY_STATUS:
         send_battery_status();
         break;
+
+    case MSG_DATA64:
+    	send_battery_by_data64();
+    	break;
 
     case MSG_BATTERY2:
         CHECK_PAYLOAD_SIZE(BATTERY2);

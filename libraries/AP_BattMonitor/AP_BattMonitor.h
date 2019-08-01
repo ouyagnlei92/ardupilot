@@ -61,6 +61,7 @@ public:
         uint16_t cells[12];
     };
 
+
     // The BattMonitor_State structure is filled in by the backend driver
     struct BattMonitor_State {
         cells       cell_voltages;             // battery cell voltages in millivolts, 10 cells matches the MAVLink spec
@@ -77,6 +78,7 @@ public:
         float       resistance;                // resistance, in Ohms, calculated by comparing resting voltage vs in flight voltage
         BatteryFailsafe failsafe;              // stage failsafe the battery is in
         uint16_t    cycle_count;
+        uint16_t    TSx[4];
         bool        healthy;                   // battery monitor is communicating correctly
     };
 
@@ -156,6 +158,8 @@ public:
     bool has_cell_voltages(const uint8_t instance) const;
     const cells & get_cell_voltages() const { return get_cell_voltages(AP_BATT_PRIMARY_INSTANCE); }
     const cells & get_cell_voltages(const uint8_t instance) const;
+    const uint16_t* get_tsx() const { return get_tsx(AP_BATT_PRIMARY_INSTANCE); }
+    const uint16_t* get_tsx(const uint8_t instance) const;
 
     // temperature
     bool get_temperature(float &temperature) const { return get_temperature(temperature, AP_BATT_PRIMARY_INSTANCE); };

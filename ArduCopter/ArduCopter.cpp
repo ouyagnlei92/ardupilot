@@ -411,9 +411,9 @@ void Copter::three_hz_loop()
     // update ch6 in flight tuning
     tuning();
 
-    /*AP_BattMonitor &battery = AP::battery();
-    gcs().send_text(MAV_SEVERITY_WARNING,"cycle_count %d", (int32_t)battery.get_cycle_count());
-*/
+    //AP_BattMonitor &battery = AP::battery();
+    //gcs().send_text(MAV_SEVERITY_WARNING,"cycle_count %d", (int32_t)battery.get_cycle_count());
+    gcs().send_message(MSG_DATA64);
 }
 
 // one_hz_loop - runs at 1Hz
