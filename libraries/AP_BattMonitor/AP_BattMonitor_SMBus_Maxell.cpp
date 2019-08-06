@@ -20,11 +20,11 @@ uint8_t maxell_cell_ids[] = { 0x3f,  // cell 1
                               0x35,  // cell 11
                               0x34}; // cell 12
 
-#define SMBUS_READ_BLOCK_MAXIMUM_TRANSFER    36   // A Block Read or Write is allowed to transfer a maximum of 36 data bytes.
+#define SMBUS_READ_BLOCK_MAXIMUM_TRANSFER    32   // A Block Read or Write is allowed to transfer a maximum of 36 data bytes.
 
 #define BATTMONITOR_SMBUS_MAXELL_BATTERY_CYCLE_COUNT   0x17    // cycle count
 #define BATTMONITOR_SMBUS_MAXELL_BATTERY_DASTATUS2     0x72
-#define BATTMONITOR_SMBUS_MAXELL_SAFETY_ALERT           0x50    // safety alert
+#define BATTMONITOR_SMBUS_MAXELL_SAFETY_ALERT          0x50    // safety alert
 /*
  * Other potentially useful registers, listed here for future use
  * #define BATTMONITOR_SMBUS_MAXELL_CHARGE_STATUS         0x0d    // relative state of charge
@@ -131,16 +131,17 @@ void AP_BattMonitor_SMBus_Maxell::timer()
     	}
     }
 
-    if(tnow-tstime>2000000ul)  /* 2s update temp */
+    if(tnow-tstime>5000000ul)  /* 5s update temp */
     {
-		char tsbuff[35]={0};
+		uint8_t tsbuff[16]={0};
 		if(read_block(BATTMONITOR_SMBUS_MAXELL_BATTERY_DASTATUS2, (uint8_t*)tsbuff, false)>0)
 		{
 			/* aaAA bbBB ccCC ddDD eeEE ffFF ggGG hhHH */
 			/* ExtAveCellVoltage,VAUX Voltage, TS1Temp, TS2Temp, TS3Temp, CellTemp, FETTemp, internal Gauge Temp */
-			_state.TSx[0] = (int16_t)( ( (string_to_data( (char*)&tsbuff[11], (char*)&tsbuff[8], 4) )));
-			_state.TSx[1] = (int16_t)( ( (string_to_data( (char*)&tsbuff[15], (char*)&tsbuff[12], 4) )));
-			_state.TSx[2] = (int16_t)( ( (string_to_data( (char*)&tsbuff[19], (char*)&tsbuff[16], 4) )));
+			//gcs().send_text(MAV_SEVERITY_WARNING, "%d,%d,%d,%d,%d,%d",tsbuff[4],tsbuff[5],tsbuff[6],tsbuff[7],tsbuff[8],tsbuff[9]);
+                        _state.TSx[0]=(int16_t)(( (tsbuff[4]+((uint16_t)tsbuff[5]<<8))*0.1-273.15)*100);
+			_state.TSx[1]=(int16_t)(( (tsbuff[6]+((uint16_t)tsbuff[7]<<8))*0.1-273.15)*100);
+			_state.TSx[2]=(int16_t)(( (tsbuff[8]+((uint16_t)tsbuff[9]<<8))*0.1-273.15)*100);
 		}
 		tstime = AP_HAL::micros();
     }
@@ -154,6 +155,7 @@ uint8_t AP_BattMonitor_SMBus_Maxell::read_block(uint8_t reg, uint8_t* data, bool
     uint8_t bufflen;
     // read byte (first byte indicates the number of bytes in the block)
     if (!_dev->read_registers(reg, &bufflen, 1)) {   /* 读取一次，获取长度     */
+        //gcs().send_text(MAV_SEVERITY_WARNING, "reg=%d,len=%d",reg, bufflen);
         return 0;
     }
 
@@ -185,7 +187,6 @@ uint8_t AP_BattMonitor_SMBus_Maxell::read_block(uint8_t reg, uint8_t* data, bool
     // optionally add zero to end
     if (append_zero) {
         data[bufflen] = '\0';    /* 选择插入字符串结束标志 */
-        gcs().send_text(MAV_SEVERITY_WARNING, ":%s",(char*)(&data[0]));
     }
 
     // return success

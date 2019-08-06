@@ -481,7 +481,7 @@ const AP_BattMonitor::cells& AP_BattMonitor::get_cell_voltages(const uint8_t ins
     }
 }
 
-const uint16_t* AP_BattMonitor::get_tsx(const uint8_t instance) const
+const int16_t* AP_BattMonitor::get_tsx(const uint8_t instance) const
 {
 	if (instance >= AP_BATT_MONITOR_MAX_INSTANCES) {
 	        return &state[AP_BATT_PRIMARY_INSTANCE].TSx[0];
