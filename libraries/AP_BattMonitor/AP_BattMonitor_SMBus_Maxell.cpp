@@ -127,7 +127,7 @@ void AP_BattMonitor_SMBus_Maxell::timer()
     	{
     		_state.safe_alert=safe.data;
     		_have_safe_data=true;
-                gcs().send_text(MAV_SEVERITY_WARNING, "Have Smart SafeAlert: %d",_state.safe_alert);
+            gcs().send_text(MAV_SEVERITY_WARNING, "Have Smart SafeAlert: %d",_state.safe_alert);
     	}
     }
 
@@ -138,9 +138,9 @@ void AP_BattMonitor_SMBus_Maxell::timer()
 		{
 			/* aaAA bbBB ccCC ddDD eeEE ffFF ggGG hhHH */
 			/* ExtAveCellVoltage,VAUX Voltage, TS1Temp, TS2Temp, TS3Temp, CellTemp, FETTemp, internal Gauge Temp */
-			_state.TSx[0] = (uint16_t)( ( (string_to_data( (char*)&tsbuff[11], (char*)&tsbuff[8], 4) )-2731.5)*10);
-			_state.TSx[1] = (uint16_t)( ( (string_to_data( (char*)&tsbuff[15], (char*)&tsbuff[12], 4) )-2731.5)*10);
-			_state.TSx[2] = (uint16_t)( ( (string_to_data( (char*)&tsbuff[19], (char*)&tsbuff[16], 4) )-2731.5)*10);
+			_state.TSx[0] = (int16_t)( ( (string_to_data( (char*)&tsbuff[11], (char*)&tsbuff[8], 4) )));
+			_state.TSx[1] = (int16_t)( ( (string_to_data( (char*)&tsbuff[15], (char*)&tsbuff[12], 4) )));
+			_state.TSx[2] = (int16_t)( ( (string_to_data( (char*)&tsbuff[19], (char*)&tsbuff[16], 4) )));
 		}
 		tstime = AP_HAL::micros();
     }
@@ -153,21 +153,21 @@ uint8_t AP_BattMonitor_SMBus_Maxell::read_block(uint8_t reg, uint8_t* data, bool
     // get length
     uint8_t bufflen;
     // read byte (first byte indicates the number of bytes in the block)
-    if (!_dev->read_registers(reg, &bufflen, 1)) {
+    if (!_dev->read_registers(reg, &bufflen, 1)) {   /* 读取一次，获取长度     */
         return 0;
     }
 
     // sanity check length returned by smbus
-    if (bufflen == 0 || bufflen > SMBUS_READ_BLOCK_MAXIMUM_TRANSFER) {
+    if (bufflen == 0 || bufflen > SMBUS_READ_BLOCK_MAXIMUM_TRANSFER) {   /* 不能超过36个字节  */
         return 0;
     }
 
     // buffer to hold results (2 extra byte returned holding length and PEC)
-    const uint8_t read_size = bufflen + 1 + (_pec_supported ? 1 : 0);
+    const uint8_t read_size = bufflen + 1 + (_pec_supported ? 1 : 0);   /* 数据长度 + 长度标志 + PEC标志 */
     uint8_t buff[read_size];
 
     // read bytes
-    if (!_dev->read_registers(reg, buff, read_size)) {
+    if (!_dev->read_registers(reg, buff, read_size)) {   /* 读取块区数据      */
         return 0;
     }
 
@@ -179,12 +179,13 @@ uint8_t AP_BattMonitor_SMBus_Maxell::read_block(uint8_t reg, uint8_t* data, bool
         }
     }
 
-    // copy data (excluding PEC)
-    memcpy(data, &buff[1], bufflen);
+    // copy data (excluding PEC and len)
+    memcpy(data, &buff[1], bufflen);   /* 不包括长度和PEC位 */
 
     // optionally add zero to end
     if (append_zero) {
-        data[bufflen] = '\0';
+        data[bufflen] = '\0';    /* 选择插入字符串结束标志 */
+        gcs().send_text(MAV_SEVERITY_WARNING, ":%s",(char*)(&data[0]));
     }
 
     // return success

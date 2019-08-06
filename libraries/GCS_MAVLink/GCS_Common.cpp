@@ -219,7 +219,7 @@ bool GCS_MAVLINK::send_battery_by_data64(void) const
 				uint32_t safeAlert; /* safe alert bit flag */
 				uint16_t cycCount;  /* 充电循环次数 */
 				uint16_t cell[12]; /* 每节电池电压 mV */
-				uint16_t temp[3];  /* 0.01摄氏度 */
+				int16_t temp[3];  /* 0.01摄氏度 */
 	    	}batt;
 	    	uint8_t data[64];
 	    }bat;
@@ -231,7 +231,7 @@ bool GCS_MAVLINK::send_battery_by_data64(void) const
 	    bat.batt.safeAlert = battery.get_safe_alert(ins);   /* get safe alert */
 	    uint16_t* cel = (uint16_t*)battery.get_cell_voltages(ins).cells;  /* 每节电池电压 mV */
 	    for(i=0; i<12; ++i) bat.batt.cell[i] = cel[i];
-        uint16_t* ts = (uint16_t*)battery.get_tsx(ins);  /* 0.01度 */
+        int16_t* ts = (int16_t*)battery.get_tsx(ins);  /* 0.01度 */
         for(i=0; i<3; ++i) bat.batt.temp[i] = ts[i];
 
         CHECK_PAYLOAD_SIZE(DATA64);
