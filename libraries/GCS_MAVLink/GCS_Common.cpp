@@ -211,24 +211,26 @@ bool GCS_MAVLINK::send_battery_by_data64(void) const
 	{
 	    union batts{
 	    	struct x{
-				float vol;
-				float current;
-				int32_t cap;
-				float recap;
-				uint16_t cycCount;
-				uint16_t cell[12];
-				uint16_t temp[3];
+				float vol;   	/* 电压：V */
+				float current;	/* 电流： A */
+				int32_t cap;	/* 电池容量  mah  */
+				float recap;	/* 耗电量 mah */
+				uint32_t safeAlert; /* safe alert bit flag */
+				uint16_t cycCount;  /* 充电循环次数 */
+				uint16_t cell[12]; /* 每节电池电压 mV */
+				uint16_t temp[3];  /* 0.01摄氏度 */
 	    	}batt;
 	    	uint8_t data[64];
 	    }bat;
-	    bat.batt.vol = battery.voltage(ins);
-	    bat.batt.current = battery.current_amps(ins);
-	    bat.batt.cap = battery.pack_capacity_mah(ins);
-	    bat.batt.recap = battery.consumed_mah(ins);
-	    bat.batt.cycCount = battery.get_cycle_count(ins);
-	    const cells& cel = battery.get_cell_voltages(ins);
+	    bat.batt.vol = battery.voltage(ins);  				/* 电压：V */
+	    bat.batt.current = battery.current_amps(ins);  		/* 电流： A */
+	    bat.batt.cap = battery.pack_capacity_mah(ins); 		/* 电池容量  mah  */
+	    bat.batt.recap = battery.consumed_mah(ins);    		/* 耗电量 mah */
+	    bat.batt.cycCount = battery.get_cycle_count(ins);	/* 充电循环次数 */
+	    bat.batt.safeAlert = battery.get_safe_alert(ins);   /* get safe alert */
+	    const cells& cel = battery.get_cell_voltages(ins);  /* 每节电池电压 mV */
 	    for(i=0; i<12; ++i) bat.batt.cell[i] = cel[i];
-        uint16_t* ts = battery.get_tsx(ins);
+        uint16_t* ts = battery.get_tsx(ins);  /* 0.01度 */
         for(i=0; i<3; ++i) bat.batt.temp[i] = ts[i];
 
         CHECK_PAYLOAD_SIZE(DATA64);

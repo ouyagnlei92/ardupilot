@@ -32,4 +32,5 @@ private:
 
     uint8_t _pec_confirmed; // count of the number of times PEC has been confirmed as working
     uint8_t _cell_health_counter[12]; // cell heath counter
+    bool _have_safe_data;
 };

@@ -76,6 +76,7 @@ public:
         uint32_t    temperature_time;          // timestamp of the last received temperature message
         float       voltage_resting_estimate;  // voltage with sag removed based on current and resistance estimate in Volt
         float       resistance;                // resistance, in Ohms, calculated by comparing resting voltage vs in flight voltage
+        uint32_t    safe_alert;                // safe alert bit flag
         BatteryFailsafe failsafe;              // stage failsafe the battery is in
         uint16_t    cycle_count;
         uint16_t    TSx[4];
@@ -172,6 +173,9 @@ public:
     // get battery cycle count
 	uint16_t get_cycle_count() const { return get_cycle_count(AP_BATT_PRIMARY_INSTANCE); }
 	uint16_t get_cycle_count(uint8_t instance) const { return state[instance].cycle_count; }
+
+	uint32_t get_safe_alert() const { return get_safe_alert(AP_BATT_PRIMARY_INSTANCE); }
+	uint32_t get_safe_alert(uint8_t instance) const { return state[instance].safe_alert; }
 
 	int16_t get_max_cycle_count() const { return get_max_cycle_count(AP_BATT_PRIMARY_INSTANCE); }
 	int16_t get_max_cycle_count(uint8_t instance) const { return _params[instance]._batt_max_cycle_count; }

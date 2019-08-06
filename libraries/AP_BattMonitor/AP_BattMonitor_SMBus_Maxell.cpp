@@ -23,6 +23,7 @@ uint8_t maxell_cell_ids[] = { 0x3f,  // cell 1
 
 #define BATTMONITOR_SMBUS_MAXELL_BATTERY_CYCLE_COUNT   0x17    // cycle count
 #define BATTMONITOR_SMBUS_MAXELL_BATTERY_DASTATUS2     0x72
+#define BATTMONITOR_SMBUS_MAXELL_SAFETY_ALERT           0x50    // safety alert
 /*
  * Other potentially useful registers, listed here for future use
  * #define BATTMONITOR_SMBUS_MAXELL_CHARGE_STATUS         0x0d    // relative state of charge
@@ -44,7 +45,9 @@ AP_BattMonitor_SMBus_Maxell::AP_BattMonitor_SMBus_Maxell(AP_BattMonitor &mon,
                                                    AP_BattMonitor_Params &params,
                                                    AP_HAL::OwnPtr<AP_HAL::I2CDevice> dev)
     : AP_BattMonitor_SMBus(mon, mon_state, params, std::move(dev))
-{}
+{
+	_have_safe_data=false;
+}
 
 void AP_BattMonitor_SMBus_Maxell::timer()
 {
@@ -55,7 +58,7 @@ void AP_BattMonitor_SMBus_Maxell::timer()
 
     uint16_t data;
     uint32_t tnow = AP_HAL::micros();
-    uint32_t tstime = AP_HAL::micros();
+    static uint32_t tstime = AP_HAL::micros();
 
     // read voltage (V)
     if (read_word(BATTMONITOR_SMBUS_VOLTAGE, data)) {
@@ -112,6 +115,20 @@ void AP_BattMonitor_SMBus_Maxell::timer()
 
     read_serial_number();
 
+    // read safe alert
+    if(!_have_safe_data&&(AP_HAL::millis()>=60000))
+    {
+    	union {
+    		uint32_t data;
+    		char buff[4];
+    	}safe;
+    	if(read_block(BATTMONITOR_SMBUS_MAXELL_SAFETY_ALERT, (uint8_t*)safe.buff, false)>0)
+    	{
+    		_state.safe_alert=safe.data;
+    		_have_safe_data=true;
+    	}
+    }
+
     if(tnow-tstime>2000000ul)  /* 2s update temp */
     {
 		char tsbuff[35]={0};
@@ -119,9 +136,9 @@ void AP_BattMonitor_SMBus_Maxell::timer()
 		{
 			/* aaAA bbBB ccCC ddDD eeEE ffFF ggGG hhHH */
 			/* ExtAveCellVoltage,VAUX Voltage, TS1Temp, TS2Temp, TS3Temp, CellTemp, FETTemp, internal Gauge Temp */
-			_state.TSx[0] = (uint16_t)((string_to_data((char*)&tsbuff[11], (char*)&tsbuff[8]))-2731.5);
-			_state.TSx[1] = (uint16_t)((string_to_data((char*)&tsbuff[15], (char*)&tsbuff[12]))-2731.5);
-			_state.TSx[2] = (uint16_t)((string_to_data((char*)&tsbuff[19], (char*)&tsbuff[16]))-2731.5);
+			_state.TSx[0] = (uint16_t)(((string_to_data((char*)&tsbuff[11], (char*)&tsbuff[8], 4))-2731.5))*10;
+			_state.TSx[1] = (uint16_t)(((string_to_data((char*)&tsbuff[15], (char*)&tsbuff[12], 4))-2731.5))*10;
+			_state.TSx[2] = (uint16_t)(((string_to_data((char*)&tsbuff[19], (char*)&tsbuff[16], 4))-2731.5))*10;
 		}
 		tstime = AP_HAL::micros();
     }
@@ -214,22 +231,25 @@ bool AP_BattMonitor_SMBus_Maxell::check_pec_support()
 	return true;
 }
 
-uint16_t AP_BattMonitor_SMBus_Maxell::string_to_data(char* startp, char* endp)
+uint16_t AP_BattMonitor_SMBus_Maxell::string_to_data(char* startp, char* endp, uint8_t len)
 {
 	uint16_t result = 0;
 	if(startp==endp) return *startp-'0';
+	uint8_t count = 0;
 	else if(startp<endp)
 	{
-		while(endp>=startp)
+		while(endp>=startp&&count<len)
 		{
 			result=result*10+(*startp-'0');
 			++startp;
+			++count;
 		}
 	}else{
-		while(startp>=endp)
+		while(startp>=endp&&count<len)
 		{
 			result=result*10+(*startp-'0');
 			--startp;
+			++count;
 		}
 	}
 	return result;
