@@ -28,7 +28,7 @@ private:
     uint8_t read_block(uint8_t reg, uint8_t* data, bool append_zero) const;
 
     //string convert the data
-    uint16_t string_to_data(char* startp, char* endp);
+    uint16_t string_to_data(char* startp, char* endp, uint8_t len);
 
     uint8_t _pec_confirmed; // count of the number of times PEC has been confirmed as working
     uint8_t _cell_health_counter[12]; // cell heath counter

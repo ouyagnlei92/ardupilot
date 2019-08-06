@@ -200,7 +200,8 @@ bool GCS_MAVLINK::send_battery_by_data64(void) const
 	uint8_t ins = 0;
 	AP_BattMonitor &battery = AP::battery();
 	bool have_o10s = false;
-	for(uint8_t i=0; i<battery.num_instances(); ++i){
+        uint8_t i; 
+	for(i=0; i<battery.num_instances(); ++i){
 		if(battery.get_type(i)==AP_BattMonitor_Params::BattMonitor_TYPE_MAXELL){
 			have_o10s = true;
 			ins = i;
@@ -228,9 +229,9 @@ bool GCS_MAVLINK::send_battery_by_data64(void) const
 	    bat.batt.recap = battery.consumed_mah(ins);    		/* 耗电量 mah */
 	    bat.batt.cycCount = battery.get_cycle_count(ins);	/* 充电循环次数 */
 	    bat.batt.safeAlert = battery.get_safe_alert(ins);   /* get safe alert */
-	    const cells& cel = battery.get_cell_voltages(ins);  /* 每节电池电压 mV */
+	    uint16_t* cel = (uint16_t*)battery.get_cell_voltages(ins).cells;  /* 每节电池电压 mV */
 	    for(i=0; i<12; ++i) bat.batt.cell[i] = cel[i];
-        uint16_t* ts = battery.get_tsx(ins);  /* 0.01度 */
+        uint16_t* ts = (uint16_t*)battery.get_tsx(ins);  /* 0.01度 */
         for(i=0; i<3; ++i) bat.batt.temp[i] = ts[i];
 
         CHECK_PAYLOAD_SIZE(DATA64);

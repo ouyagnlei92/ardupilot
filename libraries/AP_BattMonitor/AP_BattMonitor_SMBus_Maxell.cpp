@@ -4,6 +4,7 @@
 #include "AP_BattMonitor.h"
 #include "AP_BattMonitor_SMBus_Maxell.h"
 #include <utility>
+#include <GCS_MAVLink/GCS.h>
 
 #define BATTMONITOR_SMBUS_MAXELL_NUM_CELLS 12
 uint8_t maxell_cell_ids[] = { 0x3f,  // cell 1
@@ -126,6 +127,7 @@ void AP_BattMonitor_SMBus_Maxell::timer()
     	{
     		_state.safe_alert=safe.data;
     		_have_safe_data=true;
+                gcs().send_text(MAV_SEVERITY_WARNING, "Have Smart SafeAlert: %d",_state.safe_alert);
     	}
     }
 
@@ -136,9 +138,9 @@ void AP_BattMonitor_SMBus_Maxell::timer()
 		{
 			/* aaAA bbBB ccCC ddDD eeEE ffFF ggGG hhHH */
 			/* ExtAveCellVoltage,VAUX Voltage, TS1Temp, TS2Temp, TS3Temp, CellTemp, FETTemp, internal Gauge Temp */
-			_state.TSx[0] = (uint16_t)(((string_to_data((char*)&tsbuff[11], (char*)&tsbuff[8], 4))-2731.5))*10;
-			_state.TSx[1] = (uint16_t)(((string_to_data((char*)&tsbuff[15], (char*)&tsbuff[12], 4))-2731.5))*10;
-			_state.TSx[2] = (uint16_t)(((string_to_data((char*)&tsbuff[19], (char*)&tsbuff[16], 4))-2731.5))*10;
+			_state.TSx[0] = (uint16_t)( ( (string_to_data( (char*)&tsbuff[11], (char*)&tsbuff[8], 4) )-2731.5)*10);
+			_state.TSx[1] = (uint16_t)( ( (string_to_data( (char*)&tsbuff[15], (char*)&tsbuff[12], 4) )-2731.5)*10);
+			_state.TSx[2] = (uint16_t)( ( (string_to_data( (char*)&tsbuff[19], (char*)&tsbuff[16], 4) )-2731.5)*10);
 		}
 		tstime = AP_HAL::micros();
     }
@@ -234,8 +236,8 @@ bool AP_BattMonitor_SMBus_Maxell::check_pec_support()
 uint16_t AP_BattMonitor_SMBus_Maxell::string_to_data(char* startp, char* endp, uint8_t len)
 {
 	uint16_t result = 0;
+        uint8_t count = 0;
 	if(startp==endp) return *startp-'0';
-	uint8_t count = 0;
 	else if(startp<endp)
 	{
 		while(endp>=startp&&count<len)
