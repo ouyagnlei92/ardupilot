@@ -199,16 +199,7 @@ bool GCS_MAVLINK::send_battery_by_data64(void) const
 {
 	uint8_t ins = 0;
 	AP_BattMonitor &battery = AP::battery();
-	bool have_o10s = false;
-        uint8_t i; 
-	for(i=0; i<battery.num_instances(); ++i){
-		if(battery.get_type(i)==AP_BattMonitor_Params::BattMonitor_TYPE_MAXELL){
-			have_o10s = true;
-			ins = i;
-			break;
-		}
-	}
-	if(have_o10s && battery.healthy(ins))
+	if(battery.has_smart_battery(ins))
 	{
 	    union batts{
 	    	struct x{
@@ -255,15 +246,8 @@ bool GCS_MAVLINK::send_battery_status_o10s(void) const//add by awesome
 	bool have_o10s = false;
 	uint8_t ins = 0;
 	AP_BattMonitor &battery = AP::battery();
-	for(uint8_t i=0; i<battery.num_instances(); ++i){
-		if(battery.get_type(i)==AP_BattMonitor_Params::BattMonitor_TYPE_MAXELL){
-			have_o10s = true;
-			ins = i;
-			break;
-		}
-	}
 
-	if(have_o10s){
+	if(battery.has_smart_battery(ins)){
 		float temp;
 		bool got_temperature = battery.get_temperature(temp, ins);
 		CHECK_PAYLOAD_SIZE(BATTERY_STATUS);

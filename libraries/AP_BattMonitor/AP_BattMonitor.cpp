@@ -501,6 +501,18 @@ bool AP_BattMonitor::get_temperature(float &temperature, const uint8_t instance)
     }
 }
 
+// have smart battery
+bool AP_BattMonitor::has_smart_battery(uint8_t& num) const
+{
+	for(uint8_t i=0; i<num_instances(); ++i){
+		if((get_type(i)==AP_BattMonitor_Params::BattMonitor_TYPE_MAXELL)&&healthy(i)){
+			num = i;
+			return true;
+		}
+	}
+	return false;
+}
+
 
 namespace AP {
 
