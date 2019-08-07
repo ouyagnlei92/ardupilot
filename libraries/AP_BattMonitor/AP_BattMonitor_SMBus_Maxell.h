@@ -30,7 +30,10 @@ private:
     //string convert the data
     uint16_t string_to_data(char* startp, char* endp, uint8_t len);
 
+    // get smart battery more information
+    bool get_battery_status(void);
+
     uint8_t _pec_confirmed; // count of the number of times PEC has been confirmed as working
     uint8_t _cell_health_counter[12]; // cell heath counter
-    bool _have_safe_data;
+    uint8_t _battery_status;//get smart battery status
 };

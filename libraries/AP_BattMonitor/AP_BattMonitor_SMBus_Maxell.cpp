@@ -23,8 +23,21 @@ uint8_t maxell_cell_ids[] = { 0x3f,  // cell 1
 #define SMBUS_READ_BLOCK_MAXIMUM_TRANSFER    32   // A Block Read or Write is allowed to transfer a maximum of 36 data bytes.
 
 #define BATTMONITOR_SMBUS_MAXELL_BATTERY_CYCLE_COUNT   0x17    // cycle count
-#define BATTMONITOR_SMBUS_MAXELL_BATTERY_DASTATUS2     0x72
+#define BATTMONITOR_SMBUS_MAXELL_BATTERY_DASTATUS2     0x72    // DA Status
 #define BATTMONITOR_SMBUS_MAXELL_SAFETY_ALERT          0x50    // safety alert
+#define BATTMONITOR_SMBUS_MAXELL_PF_ALERT              0x52    // PF alert
+#define BATTMONITOR_SMBUS_MAXELL_OPERATION_STATUS      0x54    // OperationStatus  Page-139
+#define BATTMONITOR_SMBUS_MAXELL_CHARGING_STATUS       0x55    // ChargingStatus   Page-139
+#define BATTMONITOR_SMBUS_MAXELL_GAUGING_STATUS        0x56    // GaugingStatus    Page-139
+
+#define SMART_BATTERY_PF_ALERT		(1<<0)
+#define SMART_BATTERY_SAFE_ALERT	(1<<1)
+#define SMART_BATTERY_OPERATION_STATUS (1<<2)
+#define SMART_BATTERY_CHARGING_STATUS  (1<<3)
+#define SMART_BATTERY_GUAING_STATUS    (1<<4)
+#define SMART_BATTERY_ALL_STATUS       (SMART_BATTERY_PF_ALERT | SMART_BATTERY_SAFE_ALERT | SMART_BATTERY_OPERATION_STATUS\
+		                                | SMART_BATTERY_CHARGING_STATUS | SMART_BATTERY_GUAING_STATUS)
+
 /*
  * Other potentially useful registers, listed here for future use
  * #define BATTMONITOR_SMBUS_MAXELL_CHARGE_STATUS         0x0d    // relative state of charge
@@ -48,6 +61,7 @@ AP_BattMonitor_SMBus_Maxell::AP_BattMonitor_SMBus_Maxell(AP_BattMonitor &mon,
     : AP_BattMonitor_SMBus(mon, mon_state, params, std::move(dev))
 {
 	_have_safe_data=false;
+	_battery_status = 0;
 }
 
 void AP_BattMonitor_SMBus_Maxell::timer()
@@ -107,6 +121,12 @@ void AP_BattMonitor_SMBus_Maxell::timer()
             _state.last_time_micros = tnow;
     }
 
+    // read more information
+    if(AP_HAL::millis()>=60000)
+    {
+    	get_battery_status();
+    }
+
     read_full_charge_capacity();
 
     // FIXME: Preform current integration if the remaining capacity can't be requested
@@ -116,21 +136,6 @@ void AP_BattMonitor_SMBus_Maxell::timer()
 
     read_serial_number();
 
-    // read safe alert
-    if(!_have_safe_data&&(AP_HAL::millis()>=60000))
-    {
-    	union {
-    		uint32_t data;
-    		char buff[4];
-    	}safe;
-    	if(read_block(BATTMONITOR_SMBUS_MAXELL_SAFETY_ALERT, (uint8_t*)safe.buff, false)>0)
-    	{
-    		_state.safe_alert=safe.data;
-    		_have_safe_data=true;
-            gcs().send_text(MAV_SEVERITY_WARNING, "Have Smart SafeAlert: %d",_state.safe_alert);
-    	}
-    }
-
     if(tnow-tstime>5000000ul)  /* 5s update temp */
     {
 		uint8_t tsbuff[16]={0};
@@ -139,7 +144,7 @@ void AP_BattMonitor_SMBus_Maxell::timer()
 			/* aaAA bbBB ccCC ddDD eeEE ffFF ggGG hhHH */
 			/* ExtAveCellVoltage,VAUX Voltage, TS1Temp, TS2Temp, TS3Temp, CellTemp, FETTemp, internal Gauge Temp */
 			//gcs().send_text(MAV_SEVERITY_WARNING, "%d,%d,%d,%d,%d,%d",tsbuff[4],tsbuff[5],tsbuff[6],tsbuff[7],tsbuff[8],tsbuff[9]);
-                        _state.TSx[0]=(int16_t)(( (tsbuff[4]+((uint16_t)tsbuff[5]<<8))*0.1-273.15)*100);
+            _state.TSx[0]=(int16_t)(( (tsbuff[4]+((uint16_t)tsbuff[5]<<8))*0.1-273.15)*100);
 			_state.TSx[1]=(int16_t)(( (tsbuff[6]+((uint16_t)tsbuff[7]<<8))*0.1-273.15)*100);
 			_state.TSx[2]=(int16_t)(( (tsbuff[8]+((uint16_t)tsbuff[9]<<8))*0.1-273.15)*100);
 		}
@@ -257,5 +262,69 @@ uint16_t AP_BattMonitor_SMBus_Maxell::string_to_data(char* startp, char* endp, u
 		}
 	}
 	return result;
+}
+
+bool AP_BattMonitor_SMBus_Maxell::get_battery_status(void)
+{
+
+	if( SMART_BATTERY_ALL_STATUS==_battery_status ) return true;
+
+	union {
+		uint32_t data;
+		uint8_t buff[4];
+	}x;
+
+	gcs().send_text(MAV_SEVERITY_WARNING, "Get More Info...");
+
+	// get pf alert
+    if(!(_battery_status&SMART_BATTERY_PF_ALERT))
+    {
+    	if(read_block(BATTMONITOR_SMBUS_MAXELL_PF_ALERT, (uint8_t*)x.buff, false)>0)
+    	{
+    		_battery_status = _battery_status | SMART_BATTERY_PF_ALERT;
+    		_state.pf_alert = x.data;
+    	}
+    }
+
+    // get safe alert
+    if(!(_battery_status&SMART_BATTERY_SAFE_ALERT))
+    {
+    	if(read_block(BATTMONITOR_SMBUS_MAXELL_SAFETY_ALERT, (uint8_t*)x.buff, false)>0)
+		{
+			_battery_status = _battery_status | SMART_BATTERY_SAFE_ALERT;
+			_state.safe_alert = x.data;
+		}
+    }
+
+    // get operation status
+    if(!(_battery_status&SMART_BATTERY_OPERATION_STATUS))
+	{
+    	if(read_block(BATTMONITOR_SMBUS_MAXELL_OPERATION_STATUS, (uint8_t*)x.buff, false)>0)
+		{
+			_battery_status = _battery_status | SMART_BATTERY_OPERATION_STATUS;
+			_state.operation_status = x.data;
+		}
+	}
+
+    // get charging status
+    if(!(_battery_status&SMART_BATTERY_CHARGING_STATUS))
+	{
+    	if(read_block(BATTMONITOR_SMBUS_MAXELL_CHARGING_STATUS, (uint8_t*)x.buff, false)>0)
+		{
+			_battery_status = _battery_status | SMART_BATTERY_CHARGING_STATUS;
+			_state.charging_status = (uint16_t)(x.data[0]+x.data[1]<<8);
+		}
+	}
+
+    // get guaing status
+    if(!(_battery_status&SMART_BATTERY_GUAING_STATUS))
+	{
+    	if(read_block(BATTMONITOR_SMBUS_MAXELL_GAUGING_STATUS, (uint8_t*)x.buff, false)>0)
+		{
+			_battery_status = _battery_status | SMART_BATTERY_GUAING_STATUS;
+			_state.guaing_status = (uint16_t)(x.data[0]+x.data[1]<<8);
+		}
+	}
+
 }
 

@@ -208,7 +208,7 @@ bool GCS_MAVLINK::send_battery_by_data64(void) const
 			break;
 		}
 	}
-	if(have_o10s)
+	if(have_o10s && battery.healthy(ins))
 	{
 	    union batts{
 	    	struct x{
@@ -217,6 +217,10 @@ bool GCS_MAVLINK::send_battery_by_data64(void) const
 				int32_t cap;	/* 电池容量  mah  */
 				float recap;	/* 耗电量 mah */
 				uint32_t safeAlert; /* safe alert bit flag */
+				uint32_t pfAlert;   /* PFAlert */
+				uint32_t operationStatus; /* 应用标志   */
+				uint16_t chargingStatus;  /* 充电应用标志   */
+				uint16_t gaugingStatus;   /* 智能电池状态标志 */
 				uint16_t cycCount;  /* 充电循环次数 */
 				uint16_t cell[12]; /* 每节电池电压 mV */
 				int16_t temp[3];  /* 0.01摄氏度 */
@@ -229,6 +233,10 @@ bool GCS_MAVLINK::send_battery_by_data64(void) const
 	    bat.batt.recap = battery.consumed_mah(ins);    		/* 耗电量 mah */
 	    bat.batt.cycCount = battery.get_cycle_count(ins);	/* 充电循环次数 */
 	    bat.batt.safeAlert = battery.get_safe_alert(ins);   /* get safe alert */
+	    bat.batt.pfAlert = battery.get_pf_alert(ins);
+		bat.batt.operationStatus = battery.get_operation_status(ins);
+		bat.batt.gaugingStatus = battery.get_guaing_status(ins);
+		bat.batt.chargingStatus = battery.get_charging_status(ins);
 	    uint16_t* cel = (uint16_t*)battery.get_cell_voltages(ins).cells;  /* 每节电池电压 mV */
 	    for(i=0; i<12; ++i) bat.batt.cell[i] = cel[i];
         int16_t* ts = (int16_t*)battery.get_tsx(ins);  /* 0.01度 */

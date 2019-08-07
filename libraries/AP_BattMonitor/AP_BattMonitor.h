@@ -77,6 +77,10 @@ public:
         float       voltage_resting_estimate;  // voltage with sag removed based on current and resistance estimate in Volt
         float       resistance;                // resistance, in Ohms, calculated by comparing resting voltage vs in flight voltage
         uint32_t    safe_alert;                // safe alert bit flag
+        uint32_t    pf_alert;
+        uint32_t    operation_status;
+        uint16_t    guaing_status;
+        uint16_t    charging_status;
         BatteryFailsafe failsafe;              // stage failsafe the battery is in
         uint16_t    cycle_count;
         int16_t    TSx[4];
@@ -176,11 +180,28 @@ public:
 	uint16_t get_cycle_count() const { return get_cycle_count(AP_BATT_PRIMARY_INSTANCE); }
 	uint16_t get_cycle_count(uint8_t instance) const { return state[instance].cycle_count; }
 
+	int16_t get_max_cycle_count() const { return get_max_cycle_count(AP_BATT_PRIMARY_INSTANCE); }
+	int16_t get_max_cycle_count(uint8_t instance) const { return _params[instance]._batt_max_cycle_count; }
+
+	// get smart battery safe alert
 	uint32_t get_safe_alert() const { return get_safe_alert(AP_BATT_PRIMARY_INSTANCE); }
 	uint32_t get_safe_alert(uint8_t instance) const { return state[instance].safe_alert; }
 
-	int16_t get_max_cycle_count() const { return get_max_cycle_count(AP_BATT_PRIMARY_INSTANCE); }
-	int16_t get_max_cycle_count(uint8_t instance) const { return _params[instance]._batt_max_cycle_count; }
+	// get smart battery pf alert
+	uint32_t get_pf_alert() const { return get_safe_alert(AP_BATT_PRIMARY_INSTANCE); }
+	uint32_t get_pf_alert(uint8_t instance) const { return state[instance].pf_alert; }
+
+	// get smart battery operation status
+	uint32_t get_operation_status() const { return get_safe_alert(AP_BATT_PRIMARY_INSTANCE); }
+	uint32_t get_operation_status(uint8_t instance) const { return state[instance].operation_status; }
+
+	// get smart battery charging status
+	uint16_t get_charging_status() const { return get_safe_alert(AP_BATT_PRIMARY_INSTANCE); }
+	uint16_t get_charging_status(uint8_t instance) const { return state[instance].charging_status; }
+
+	// get smart battery guaing status
+	uint16_t get_guaing_status() const { return get_safe_alert(AP_BATT_PRIMARY_INSTANCE); }
+    uint16_t get_guaing_status(uint8_t instance) const { return state[instance].guaing_status; }
 
     static const struct AP_Param::GroupInfo var_info[];
 
