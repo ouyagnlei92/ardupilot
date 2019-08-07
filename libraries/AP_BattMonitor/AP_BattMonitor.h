@@ -69,6 +69,7 @@ public:
         float       current_amps;              // current in amperes
         float       consumed_mah;              // total current draw in milliamp hours since start-up
         float       consumed_wh;               // total energy consumed in Wh since start-up
+        float       remaining_mah;
         uint32_t    last_time_micros;          // time when voltage and current was last read in microseconds
         uint32_t    low_voltage_start_ms;      // time when voltage dropped below the minimum in milliseconds
         uint32_t    critical_voltage_start_ms; // critical voltage failsafe start timer in milliseconds
@@ -124,6 +125,10 @@ public:
     /// consumed_mah - returns total current drawn since start-up in milliampere.hours
     float consumed_mah(uint8_t instance) const;
     float consumed_mah() const { return consumed_mah(AP_BATT_PRIMARY_INSTANCE); }
+
+    /// consumed_mah - returns total current drawn since start-up in milliampere.hours
+   float remaining_mah(uint8_t instance) const;
+   float remaining_mah() const { return remaining_mah(AP_BATT_PRIMARY_INSTANCE); }
 
     /// consumed_wh - returns total energy drawn since start-up in watt.hours
     float consumed_wh(uint8_t instance) const;

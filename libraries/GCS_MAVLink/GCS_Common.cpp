@@ -207,7 +207,7 @@ bool GCS_MAVLINK::send_battery_by_data64(void) const
 				float vol;   	/* 电压：V */
 				float current;	/* 电流： A */
 				int32_t cap;	/* 电池容量  mah  */
-				float recap;	/* 耗电量 mah */
+				float recap;	/* 剩余电量 mah */
 				uint32_t safeAlert; /* safe alert bit flag */
 				uint32_t pfAlert;   /* PFAlert */
 				uint32_t operationStatus; /* 应用标志   */
@@ -222,7 +222,7 @@ bool GCS_MAVLINK::send_battery_by_data64(void) const
 	    bat.batt.vol = battery.voltage(ins);  				/* 电压：V */
 	    bat.batt.current = battery.current_amps(ins);  		/* 电流： A */
 	    bat.batt.cap = battery.pack_capacity_mah(ins); 		/* 电池容量  mah  */
-	    bat.batt.recap = battery.consumed_mah(ins);    		/* 耗电量 mah */
+	    bat.batt.recap = battery.remaining_mah(ins);    	/* 耗电量 mah */
 	    bat.batt.cycCount = battery.get_cycle_count(ins);	/* 充电循环次数 */
 	    bat.batt.safeAlert = battery.get_safe_alert(ins);   /* get safe alert */
 	    bat.batt.pfAlert = battery.get_pf_alert(ins);

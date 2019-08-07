@@ -280,6 +280,14 @@ float AP_BattMonitor::consumed_mah(uint8_t instance) const {
     }
 }
 
+float AP_BattMonitor::remaining_mah(uint8_t instance) const{
+	 if (instance < _num_instances) {
+	        return state[instance].remaining_mah;
+	    } else {
+	        return 0.0f;
+	    }
+}
+
 /// consumed_wh - returns energy consumed since start-up in Watt.hours
 float AP_BattMonitor::consumed_wh(uint8_t instance) const {
     if (instance < _num_instances) {

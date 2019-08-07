@@ -59,7 +59,8 @@ bool AP_BattMonitor_SMBus::read_remaining_capacity(void)
     if (capacity > 0) {
         uint16_t data;
         if (read_word(BATTMONITOR_SMBUS_REMAINING_CAPACITY, data)) {
-            _state.consumed_mah = MAX(0, capacity - data*10);
+        	_state.remaining_mah = data*10;
+            _state.consumed_mah = MAX(0, capacity - _state.remaining_mah);
             return true;
         }
     }
