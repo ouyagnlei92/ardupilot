@@ -280,7 +280,6 @@ bool AP_BattMonitor_SMBus_Maxell::get_battery_status(void)
     	{
     		_battery_status = _battery_status | SMART_BATTERY_PF_ALERT;
     		_state.pf_alert = x.data;
-gcs().send_text(MAV_SEVERITY_WARNING, "PFAlert=%d",_state.pf_alert);
     	}
     }
 
@@ -291,7 +290,6 @@ gcs().send_text(MAV_SEVERITY_WARNING, "PFAlert=%d",_state.pf_alert);
 		{
 			_battery_status = _battery_status | SMART_BATTERY_SAFE_ALERT;
 			_state.safe_alert = x.data;
-gcs().send_text(MAV_SEVERITY_WARNING, "SafeAlert=%d",_state.safe_alert);
 		}
     }
 
@@ -302,7 +300,6 @@ gcs().send_text(MAV_SEVERITY_WARNING, "SafeAlert=%d",_state.safe_alert);
 		{
 			_battery_status = _battery_status | SMART_BATTERY_OPERATION_STATUS;
 			_state.operation_status = x.data;
-gcs().send_text(MAV_SEVERITY_WARNING, "OperaStatus=%d",_state.operation_status);
 		}
 	}
 
@@ -313,7 +310,6 @@ gcs().send_text(MAV_SEVERITY_WARNING, "OperaStatus=%d",_state.operation_status);
 		{
 			_battery_status = _battery_status | SMART_BATTERY_CHARGING_STATUS;
 			_state.charging_status = (uint16_t)(x.buff[0]+(x.buff[1]<<8));
-gcs().send_text(MAV_SEVERITY_WARNING, "ChargingStatus=%d",_state.charging_status);
 		}
 	}
 
@@ -324,7 +320,6 @@ gcs().send_text(MAV_SEVERITY_WARNING, "ChargingStatus=%d",_state.charging_status
 		{
 			_battery_status = _battery_status | SMART_BATTERY_GUAING_STATUS;
 			_state.guaing_status = (uint16_t)(x.buff[0]+(x.buff[1]<<8));
-gcs().send_text(MAV_SEVERITY_WARNING, "GuaingStatus=%d",_state.guaing_status);
 		}
 	}
      return false;
