@@ -683,6 +683,12 @@ struct PACKED log_Current {
     int16_t  temperature; // degrees C * 100
     uint16_t cycle_count; // battery cycle count
     float    resistance;
+    float remaing_mah;
+    uint32_t pf_alert;
+    uint32_t safe_alert;
+    uint32_t operation_status;
+    uint16_t charging_status;
+    uint16_t guaing_status;
 };
 
 struct PACKED log_Current_Cells {
@@ -1139,10 +1145,10 @@ struct PACKED log_DSTL {
 #define QUAT_UNITS  "s????"
 #define QUAT_MULTS  "F????"
 
-#define CURR_LABELS "TimeUS,Volt,VoltR,Curr,CurrTot,EnrgTot,Temp,Cycle,Res"
-#define CURR_FMT    "QfffffcHf"
-#define CURR_UNITS  "svvA?JO-w"
-#define CURR_MULTS  "F000?/?-0"
+#define CURR_LABELS "TimeUS,Volt,VoltR,Curr,CurrTot,EnrgTot,Temp,Cycle,Res,RmAh,PA,SA,OS,CS,GS"
+#define CURR_FMT    "QfffffcHffIIIHH"
+#define CURR_UNITS  "svvA?JO-w------"
+#define CURR_MULTS  "F000?/?-0??????"
 
 #define CURR_CELL_LABELS "TimeUS,Volt,C,V1,V2,V3,V4,V5,V6,V7,V8,V9,V10,V11,V12"
 #define CURR_CELL_FMT    "QffHHHHHHHHHHHH"

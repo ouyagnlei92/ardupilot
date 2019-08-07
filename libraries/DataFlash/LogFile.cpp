@@ -1412,7 +1412,13 @@ void DataFlash_Class::Log_Write_Current_instance(const uint64_t time_us,
         consumed_wh         : battery.consumed_wh(battery_instance),
         temperature         : (int16_t)(has_temp ? (temp * 100) : 0),
 		cycle_count         : battery.get_cycle_count(battery_instance),
-        resistance          : battery.get_resistance(battery_instance)
+        resistance          : battery.get_resistance(battery_instance),
+		remaing_mah         : battery.remaining_mah(battery_instance),
+		pf_alert			: battery.get_pf_alert(battery_instance),
+		safe_alert			: battery.get_safe_alert(battery_instance),
+		operation_status	: battery.get_operation_status(battery_instance),
+		charging_status		: battery.get_charging_status(battery_instance),
+		guaing_status		: battery.get_guaing_status(battery_instance)
     };
     WriteBlock(&pkt, sizeof(pkt));
 
