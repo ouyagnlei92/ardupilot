@@ -121,7 +121,7 @@ void AP_BattMonitor_SMBus_Maxell::timer()
     }
 
     // read more information
-    if(AP_HAL::millis()>=60000)
+    if(AP_HAL::millis()>=10000)
     {
     	get_battery_status();
     }
