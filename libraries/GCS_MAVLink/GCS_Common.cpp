@@ -198,6 +198,7 @@ void GCS_MAVLINK::send_power_status(void)
 bool GCS_MAVLINK::send_battery_by_data64(void) const
 {
 	uint8_t ins = 0;
+        uint8_t i = 0;
 	AP_BattMonitor &battery = AP::battery();
 	if(battery.has_smart_battery(ins))
 	{
@@ -243,7 +244,6 @@ bool GCS_MAVLINK::send_battery_status_o10s(void) const//add by awesome
 {
 
 	static bool first[5] = {false, false, false, false, false };
-	bool have_o10s = false;
 	uint8_t ins = 0;
 	AP_BattMonitor &battery = AP::battery();
 
@@ -313,29 +313,20 @@ void GCS_MAVLINK::send_battery_status(const AP_BattMonitor &battery,
 // returns true if all battery instances were reported
 bool GCS_MAVLINK::send_battery_status() const
 {
+   uint8_t ins = 4;
    AP_BattMonitor &battery = AP::battery();
 
-
-
-	bool have_o10s = false;
-	for(uint8_t i=0; i<battery.num_instances(); ++i){
-		if(battery.get_type(i)==AP_BattMonitor_Params::BattMonitor_TYPE_MAXELL){
-			have_o10s = true;
-			break;
-		}
-	}
-	if(have_o10s)
-	{
-		send_battery_status_o10s();
-		return true;
-	}else{
+	battery.has_smart_battery(ins);
+	if(send_battery_status_o10s()) return true;
+        else{
 
 		for(uint8_t i = 0; i < battery.num_instances(); i++) {
 			CHECK_PAYLOAD_SIZE(BATTERY_STATUS);
+                        if(i==ins) continue;
 			send_battery_status(battery, i);
 		}
-	    return true;
-	}
+        }
+        return true;
 }
 
 void GCS_MAVLINK::send_distance_sensor(const AP_RangeFinder_Backend *sensor, const uint8_t instance) const

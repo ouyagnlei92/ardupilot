@@ -130,7 +130,7 @@ public:
     float consumed_wh() const { return consumed_wh(AP_BATT_PRIMARY_INSTANCE); }
 
     //have smart battery
-    bool has_smart_battery(uint8_t& num) const;
+    bool has_smart_battery(uint8_t& num);
 
     /// capacity_remaining_pct - returns the % battery capacity remaining (0 ~ 100)
     virtual uint8_t capacity_remaining_pct(uint8_t instance) const;
