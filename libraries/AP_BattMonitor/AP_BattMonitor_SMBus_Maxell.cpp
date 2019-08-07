@@ -60,7 +60,6 @@ AP_BattMonitor_SMBus_Maxell::AP_BattMonitor_SMBus_Maxell(AP_BattMonitor &mon,
                                                    AP_HAL::OwnPtr<AP_HAL::I2CDevice> dev)
     : AP_BattMonitor_SMBus(mon, mon_state, params, std::move(dev))
 {
-	_have_safe_data=false;
 	_battery_status = 0;
 }
 
@@ -274,8 +273,6 @@ bool AP_BattMonitor_SMBus_Maxell::get_battery_status(void)
 		uint8_t buff[4];
 	}x;
 
-	gcs().send_text(MAV_SEVERITY_WARNING, "Get More Info...");
-
 	// get pf alert
     if(!(_battery_status&SMART_BATTERY_PF_ALERT))
     {
@@ -312,7 +309,7 @@ bool AP_BattMonitor_SMBus_Maxell::get_battery_status(void)
     	if(read_block(BATTMONITOR_SMBUS_MAXELL_CHARGING_STATUS, (uint8_t*)x.buff, false)>0)
 		{
 			_battery_status = _battery_status | SMART_BATTERY_CHARGING_STATUS;
-			_state.charging_status = (uint16_t)(x.data[0]+x.data[1]<<8);
+			_state.charging_status = (uint16_t)(x.buff[0]+(x.buff[1]<<8));
 		}
 	}
 
@@ -322,9 +319,10 @@ bool AP_BattMonitor_SMBus_Maxell::get_battery_status(void)
     	if(read_block(BATTMONITOR_SMBUS_MAXELL_GAUGING_STATUS, (uint8_t*)x.buff, false)>0)
 		{
 			_battery_status = _battery_status | SMART_BATTERY_GUAING_STATUS;
-			_state.guaing_status = (uint16_t)(x.data[0]+x.data[1]<<8);
+			_state.guaing_status = (uint16_t)(x.buff[0]+(x.buff[1]<<8));
 		}
 	}
+     return false;
 
 }
 
