@@ -1145,7 +1145,7 @@ struct PACKED log_DSTL {
 #define QUAT_UNITS  "s????"
 #define QUAT_MULTS  "F????"
 
-#define CURR_LABELS "TimeUS,Volt,VoltR,Curr,CurrTot,EnrgTot,Temp,Cycle,Res,RmAh,PA,SA,OS,CS,GS"
+#define CURR_LABELS "TimeUS,Volt,VoltR,Curr,UseMah,useWh,Temp,Cyc,R,RM,PA,SA,OS,CS,GS"
 #define CURR_FMT    "QfffffcHffIIIHH"
 #define CURR_UNITS  "svvA?JO-w------"
 #define CURR_MULTS  "F000?/?-0??????"
