@@ -736,26 +736,16 @@ void Plane::change_arm_state(void)
  */
 bool Plane::arm_motors(const AP_Arming::ArmingMethod method, const bool do_arming_checks)
 {
-	bool res = true;
 	float temp = barometer.get_temperature();
 	float maxTemp = 1.0*(uint8_t)g.max_rtn_temp;
 	if( temp>=(uint8_t)(maxTemp-2) ) //MS5611 temp waring
 	{
-		res = false;
+	    	gcs().send_text(MAV_SEVERITY_INFO, "Arm: High Temperature Warnning: %.2fC,max=%dC", (float)temp,(uint8_t)g.max_rtn_temp);
+	    	return false;
 	}
 
     if (!arming.arm(method, do_arming_checks)) {
-    	if(!res)
-		{
-			gcs().send_text(MAV_SEVERITY_INFO, "Arm: High Temperature Warnning: %.2fC,max=%dC", (float)temp,(uint8_t)g.max_rtn_temp");"
-		}
         return false;
-    }
-
-    if(!res)
-    {
-    	gcs().send_text(MAV_SEVERITY_INFO, "Arm: High Temperature Warnning: %.2fC,max=%dC", (float)temp,(uint8_t)g.max_rtn_temp");"
-    	return false;
     }
 
     change_arm_state();
