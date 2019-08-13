@@ -487,6 +487,8 @@ void Plane::set_mode(enum FlightMode mode, mode_reason_t reason)
 
     // reset steering integrator on mode change
     steerController.reset_I();    
+
+    gcs_send_mode_reason(mode, reason);
 }
 
 // exit_mode - perform any cleanup required when leaving a flight mode
@@ -766,3 +768,98 @@ bool Plane::disarm_motors(void)
     
     return true;
 }
+
+void Plane::gcs_send_mode_reason(enum FlightMode mode, mode_reason_t reason)
+{
+	if(control_mode==get_previous_mode())
+	{
+		gcs().send_text(MAV_SEVERITY_NOTICE,"Repeating switching mode");
+		return;
+	}
+	char mode_str[60];
+	char reason_str[30];
+
+	switch(mode)
+	{
+		case MANUAL:
+			strcpy(mode_str," Mode: Manual");		break;
+		case CIRCLE:
+			strcpy(mode_str," Mode: Circle");		break;
+		case STABILIZE:
+			strcpy(mode_str," Mode: Stabilize");	break;
+		case TRAINING:
+			strcpy(mode_str," Mode: Training");	break;
+		case ACRO:
+			strcpy(mode_str," Mode: Acro");		break;
+		case FLY_BY_WIRE_A:
+			strcpy(mode_str," Mode: fly_by_wire_a");	break;
+		case FLY_BY_WIRE_B:
+			strcpy(mode_str," Mode: fly_by_wire_b");	break;
+		case CRUISE:
+			strcpy(mode_str," Mode: Cruise");		break;
+		case AUTOTUNE:
+			strcpy(mode_str," Mode: AutoTune");	break;
+		case AUTO:
+			strcpy(mode_str," Mode: Auto");		break;
+		case RTL:
+			strcpy(mode_str," Mode: RTL");		break;
+		case LOITER:
+			strcpy(mode_str," Mode: Loiter");		break;
+		case AVOID_ADSB:
+			strcpy(mode_str," Mode: Avoid_adsb");	break;
+		case GUIDED:
+			strcpy(mode_str," Mode: Guided");		break;
+		case INITIALISING:
+			strcpy(mode_str," Mode: Initialising");break;
+		case QSTABILIZE:
+			strcpy(mode_str," Mode: QStabilize");	break;
+		case QHOVER:
+			strcpy(mode_str," Mode: QHover");	break;
+		case QLOITER:
+			strcpy(mode_str," Mode: QLoiter");break;
+		case QLAND:
+			strcpy(mode_str," Mode: QLand");	break;
+		case QRTL:
+			strcpy(mode_str," Mode: QRTL");	break;
+		default: break;
+	}
+	switch(reason)
+	{
+		case MODE_REASON_UNKNOWN:
+			strcpy(reason_str," From: unknown");			break;
+		case MODE_REASON_TX_COMMAND:
+			strcpy(reason_str," From: TX-Command");		break;
+		case MODE_REASON_GCS_COMMAND:
+			strcpy(reason_str," From: GCS-Command");		break;
+		case MODE_REASON_RADIO_FAILSAFE:
+			strcpy(reason_str," From: Radio-Failsafe");	break;
+		case MODE_REASON_BATTERY_FAILSAFE:
+			strcpy(reason_str," From: Radio-Failsafe");	break;
+		case MODE_REASON_GCS_FAILSAFE:
+			strcpy(reason_str," From: GCS-Failsafe");	break;
+		case MODE_REASON_EKF_FAILSAFE:
+			strcpy(reason_str," From: EKF-Failsafe");	break;
+		case MODE_REASON_GPS_GLITCH:
+			strcpy(reason_str," From: GPS-Glitch");		break;
+		case MODE_REASON_MISSION_END:
+			strcpy(reason_str," From: GPS-Glitch");		break;
+		case MODE_REASON_FENCE_BREACH:
+			strcpy(reason_str," From: Fence-Breach");	break;
+		case MODE_REASON_AVOIDANCE:
+			strcpy(reason_str," From: Avoidance");		break;
+		case MODE_REASON_AVOIDANCE_RECOVERY:
+			strcpy(reason_str," From: Avoidance-Recovery");break;
+		case MODE_REASON_SOARING_FBW_B_WITH_MOTOR_RUNNING:
+			strcpy(reason_str," From: FBW-motor");		break;
+		case MODE_REASON_SOARING_THERMAL_DETECTED:
+		case MODE_REASON_SOARING_IN_THERMAL:
+		case MODE_REASON_SOARING_THERMAL_ESTIMATE_DETERIORATED:
+			strcpy(reason_str," From: high-thermal");	break;
+
+		default: break;
+	}
+	strcat(mode_str, reason_str);
+	gcs().send_text(MAV_SEVERITY_WARNING, mode_str);
+
+}
+

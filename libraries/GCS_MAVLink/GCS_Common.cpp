@@ -2469,11 +2469,11 @@ void GCS_MAVLINK::send_banner()
 
     if (fwver.middleware_name && fwver.os_name) {
         send_text(MAV_SEVERITY_INFO, "%s: %s %s: %s",
-                  fwver.middleware_name, fwver.middleware_hash_str,
-                  fwver.os_name, fwver.os_hash_str);
+        						  "MIND", fwver.middleware_hash_str,
+        		                  "RTOS", fwver.os_hash_str);
     } else if (fwver.os_name) {
         send_text(MAV_SEVERITY_INFO, "%s: %s",
-                  fwver.os_name, fwver.os_hash_str);
+        			"RTOS", fwver.os_hash_str);
     }
 
     // send system ID if we can

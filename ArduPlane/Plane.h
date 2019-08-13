@@ -769,6 +769,7 @@ private:
     int32_t last_mixer_crc = -1;
 #endif // CONFIG_HAL_BOARD
     
+    void gcs_send_mode_reason(enum FlightMode mode, mode_reason_t reason);
     void adjust_nav_pitch_throttle(void);
     void update_load_factor(void);
     void send_fence_status(mavlink_channel_t chan);

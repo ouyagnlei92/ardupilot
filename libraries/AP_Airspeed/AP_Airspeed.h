@@ -169,6 +169,18 @@ public:
 
     static AP_Airspeed *get_singleton() { return _singleton; }
     
+    AP_Int8        _wind_limit;
+    AP_Int32	  _wind_time_ms;
+
+    int32_t get_wind_time(void){	if(_wind_time_ms<=3000)
+    									return 3000;
+    								else
+    									return _wind_time_ms;};
+    int8_t get_wind_limit(void){	if(_wind_limit<=6)
+    									return 6;
+    								else
+    									return _wind_limit;};
+
 private:
     static AP_Airspeed *_singleton;
 
