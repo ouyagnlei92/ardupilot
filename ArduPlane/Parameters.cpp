@@ -869,6 +869,10 @@ const AP_Param::Info Plane::var_info[] = {
     // @User: Advanced
     GSCALAR(crash_accel_threshold,          "CRASH_ACC_THRESH",   0),
 
+	GSCALAR(max_rtn_temp, "MAX_RTN_TMP", 65),
+	GSCALAR(max_wind_limit, "MAX_WIND_LIMIT", 8),
+	GSCALAR(wind_time_ms, "MAX_WIND_TIME", 5000),
+
     // @Param: CRASH_DETECT
     // @DisplayName: Crash Detection
     // @Description: Automatically detect a crash during AUTO flight and perform the bitmask selected action(s). Disarm will turn off motor for safety and to help against burning out ESC and motor. Setting the mode to manual will help save the servos from burning out by overexerting if the aircraft crashed in an odd orientation such as upsidedown. Set to 0 to disable crash detection.
