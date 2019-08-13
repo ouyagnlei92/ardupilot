@@ -314,14 +314,14 @@ void Plane::one_second_loop()
 		static unsigned char temp_out_count1 = 0;
 		static unsigned char temp_out_count2 = 0;
 		float temp = barometer.get_temperature();
-		float maxTemp = 1.0*g.max_rtn_temp;
+		float maxTemp = 1.0*(uint8_t)g.max_rtn_temp;
 		//gcs().send_text(MAV_SEVERITY_INFO, "Baro Temperature: %.2fC",temp);
 		if( temp>=(maxTemp-5) && temp<maxTemp ) //MS5611 temp waring
 		{
 			++temp_out_count1;
 			if(temp_out_count1>=10)
 			{
-				gcs().send_text(MAV_SEVERITY_INFO, "High Temperature: %.2fC",temp);
+				gcs().send_text(MAV_SEVERITY_INFO, "High Temperature Warnning: %.2fC,RTL>%dC",(float)temp,(uint8_t)g.max_rtn_temp);
 				temp_out_count1 = 0;
 			}
 		}
@@ -334,11 +334,11 @@ void Plane::one_second_loop()
 				{
 					if(control_mode==AUTO)
 					{
-						gcs().send_text(MAV_SEVERITY_WARNING, "Temperature >= %dC, set mode RTL",g.max_rtn_temp);
+						gcs().send_text(MAV_SEVERITY_WARNING, "Temperature %dC>= %.2fC, set mode RTL",(float)temp,(uint8_t)g.max_rtn_temp);
 						set_mode(RTL, MODE_REASON_AVOIDANCE);
 					}
 				}
-				gcs().send_text(MAV_SEVERITY_INFO, "High Temperature: %.2fC >%dC!",temp,g.max_rtn_temp);
+				gcs().send_text(MAV_SEVERITY_INFO, "High Temperature Warnning: %.2fC >%dC!",(float)temp,(uint8_t)g.max_rtn_temp);
 				temp_out_count2 = 0;
 			}
 		}else{
@@ -451,14 +451,15 @@ void Plane::update_GPS_10Hz(void)
 
 		if(out_wind_rate_limit&&arming.is_armed())
 		{
-			gcs().send_text(MAV_SEVERITY_INFO, "Wind Speed Limit: %dm/s, Time: %dms",g.max_wind_limit,g.wind_time_ms);
+			gcs().send_text(MAV_SEVERITY_INFO, "Wind Speed Limit: %dm/s, Time: %dms",(uint8_t)g.max_wind_limit,(uint32_t)g.wind_time_ms);
 			out_wind_rate_limit = false;
 		}else if(!arming.is_armed())
 		{
 			out_wind_rate_limit = true;
 		}
 
-		if((unsigned int)ahrs.wind_estimate().length()>=(unsigned int)g.max_wind_limit)
+                float wind = ahrs.wind_estimate().length();
+		if((uint32_t)wind>=(uint32_t)g.max_wind_limit)
 		{
 			if(AP_HAL::millis()-wind_beyond_start_time>=(uint32_t)g.wind_time_ms)
 			{
@@ -466,12 +467,12 @@ void Plane::update_GPS_10Hz(void)
 				{
 					if(control_mode==AUTO)
 					{
-						gcs().send_text(MAV_SEVERITY_WARNING, "Wind >= %dm/s, set mode RTL", airspeed.get_wind_limit());
+						gcs().send_text(MAV_SEVERITY_WARNING, "Wind %.2fm/s>= %dm/s, set mode RTL", (float)wind, (uint8_t)g.max_wind_limit);
 						set_mode(RTL, MODE_REASON_AVOIDANCE);
 					}
 					else
 					{
-						gcs().send_text(MAV_SEVERITY_WARNING, "Wind >= %dm/s", airspeed.get_wind_limit());
+						gcs().send_text(MAV_SEVERITY_WARNING, "Wind Warnning: %.2fm/s>= %dm/s", (float)wind, (uint8_t)g.max_wind_limit);
 					}
 				  }
 			}

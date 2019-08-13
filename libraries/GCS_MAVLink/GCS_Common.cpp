@@ -2466,7 +2466,7 @@ void GCS_MAVLINK::send_banner()
     const AP_FWVersion &fwver = AP::fwversion();
 
     send_text(MAV_SEVERITY_INFO, fwver.fw_string);
-
+/*
     if (fwver.middleware_name && fwver.os_name) {
         send_text(MAV_SEVERITY_INFO, "%s: %s %s: %s",
         						  "MIND", fwver.middleware_hash_str,
@@ -2481,6 +2481,8 @@ void GCS_MAVLINK::send_banner()
     if (hal.util->get_system_id(sysid)) {
         send_text(MAV_SEVERITY_INFO, sysid);
     }
+*/
+
 }
 
 
