@@ -189,20 +189,6 @@ const AP_Param::GroupInfo AP_Airspeed::var_info[] = {
     // @Values: 0:Bus0(internal),1:Bus1(external),2:Bus2(auxillary)
     // @User: Advanced
     AP_GROUPINFO("2_BUS",  20, AP_Airspeed, param[1].bus, 1),
-
-    // @Param: WIND_LIMIT
-	// @DisplayName: WIND LIMIT
-	// @Description: WIND LIMIT USING rtl
-	// @Values: m/s
-	// @User: Advanced
-    AP_GROUPINFO("WIND_LIMIT",  21, AP_Airspeed, _wind_limit, 8),
-
-    // @Param: wind_time
-	// @DisplayName: wind time
-	// @Description:wind time ms
-	// @Values: ms
-	// @User: Advanced
-    AP_GROUPINFO("WIND_TIME",  22, AP_Airspeed, _wind_time_ms, 5000),
     
     AP_GROUPEND
 };

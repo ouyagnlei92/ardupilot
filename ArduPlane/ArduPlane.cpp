@@ -314,7 +314,7 @@ void Plane::one_second_loop()
 		static unsigned char temp_out_count1 = 0;
 		static unsigned char temp_out_count2 = 0;
 		float temp = barometer.get_temperature();
-		float maxTemp = 1.0*(barometer.get_max_return_temp());
+		float maxTemp = 1.0*g.max_rtn_temp;
 		//gcs().send_text(MAV_SEVERITY_INFO, "Baro Temperature: %.2fC",temp);
 		if( temp>=(maxTemp-5) && temp<maxTemp ) //MS5611 temp waring
 		{
@@ -334,11 +334,11 @@ void Plane::one_second_loop()
 				{
 					if(control_mode==AUTO)
 					{
-						gcs().send_text(MAV_SEVERITY_WARNING, "Temperature >= 65C, set mode RTL");
+						gcs().send_text(MAV_SEVERITY_WARNING, "Temperature >= %dC, set mode RTL",g.max_rtn_temp);
 						set_mode(RTL, MODE_REASON_AVOIDANCE);
 					}
 				}
-				gcs().send_text(MAV_SEVERITY_INFO, "High Temperature: %.2fC >65C!",temp);
+				gcs().send_text(MAV_SEVERITY_INFO, "High Temperature: %.2fC >%dC!",temp,g.max_rtn_temp);
 				temp_out_count2 = 0;
 			}
 		}else{
@@ -451,16 +451,16 @@ void Plane::update_GPS_10Hz(void)
 
 		if(out_wind_rate_limit&&arming.is_armed())
 		{
-			gcs().send_text(MAV_SEVERITY_INFO, "Wind Speed Limit: %dm/s, Time: %dms",airspeed.get_wind_limit(),airspeed.get_wind_time());
+			gcs().send_text(MAV_SEVERITY_INFO, "Wind Speed Limit: %dm/s, Time: %dms",g.max_wind_limit,g.wind_time_ms);
 			out_wind_rate_limit = false;
 		}else if(!arming.is_armed())
 		{
 			out_wind_rate_limit = true;
 		}
 
-		if((unsigned int)ahrs.wind_estimate().length()>=(unsigned int)airspeed.get_wind_limit())
+		if((unsigned int)ahrs.wind_estimate().length()>=(unsigned int)g.max_wind_limit)
 		{
-			if(AP_HAL::millis()-wind_beyond_start_time>=(uint32_t)airspeed.get_wind_time())
+			if(AP_HAL::millis()-wind_beyond_start_time>=(uint32_t)g.wind_time_ms)
 			{
 				if(control_mode!=RTL&&arming.is_armed())
 				{

@@ -143,8 +143,6 @@ const AP_Param::GroupInfo AP_Baro::var_info[] = {
     // @Increment: 1
     AP_GROUPINFO("FLTR_RNG", 13, AP_Baro, _filter_range, HAL_BARO_FILTER_DEFAULT),
 
-	AP_GROUPINFO("MAX_RTN_TMP", 14, AP_Baro, _filter_range, 65),
-
     AP_GROUPEND
 };
 

@@ -181,8 +181,6 @@ public:
     void set_log_baro_bit(uint32_t bit) { _log_baro_bit = bit; }
     bool should_df_log() const;
 
-    uint8_t get_max_return_temp() const { return _max_return_temp; }
-
 private:
     // singleton
     static AP_Baro *_instance;
@@ -232,7 +230,6 @@ private:
 
     bool _add_backend(AP_Baro_Backend *backend);
     AP_Int8                            _filter_range;  // valid value range from mean value
-    AP_Int8                            _max_return_temp; //max return temp
 };
 
 namespace AP {

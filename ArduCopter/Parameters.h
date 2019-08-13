@@ -361,10 +361,16 @@ public:
         k_param_DataFlash = 253, // 253 - Logging Group
 
         // 254,255: reserved
+		k_param_max_rtn_temp = 256,
+		k_param_max_wind_limit,
+		k_param_wind_time_ms,
 
         // the k_param_* space is 9-bits in size
         // 511: reserved
     };
+    AP_Int8 		max_rtn_temp;
+    AP_Int8 		max_wind_limit;
+    AP_Int32 		wind_time_ms;
 
     AP_Int16        format_version;
 

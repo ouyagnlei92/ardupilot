@@ -986,6 +986,10 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     AP_SUBGROUPINFO(follow, "FOLL", 27, ParametersG2, AP_Follow),
 #endif
 
+	GSCALAR(max_rtn_temp, "MAX_RTN_TMP", 65),
+	GSCALAR(max_wind_limit, "MAX_WIND_LIMIT", 8),
+	GSCALAR(wind_time_ms, "MAX_WIND_TIME", 5000),
+
     AP_GROUPEND
 };
 
