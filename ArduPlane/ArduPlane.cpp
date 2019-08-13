@@ -332,7 +332,7 @@ void Plane::one_second_loop()
 			{
 				if(control_mode!=RTL&&arming.is_armed())
 				{
-					if(control_mode==AUTO)
+					if(control_mode==AUTO&&(!(flight_stage==AP_Vehicle::FixedWing::FLIGHT_TAKEOFF || landing.is_flaring() || flight_stage == AP_Vehicle::FixedWing::FLIGHT_LAND)))
 					{
 						gcs().send_text(MAV_SEVERITY_WARNING, "Temperature %dC>= %.2fC, set mode RTL",(float)temp,(uint8_t)g.max_rtn_temp);
 						set_mode(RTL, MODE_REASON_AVOIDANCE);
@@ -458,14 +458,14 @@ void Plane::update_GPS_10Hz(void)
 			out_wind_rate_limit = true;
 		}
 
-                float wind = ahrs.wind_estimate().length();
+        float wind = ahrs.wind_estimate().length();
 		if((uint32_t)wind>=(uint32_t)g.max_wind_limit)
 		{
 			if(AP_HAL::millis()-wind_beyond_start_time>=(uint32_t)g.wind_time_ms)
 			{
 				if(control_mode!=RTL&&arming.is_armed())
 				{
-					if(control_mode==AUTO)
+					if(control_mode==AUTO&&(!(flight_stage==AP_Vehicle::FixedWing::FLIGHT_TAKEOFF || landing.is_flaring() || flight_stage == AP_Vehicle::FixedWing::FLIGHT_LAND)))
 					{
 						gcs().send_text(MAV_SEVERITY_WARNING, "Wind %.2fm/s>= %dm/s, set mode RTL", (float)wind, (uint8_t)g.max_wind_limit);
 						set_mode(RTL, MODE_REASON_AVOIDANCE);
