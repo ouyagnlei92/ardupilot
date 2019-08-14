@@ -478,6 +478,7 @@ void Plane::update_GPS_10Hz(void)
 						gcs().send_text(MAV_SEVERITY_WARNING, "Wind Warnning: %.2fm/s>= %dm/s", (float)wind, (uint8_t)g.max_wind_limit);
 					}
 				  }
+				wind_beyond_start_time = AP_HAL::millis();
 			}
 		 }else wind_beyond_start_time = AP_HAL::millis();
 
