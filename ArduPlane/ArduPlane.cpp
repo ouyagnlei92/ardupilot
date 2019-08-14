@@ -336,8 +336,11 @@ void Plane::one_second_loop()
 					 uint16_t nav_cmd_id = mission.get_current_nav_cmd().id;
 					if(control_mode==AUTO && (nav_cmd_id!=MAV_CMD_NAV_LAND) && (nav_cmd_id!=MAV_CMD_NAV_TAKEOFF) &&(!(flight_stage==AP_Vehicle::FixedWing::FLIGHT_TAKEOFF || landing.is_flaring() || flight_stage == AP_Vehicle::FixedWing::FLIGHT_LAND)))
 					{
-						gcs().send_text(MAV_SEVERITY_WARNING, "Temperature %dC>= %.2fC, set mode RTL",(float)temp,(uint8_t)g.max_rtn_temp);
-						set_mode(RTL, MODE_REASON_AVOIDANCE);
+						gcs().send_text(MAV_SEVERITY_WARNING, "Temperature %dC>= %.2fC, Land start",(float)temp,(uint8_t)g.max_rtn_temp);
+						if (mission.jump_to_landing_sequence()) {
+							// switch from RTL -> AUTO
+							set_mode(AUTO, MODE_REASON_UNKNOWN);
+						}
 					}
 				}
 				gcs().send_text(MAV_SEVERITY_INFO, "High Temperature Warnning: %.2fC >%dC!",(float)temp,(uint8_t)g.max_rtn_temp);
@@ -470,8 +473,11 @@ void Plane::update_GPS_10Hz(void)
 					uint16_t nav_cmd_id = mission.get_current_nav_cmd().id;
 					if(control_mode==AUTO && (nav_cmd_id!=MAV_CMD_NAV_LAND) && (nav_cmd_id!=MAV_CMD_NAV_TAKEOFF) &&(!(flight_stage==AP_Vehicle::FixedWing::FLIGHT_TAKEOFF || landing.is_flaring() || flight_stage == AP_Vehicle::FixedWing::FLIGHT_LAND)))
 					{
-						gcs().send_text(MAV_SEVERITY_WARNING, "Wind %.2fm/s>= %dm/s, set mode RTL", (float)wind, (uint8_t)g.max_wind_limit);
-						set_mode(RTL, MODE_REASON_AVOIDANCE);
+						gcs().send_text(MAV_SEVERITY_WARNING, "Wind %.2fm/s>= %dm/s, Land start", (float)wind, (uint8_t)g.max_wind_limit);
+						if (mission.jump_to_landing_sequence()) {
+							// switch from RTL -> AUTO
+							set_mode(AUTO, MODE_REASON_UNKNOWN);
+						}
 					}
 					else
 					{
