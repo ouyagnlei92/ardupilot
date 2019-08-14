@@ -333,7 +333,8 @@ void Plane::one_second_loop()
 			{
 				if(control_mode!=RTL&&arming.is_armed())
 				{
-					if(control_mode==AUTO && (mission.get_current_nav_cmd().id!=MAV_CMD_NAV_LAND) &&(!(flight_stage==AP_Vehicle::FixedWing::FLIGHT_TAKEOFF || landing.is_flaring() || flight_stage == AP_Vehicle::FixedWing::FLIGHT_LAND)))
+					 uint16_t nav_cmd_id = mission.get_current_nav_cmd().id;
+					if(control_mode==AUTO && (nav_cmd_id!=MAV_CMD_NAV_LAND) && (nav_cmd_id!=MAV_CMD_NAV_TAKEOFF) &&(!(flight_stage==AP_Vehicle::FixedWing::FLIGHT_TAKEOFF || landing.is_flaring() || flight_stage == AP_Vehicle::FixedWing::FLIGHT_LAND)))
 					{
 						gcs().send_text(MAV_SEVERITY_WARNING, "Temperature %dC>= %.2fC, set mode RTL",(float)temp,(uint8_t)g.max_rtn_temp);
 						set_mode(RTL, MODE_REASON_AVOIDANCE);
@@ -466,7 +467,8 @@ void Plane::update_GPS_10Hz(void)
 			{
 				if(control_mode!=RTL&&arming.is_armed())
 				{
-					if(control_mode==AUTO &&(mission.get_current_nav_cmd().id!=MAV_CMD_NAV_LAND) &&(!(flight_stage==AP_Vehicle::FixedWing::FLIGHT_TAKEOFF || landing.is_flaring() || flight_stage == AP_Vehicle::FixedWing::FLIGHT_LAND)))
+					uint16_t nav_cmd_id = mission.get_current_nav_cmd().id;
+					if(control_mode==AUTO && (nav_cmd_id!=MAV_CMD_NAV_LAND) && (nav_cmd_id!=MAV_CMD_NAV_TAKEOFF) &&(!(flight_stage==AP_Vehicle::FixedWing::FLIGHT_TAKEOFF || landing.is_flaring() || flight_stage == AP_Vehicle::FixedWing::FLIGHT_LAND)))
 					{
 						gcs().send_text(MAV_SEVERITY_WARNING, "Wind %.2fm/s>= %dm/s, set mode RTL", (float)wind, (uint8_t)g.max_wind_limit);
 						set_mode(RTL, MODE_REASON_AVOIDANCE);
