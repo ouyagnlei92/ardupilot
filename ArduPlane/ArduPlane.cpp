@@ -334,12 +334,13 @@ void Plane::one_second_loop()
 				if(control_mode!=RTL&&arming.is_armed())
 				{
 					 uint16_t nav_cmd_id = mission.get_current_nav_cmd().id;
-					if(control_mode==AUTO && (nav_cmd_id!=MAV_CMD_NAV_LAND) && (nav_cmd_id!=MAV_CMD_NAV_TAKEOFF) &&(!(flight_stage==AP_Vehicle::FixedWing::FLIGHT_TAKEOFF || landing.is_flaring() || flight_stage == AP_Vehicle::FixedWing::FLIGHT_LAND)))
+					 uint16_t cmdn = mission.num_commands();
+					 uint16_t current_cmd = mission.get_current_nav_index();
+
+					if(cmdn>5 && (cmdn-current_cmd>5) && (control_mode==AUTO) && (nav_cmd_id!=MAV_CMD_NAV_LAND) && (nav_cmd_id!=MAV_CMD_NAV_TAKEOFF) &&(!(flight_stage==AP_Vehicle::FixedWing::FLIGHT_TAKEOFF || landing.is_flaring() || flight_stage == AP_Vehicle::FixedWing::FLIGHT_LAND)))
 					{
-						gcs().send_text(MAV_SEVERITY_WARNING, "Temperature %dC>= %.2fC, Land start",(float)temp,(uint8_t)g.max_rtn_temp);
-						if (mission.jump_to_landing_sequence()) {
-							// switch from RTL -> AUTO
-							set_mode(AUTO, MODE_REASON_UNKNOWN);
+						if (mission.set_current_cmd(cmdn-5)) {
+								gcs().send_text(MAV_SEVERITY_WARNING, "Temperature %dC>= %.2fC, Land start",(float)temp,(uint8_t)g.max_rtn_temp);
 						}
 					}
 				}
@@ -471,12 +472,13 @@ void Plane::update_GPS_10Hz(void)
 				if(control_mode!=RTL&&arming.is_armed())
 				{
 					uint16_t nav_cmd_id = mission.get_current_nav_cmd().id;
-					if(control_mode==AUTO && (nav_cmd_id!=MAV_CMD_NAV_LAND) && (nav_cmd_id!=MAV_CMD_NAV_TAKEOFF) &&(!(flight_stage==AP_Vehicle::FixedWing::FLIGHT_TAKEOFF || landing.is_flaring() || flight_stage == AP_Vehicle::FixedWing::FLIGHT_LAND)))
+					uint16_t cmdn = mission.num_commands();
+					uint16_t current_cmd = mission.get_current_nav_index();
+
+					if(cmdn>5 && (cmdn-current_cmd>6) && (control_mode==AUTO) && (nav_cmd_id!=MAV_CMD_NAV_LAND) && (nav_cmd_id!=MAV_CMD_NAV_TAKEOFF) &&(!(flight_stage==AP_Vehicle::FixedWing::FLIGHT_TAKEOFF || landing.is_flaring() || flight_stage == AP_Vehicle::FixedWing::FLIGHT_LAND)))
 					{
-						gcs().send_text(MAV_SEVERITY_WARNING, "Wind %.2fm/s>= %dm/s, Land start", (float)wind, (uint8_t)g.max_wind_limit);
-						if (mission.jump_to_landing_sequence()) {
-							// switch from RTL -> AUTO
-							set_mode(AUTO, MODE_REASON_UNKNOWN);
+						if (mission.set_current_cmd(cmdn-5)) {
+								gcs().send_text(MAV_SEVERITY_WARNING, "Wind %.2fm/s>= %dm/s, Land start", (float)wind, (uint8_t)g.max_wind_limit);
 						}
 					}
 					else
