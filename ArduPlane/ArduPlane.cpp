@@ -314,6 +314,7 @@ void Plane::one_second_loop()
 	{
 		static unsigned char temp_out_count1 = 0;
 		static unsigned char temp_out_count2 = 0;
+		static bool failed = false;
 		float temp = barometer.get_temperature();
 		float maxTemp = 1.0*(uint8_t)g.max_rtn_temp;
 		//gcs().send_text(MAV_SEVERITY_INFO, "Baro Temperature: %.2fC",temp);
@@ -332,22 +333,21 @@ void Plane::one_second_loop()
 			if(temp_out_count2>=10)
 			{
 				uint16_t nav_cmd_id = mission.get_current_nav_cmd().id;
-				uint16_t cmdn = mission.num_commands();
-				uint16_t current_cmd = mission.get_current_nav_index();
 
-				if( (control_mode==AUTO) && cmdn>5 && (cmdn-current_cmd>5) && (nav_cmd_id!=MAV_CMD_NAV_LAND) && (nav_cmd_id!=MAV_CMD_NAV_TAKEOFF) && arming.is_armed())
+				if(MAV_CMD_DO_LAND_START==nav_cmd_id) failed=true;
+
+				if( (!failed) && (control_mode==AUTO) && arming.is_armed() && (nav_cmd_id!=MAV_CMD_NAV_LAND) && (nav_cmd_id!=MAV_CMD_NAV_TAKEOFF))
 				{
-
-					if(!(flight_stage==AP_Vehicle::FixedWing::FLIGHT_TAKEOFF || landing.is_flaring() || flight_stage == AP_Vehicle::FixedWing::FLIGHT_LAND))
+					if( !(flight_stage==AP_Vehicle::FixedWing::FLIGHT_TAKEOFF || landing.is_flaring() || flight_stage == AP_Vehicle::FixedWing::FLIGHT_LAND) )
 					{
-						if (mission.set_current_cmd(cmdn-5)) {
-								gcs().send_text(MAV_SEVERITY_WARNING, "Temperature %dC>= %.2fC, Land start",(float)temp,(uint8_t)g.max_rtn_temp);
-						}
-					}else
-					{
-						gcs().send_text(MAV_SEVERITY_INFO, "High Temperature Warnning: %.2fC >%dC!",(float)temp,(uint8_t)g.max_rtn_temp);
+						set_mode(RTL, MODE_REASON_AVOIDANCE);
+						failed = true;
 					}
+				}else if( failed && (control_mode==AUTO) && arming.is_armed() )
+				{
+					gcs().send_text(MAV_SEVERITY_INFO, "High Temperature Warnning: %.2fC >%dC!",(float)temp,(uint8_t)g.max_rtn_temp);
 				}
+
 				temp_out_count2 = 0;
 			}
 		}else{
@@ -456,6 +456,7 @@ void Plane::update_GPS_10Hz(void)
         ahrs.estimate_wind();
 
         static bool out_wind_rate_limit = true;
+        static bool failed = false;
 		static uint32_t wind_beyond_start_time = AP_HAL::millis();
 
 		if(out_wind_rate_limit&&arming.is_armed())
@@ -473,23 +474,23 @@ void Plane::update_GPS_10Hz(void)
 			if(AP_HAL::millis()-wind_beyond_start_time>=(uint32_t)g.wind_time_ms)
 			{
 				uint16_t nav_cmd_id = mission.get_current_nav_cmd().id;
-				uint16_t cmdn = mission.num_commands();
-				uint16_t current_cmd = mission.get_current_nav_index();
 
-				if(  (control_mode==AUTO) && cmdn>5 && (cmdn-current_cmd>6) && arming.is_armed() && (nav_cmd_id!=MAV_CMD_NAV_LAND) && (nav_cmd_id!=MAV_CMD_NAV_TAKEOFF) )
+				if(MAV_CMD_DO_LAND_START==nav_cmd_id) failed=true;
+
+				if( !failed && (control_mode==AUTO) && arming.is_armed() && (nav_cmd_id!=MAV_CMD_NAV_LAND) && (nav_cmd_id!=MAV_CMD_NAV_TAKEOFF) )
 				{
 
-					if(!(flight_stage==AP_Vehicle::FixedWing::FLIGHT_TAKEOFF || landing.is_flaring() || flight_stage == AP_Vehicle::FixedWing::FLIGHT_LAND))
+					if( !(flight_stage==AP_Vehicle::FixedWing::FLIGHT_TAKEOFF || landing.is_flaring() || flight_stage == AP_Vehicle::FixedWing::FLIGHT_LAND) )
 					{
-						if (mission.set_current_cmd(cmdn-5)) {
-								gcs().send_text(MAV_SEVERITY_WARNING, "Wind %.2fm/s>= %dm/s, Land start", (float)wind, (uint8_t)g.max_wind_limit);
-						}
+							set_mode(RTL, MODE_REASON_AVOIDANCE);
+							failed = true;
+							gcs().send_text(MAV_SEVERITY_WARNING, "Wind %.2fm/s>= %dm/s, Land start", (float)wind, (uint8_t)g.max_wind_limit);
 					}
-					else
-					{
-						gcs().send_text(MAV_SEVERITY_WARNING, "Wind Warnning: %.2fm/s>= %dm/s", (float)wind, (uint8_t)g.max_wind_limit);
-					}
-				  }
+
+				 }else if( failed && (control_mode==AUTO) && arming.is_armed() )
+				 {
+					 gcs().send_text(MAV_SEVERITY_WARNING, "Wind Warnning: %.2fm/s>= %dm/s", (float)wind, (uint8_t)g.max_wind_limit);
+				 }
 				wind_beyond_start_time = AP_HAL::millis();
 			}
 		 }else wind_beyond_start_time = AP_HAL::millis();
