@@ -342,6 +342,7 @@ void Plane::one_second_loop()
 					{
 						set_mode(RTL, MODE_REASON_AVOIDANCE);
 						failed = true;
+						gcs().send_text(MAV_SEVERITY_INFO, "High Temperature Warnning: %.2fC >%dC!",(float)temp,(uint8_t)g.max_rtn_temp);
 					}
 				}else if( failed && (control_mode==AUTO) && arming.is_armed() )
 				{
