@@ -60,17 +60,17 @@ private:
 		NMEA0183_DATA,
 		NEMA0183_END_DOT,
 		NEMA0183_CRC
-    };
+    }PARSE_STATUS1;
 
     struct buf{
     	uint8_t count;
     	uint8_t crc;
     	uint8_t crcCount;
-    	char data[64];
+    	uint8_t data[64];
     };
 
-    char data[64];
-    char len;
+    uint8_t data64[64];
+    uint8_t len;
 
     struct buf _buffData;
     PARSE_STATUS1 _parseStatus;

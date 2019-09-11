@@ -362,8 +362,8 @@ bool GCS_MAVLINK_Copter::try_send_message(enum ap_message id)
 #endif
         break;
     case MSG_DATA64:
-    	CHECK_PAYLOAD_SIZE(DATA_64);
-    	if(copter.camera_mount.get_mount_type()==Mount_Type_Awesome)
+    	CHECK_PAYLOAD_SIZE(DATA64);
+    	if(copter.camera_mount.get_mount_type()==6)
     		copter.camera_mount.status_msg(chan);
     	break;
 

@@ -7,11 +7,11 @@
 
 extern const AP_HAL::HAL& hal;
 
-AP_Mount_AWesome::AP_Mount_AWesome(AP_Mount &frontend, AP_Mount::mount_state &state, uint8_t instance) :
+AP_Mount_Awesome::AP_Mount_Awesome(AP_Mount &frontend, AP_Mount::mount_state &state, uint8_t instance) :
     AP_Mount_Backend(frontend, state, instance),
     _port(nullptr),
     _initialised(false),
-    _parseStatus(NMEA0183_NONE),
+    _parseStatus(NMEA0183_NONE)
 {}
 
 // init - performs any required initialisation for this instance
@@ -53,7 +53,7 @@ void AP_Mount_Awesome::parse_data()
 		if(parse_nmea0183(data))
 		{
 			//打包成data64发送出去
-			for(int16_t j = 0; j<_buffData.count+1; ++j ) data[j] = _buffData.data[j];
+			for(uint8_t j = 0; j<_buffData.count+1; ++j ){ data64[j] = (uint8_t)_buffData.data[j];}
 			len = _buffData.count+1;
 			gcs().send_message(MSG_DATA64);
 			gcs().send_text(MAV_SEVERITY_INFO, "Have NMEA0183");
@@ -126,7 +126,7 @@ bool AP_Mount_Awesome::parse_nmea0183(char c)
 
 void AP_Mount_Awesome::send_data64(mavlink_channel_t chan)
 {
-	mavlink_msg_data64_send(chan, 'N', len, data);
+	mavlink_msg_data64_send(chan, 'N', len, data64);
 }
 
 uint8_t AP_Mount_Awesome::hex_to_uint8(char c)
@@ -134,6 +134,7 @@ uint8_t AP_Mount_Awesome::hex_to_uint8(char c)
 	if(c>='0'&&c<='9') return (uint8_t)(c-'0');
 	if(c>='a'&&c<='f') return (uint8_t)(c-'a'+10);
 	if(c>='A'&&c<='F') return (uint8_t)(c-'A'+10);
+return 0;
 }
 
 bool AP_Mount_Awesome::parse_camera(char c)
