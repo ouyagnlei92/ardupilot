@@ -361,6 +361,11 @@ bool GCS_MAVLINK_Copter::try_send_message(enum ap_message id)
         copter.adsb.send_adsb_vehicle(chan);
 #endif
         break;
+    case MSG_DATA64:
+    	CHECK_PAYLOAD_SIZE(DATA_64);
+    	if(copter.camera_mount.get_mount_type()==Mount_Type_Awesome)
+    		copter.camera_mount.status_msg(chan);
+    	break;
 
     default:
         return GCS_MAVLINK::try_send_message(id);

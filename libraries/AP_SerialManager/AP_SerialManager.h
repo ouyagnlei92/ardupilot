@@ -73,6 +73,11 @@
 #define AP_SERIALMANAGER_SBUS1_BUFSIZE_RX     16
 #define AP_SERIALMANAGER_SBUS1_BUFSIZE_TX     32
 
+// awesome serial
+#define AP_SERIALMANAGER_AWESOME_BAUD           115200
+#define AP_SERIALMANAGER_AWESOME_BUFSIZE_RX     128
+#define AP_SERIALMANAGER_AWESOME_BUFSIZE_TX     128
+
 class AP_SerialManager {
 public:
     AP_SerialManager();
@@ -102,6 +107,7 @@ public:
         SerialProtocol_ESCTelemetry = 16,
         SerialProtocol_Devo_Telem = 17,
         SerialProtocol_OpticalFlow = 18,
+		SerialProtocol_Awesome = 19,    //自定义协议 by awesome
     };
 
     // get singleton instance

@@ -70,6 +70,7 @@ public:
         Mount_Type_Alexmos = 3,         /// Alexmos mount
         Mount_Type_SToRM32 = 4,         /// SToRM32 mount using MAVLink protocol
         Mount_Type_SToRM32_serial = 5   /// SToRM32 mount using custom serial protocol
+		Mount_Type_Awesome = 6,         /// awesome mount
     };
 
     // init - detect and initialise all mounts
