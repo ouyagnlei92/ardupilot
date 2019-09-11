@@ -15,7 +15,7 @@ AP_Mount_AWesome::AP_Mount_AWesome(AP_Mount &frontend, AP_Mount::mount_state &st
 {}
 
 // init - performs any required initialisation for this instance
-void AP_Mount_AWesome::init(const AP_SerialManager& serial_manager)
+void AP_Mount_Awesome::init(const AP_SerialManager& serial_manager)
 {
     _port = serial_manager.find_serial(AP_SerialManager::SerialProtocol_Awesome, 0);  // ·¢ÏÖ´®¿Ú
     if (_port) {
@@ -26,7 +26,7 @@ void AP_Mount_AWesome::init(const AP_SerialManager& serial_manager)
 }
 
 // update mount position - should be called periodically
-void AP_Mount_AWesome::update()
+void AP_Mount_Awesome::update()
 {
     // exit immediately if not initialised
     if (!_initialised) {
@@ -38,7 +38,7 @@ void AP_Mount_AWesome::update()
 
 }
 
-void AP_Mount_AWesome::parse_data()
+void AP_Mount_Awesome::parse_data()
 {
     uint8_t data;
     int16_t numc;
@@ -61,7 +61,7 @@ void AP_Mount_AWesome::parse_data()
 	}
 }
 
-bool AP_Mount_AWesome::parse_nmea0183(char c)
+bool AP_Mount_Awesome::parse_nmea0183(char c)
 {
 	if( c=='$' && _parseStatus==NMEA0183_NONE )
 	{
@@ -124,54 +124,40 @@ bool AP_Mount_AWesome::parse_nmea0183(char c)
 	return false;
 }
 
-void AP_Mount_AWesome::send_data64(mavlink_channel_t chan)
+void AP_Mount_Awesome::send_data64(mavlink_channel_t chan)
 {
 	mavlink_msg_data64_send(chan, 'N', len, data);
 }
 
-uint8_t AP_Mount_AWesome::hex_to_uint8(char c)
+uint8_t AP_Mount_Awesome::hex_to_uint8(char c)
 {
 	if(c>='0'&&c<='9') return (uint8_t)(c-'0');
 	if(c>='a'&&c<='f') return (uint8_t)(c-'a'+10);
 	if(c>='A'&&c<='F') return (uint8_t)(c-'A'+10);
 }
 
-bool AP_Mount_AWesome::parse_camera(char c)
+bool AP_Mount_Awesome::parse_camera(char c)
 {
 	return true;
 }
 
 // has_pan_control - returns true if this mount can control it's pan (required for multicopters)
-bool AP_Mount_AWesome::has_pan_control() const
+bool AP_Mount_Awesome::has_pan_control() const
 {
     // we do not have yaw control
     return false;
 }
 
 // set_mode - sets mount's mode
-void AP_Mount_AWesome::set_mode(enum MAV_MOUNT_MODE mode)
+void AP_Mount_Awesome::set_mode(enum MAV_MOUNT_MODE mode)
 {
 
 }
 
 // status_msg - called to allow mounts to send their status to GCS using the MOUNT_STATUS message
-void AP_Mount_AWesome::status_msg(mavlink_channel_t chan)
+void AP_Mount_Awesome::status_msg(mavlink_channel_t chan)
 {
 	send_data64(chan);
 }
 
-bool AP_Mount_AWesome::can_send(bool with_control) {
-    uint16_t required_tx = 1;
-    if (with_control) {
-        required_tx += sizeof(AP_Mount_SToRM32_serial::cmd_set_angles_struct);
-    }
-    return (_reply_type == ReplyType_UNKNOWN) && (_port->txspace() >= required_tx);
-}
-
-
-
-void AP_Mount_SToRM32_serial::get_angles() {
-
-    _port->write('d');
-};
 

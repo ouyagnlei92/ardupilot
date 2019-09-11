@@ -14,12 +14,12 @@
 #include "AP_Mount_Backend.h"
 
 
-class AP_Mount_AWesome : public AP_Mount_Backend
+class AP_Mount_Awesome : public AP_Mount_Backend
 {
 
 public:
     // Constructor
-	AP_Mount_AWesome(AP_Mount &frontend, AP_Mount::mount_state &state, uint8_t instance);
+	AP_Mount_Awesome(AP_Mount &frontend, AP_Mount::mount_state &state, uint8_t instance);
 
     // init - performs any required initialisation for this instance
     virtual void init(const AP_SerialManager& serial_manager);
@@ -38,17 +38,12 @@ public:
 
 private:
 
-    // send read data request
-    void get_angles();
-
     // read_incoming
     void parse_data();
 
     bool parse_nmea0183(char c);
 
     bool parse_camera(char c);
-
-    bool can_send(bool with_control);
 
     void send_data64(mavlink_channel_t chan);
 
