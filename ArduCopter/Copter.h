@@ -92,6 +92,8 @@
 #include "GCS_Copter.h"
 #include "AP_Rally.h"           // Rally point library
 #include "AP_Arming.h"
+#include "Awesome_Camera.h"
+#include "Awesome_NMEA0183.h"
 
 // libraries which are dependent on #defines in defines.h and/or config.h
 #if BEACON_ENABLED == ENABLED
@@ -200,6 +202,10 @@ public:
     // HAL::Callbacks implementation.
     void setup() override;
     void loop() override;
+
+    //自定义串口设备
+    Awesome_NMEA0183 anmea;
+    Awesome_Camera acamera;
 
 private:
     static const AP_FWVersion fwver;
@@ -942,6 +948,7 @@ private:
     void userhook_auxSwitch1(uint8_t ch_flag);
     void userhook_auxSwitch2(uint8_t ch_flag);
     void userhook_auxSwitch3(uint8_t ch_flag);
+    void awesome_loop(void);
 
 #include "mode.h"
 

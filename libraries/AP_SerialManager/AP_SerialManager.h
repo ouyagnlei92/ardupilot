@@ -107,7 +107,8 @@ public:
         SerialProtocol_ESCTelemetry = 16,
         SerialProtocol_Devo_Telem = 17,
         SerialProtocol_OpticalFlow = 18,
-		SerialProtocol_Awesome = 19,    //自定义协议 by awesome
+		SerialProtocol_Awesome_NMEA0183 = 19,    //自定义协议 by awesome
+		SerialProtocol_Awesome_Camera = 20,
     };
 
     // get singleton instance

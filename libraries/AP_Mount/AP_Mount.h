@@ -38,7 +38,6 @@ class AP_Mount_SoloGimbal;
 class AP_Mount_Alexmos;
 class AP_Mount_SToRM32;
 class AP_Mount_SToRM32_serial;
-class AP_Mount_Awesome;
 
 /*
   This is a workaround to allow the MAVLink backend access to the
@@ -54,7 +53,6 @@ class AP_Mount
     friend class AP_Mount_Alexmos;
     friend class AP_Mount_SToRM32;
     friend class AP_Mount_SToRM32_serial;
-    friend class AP_Mount_Awesome;
 
 public:
     AP_Mount(const AP_AHRS_TYPE &ahrs, const struct Location &current_loc);

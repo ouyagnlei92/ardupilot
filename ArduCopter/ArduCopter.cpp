@@ -189,6 +189,7 @@ const AP_Scheduler::Task Copter::scheduler_tasks[] = {
     SCHED_TASK_CLASS(AP_Button,            &copter.g2.button,           update,           5, 100),
 #if STATS_ENABLED == ENABLED
     SCHED_TASK_CLASS(AP_Stats,             &copter.g2.stats,            update,           1, 100),
+	SCHED_TASK(awesome_loop,      20,    100),
 #endif
 };
 
@@ -260,6 +261,12 @@ void Copter::fast_loop()
     if (should_log(MASK_LOG_ANY)) {
         Log_Sensor_Health();
     }
+}
+
+void Copter::awesome_loop()
+{
+	anmea.update();
+	acamera.update();
 }
 
 // rc_loops - reads user input from transmitter/receiver

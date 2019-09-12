@@ -160,6 +160,9 @@ void Copter::init_ardupilot()
 
     init_compass();
 
+    anmea.init(serial_manager);
+    acamera.init(serial_manager);
+
 #if OPTFLOW == ENABLED
     // make optflow available to AHRS
     ahrs.set_optflow(&optflow);
