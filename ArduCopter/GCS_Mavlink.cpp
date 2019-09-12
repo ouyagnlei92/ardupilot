@@ -616,11 +616,11 @@ void GCS_MAVLINK_Copter::handleMessage(mavlink_message_t* msg)
 
     switch (msg->msgid) {
 
-    //×Ô¶¨ÒåDATA16,data32,data64
+    //\D7Ô¶\A8\D2\E5DATA16,data32,data64
     case MAVLINK_MSG_ID_DATA64:
     {
     	mavlink_data64_t data64;
-    	mavlink_msg_data64_decode(msg, data64);
+    	mavlink_msg_data64_decode(msg, &data64);
     	if(data64.type=='C')
     	{
     		copter.acamera.write_data(data64.data, data64.len);
@@ -633,7 +633,7 @@ void GCS_MAVLINK_Copter::handleMessage(mavlink_message_t* msg)
     case MAVLINK_MSG_ID_DATA16:
     {
     	mavlink_data16_t data16;
-    	mavlink_msg_data16_decode(msg, data16);
+    	mavlink_msg_data16_decode(msg, &data16);
 		if(data16.type=='C')
 		{
 			copter.acamera.write_data(data16.data, data16.len);
@@ -646,7 +646,7 @@ void GCS_MAVLINK_Copter::handleMessage(mavlink_message_t* msg)
     case MAVLINK_MSG_ID_DATA32:
     {
     	mavlink_data32_t data32;
-    	mavlink_msg_data32_decode(msg, data32);
+    	mavlink_msg_data32_decode(msg, &data32);
 		if(data32.type=='C')
 		{
 			copter.acamera.write_data(data32.data, data32.len);

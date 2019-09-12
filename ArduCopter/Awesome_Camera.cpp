@@ -16,8 +16,8 @@ extern const AP_HAL::HAL& hal;
 Awesome_Camera::Awesome_Camera(void) :
     _port(nullptr),
     _initialised(false),
-    _parseStatus(NMEA0183_NONE),
-	dataEnable(false),
+    _parseStatus(CAMERA_NONE),
+	dataEnable(false)
 {}
 
 

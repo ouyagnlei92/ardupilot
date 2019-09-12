@@ -11,7 +11,7 @@ Awesome_NMEA0183::Awesome_NMEA0183(void) :
     _port(nullptr),
     _initialised(false),
     _parseStatus(NMEA0183_NONE),
-	dataEnable(false),
+	dataEnable(false)
 {}
 
 

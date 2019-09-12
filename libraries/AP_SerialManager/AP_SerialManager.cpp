@@ -272,7 +272,12 @@ void AP_SerialManager::init()
                     state[i].uart->set_flow_control(AP_HAL::UARTDriver::FLOW_CONTROL_DISABLE);
                     break;
 
-                case SerialProtocol_Awesome:
+                case SerialProtocol_Awesome_NMEA0183:
+                	state[i].uart->begin(map_baudrate(state[i].baud),
+													  AP_SERIALMANAGER_AWESOME_BUFSIZE_RX,
+													  AP_SERIALMANAGER_AWESOME_BUFSIZE_TX);
+                	break;
+case SerialProtocol_Awesome_Camera:
                 	state[i].uart->begin(map_baudrate(state[i].baud),
 													  AP_SERIALMANAGER_AWESOME_BUFSIZE_RX,
 													  AP_SERIALMANAGER_AWESOME_BUFSIZE_TX);
