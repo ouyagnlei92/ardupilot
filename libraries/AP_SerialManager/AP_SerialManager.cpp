@@ -277,7 +277,7 @@ void AP_SerialManager::init()
 													  AP_SERIALMANAGER_AWESOME_BUFSIZE_RX,
 													  AP_SERIALMANAGER_AWESOME_BUFSIZE_TX);
                 	break;
-case SerialProtocol_Awesome_Camera:
+				case SerialProtocol_Awesome_Camera:
                 	state[i].uart->begin(map_baudrate(state[i].baud),
 													  AP_SERIALMANAGER_AWESOME_BUFSIZE_RX,
 													  AP_SERIALMANAGER_AWESOME_BUFSIZE_TX);

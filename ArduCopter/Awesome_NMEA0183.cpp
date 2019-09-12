@@ -61,7 +61,7 @@ void Awesome_NMEA0183::parse_data()
 			//打包成data64发送出去
 			for(uint8_t j = 0; j<_buffData.count+1; ++j ){ data64[j] = (uint8_t)_buffData.data[j];}
 			len = _buffData.count+1;
-			gcs().send_message(MSG_DATA64);
+			gcs().send_message(MSG_AWESOME_NMEA);
 			gcs().send_text(MAV_SEVERITY_INFO, "Have NMEA0183");
 		}
 	}

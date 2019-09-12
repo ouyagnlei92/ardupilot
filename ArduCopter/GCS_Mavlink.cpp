@@ -361,12 +361,14 @@ bool GCS_MAVLINK_Copter::try_send_message(enum ap_message id)
         copter.adsb.send_adsb_vehicle(chan);
 #endif
         break;
-    case MSG_DATA64:
-    	CHECK_PAYLOAD_SIZE(DATA64);
-        copter.anmea.status_msg(chan);
+    case MSG_AWESOME_CAMERA:
         CHECK_PAYLOAD_SIZE(DATA64);
         copter.acamera.status_msg(chan);
     	break;
+    case MSG_AWESOME_NMEA:
+    	CHECK_PAYLOAD_SIZE(DATA64);
+        copter.anmea.status_msg(chan);
+        break;
 
     default:
         return GCS_MAVLINK::try_send_message(id);

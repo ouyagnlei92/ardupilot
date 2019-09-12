@@ -67,7 +67,7 @@ void Awesome_Camera::parse_data()
 			//打包成data64发送出去
 			for(uint8_t j = 0; j<_buffData.count; ++j ){ data64[j] = (uint8_t)_buffData.data[j];}
 			len = _buffData.count;
-			gcs().send_message(MSG_DATA64);
+			gcs().send_message(MSG_AWESOME_CAMERA);
 			gcs().send_text(MAV_SEVERITY_INFO, "Have Camera");
 		}
 	}
