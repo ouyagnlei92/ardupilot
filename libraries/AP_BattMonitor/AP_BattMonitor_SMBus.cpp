@@ -1,4 +1,5 @@
 #include "AP_BattMonitor_SMBus.h"
+#include <GCS_MAVLink/GCS.h>
 
 #define AP_BATTMONITOR_SMBUS_PEC_POLYNOME 0x07 // Polynome for CRC generation
 
@@ -115,8 +116,12 @@ bool AP_BattMonitor_SMBus::read_word(uint8_t reg, uint16_t& data) const
     if (_pec_supported) {
         const uint8_t pec = get_PEC(AP_BATTMONITOR_SMBUS_I2C_ADDR, reg, true, buff, 2);
         if (pec != buff[2]) {
+	    gcs().send_text(MAV_SEVERITY_WARNING, "error PEC!");
             return false;
-        }
+        }else
+	{
+	   gcs().send_text(MAV_SEVERITY_WARNING, "have PEC!");
+	}
     }
 
     // convert buffer to word

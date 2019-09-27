@@ -67,6 +67,7 @@ void AP_BattMonitor_SMBus_Maxell::timer()
 {
 	// check if PEC is supported
     if (!check_pec_support()) {
+	
         return;
     }
 
@@ -206,6 +207,7 @@ bool AP_BattMonitor_SMBus_Maxell::check_pec_support()
         return true;
     }
 
+   /*
     // specification info
     uint16_t data;
     if (!read_word(BATTMONITOR_SMBUS_SPECIFICATION_INFO, data)) {
@@ -231,7 +233,7 @@ bool AP_BattMonitor_SMBus_Maxell::check_pec_support()
             _pec_confirmed = true;
             return true;
         }
-    }
+    }*/
 
     // assume all other batteries support PEC
 	_pec_supported = true;
