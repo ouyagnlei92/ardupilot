@@ -269,6 +269,7 @@ bool AP_Arming::ins_gyros_consistent(const AP_InertialSensor &ins)
             last_gyro_pass_ms[i] = now;
         }
         if (now - last_gyro_pass_ms[i] > 10000) {
+        	gcs().send_text(MAV_SEVERITY_INFO, "GYRO error=%3.1f>%3.1fdeg/s", degrees(vec_diff.length()), error);
             return false;
         }
     }
