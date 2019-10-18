@@ -89,6 +89,8 @@ const AP_Param::GroupInfo AP_Arming::var_info[] = {
                                                                                            AP_PARAM_FRAME_COPTER |
                                                                                            AP_PARAM_FRAME_TRICOPTER |
                                                                                            AP_PARAM_FRAME_HELI),
+
+	AP_GROUPINFO("GYROTHRESH",    7,     AP_Arming,  gyro_error_threshold,  5.0),  //5deg/s
     AP_GROUPEND
 };
 
@@ -249,6 +251,8 @@ bool AP_Arming::ins_gyros_consistent(const AP_InertialSensor &ins)
     if (gyro_count <= 1) {
         return true;
     }
+    float error = gyro_error_threshold;
+    if(error<=5.0) error = 5.0;
 
     const Vector3f &prime_gyro_vec = ins.get_gyro();
     const uint32_t now = AP_HAL::millis();
@@ -261,7 +265,7 @@ bool AP_Arming::ins_gyros_consistent(const AP_InertialSensor &ins)
         Vector3f vec_diff = gyro_vec - prime_gyro_vec;
         // allow for up to 5 degrees/s difference. Pass if it has
         // been OK in last 10 seconds
-        if (vec_diff.length() <= radians(5)) {
+        if (vec_diff.length() <= radians(error)) {
             last_gyro_pass_ms[i] = now;
         }
         if (now - last_gyro_pass_ms[i] > 10000) {
