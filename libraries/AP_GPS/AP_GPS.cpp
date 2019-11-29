@@ -58,7 +58,7 @@ const uint32_t AP_GPS::_baudrates[] = {9600U, 115200U, 4800U, 19200U, 38400U, 57
 
 // initialisation blobs to send to the GPS to try to get it into the
 // right mode
-const char AP_GPS::_initialisation_blob[] = UBLOX_SET_BINARY MTK_SET_BINARY SIRF_SET_BINARY;
+const char AP_GPS::_initialisation_blob[] = UBLOX_SET_BINARY MTK_SET_BINARY SIRF_SET_BINARY JOYTON_GPS_CONFIG;
 
 AP_GPS *AP_GPS::_singleton;
 
@@ -556,6 +556,18 @@ void AP_GPS::detect_instance(uint8_t instance)
         } else if (_type[instance] == GPS_TYPE_NMEA &&
                    AP_GPS_NMEA::_detect(dstate->nmea_detect_state, data)) {
             new_gps = new AP_GPS_NMEA(*this, state[instance], _port[instance]);
+        }else if(_type[instance] ==GPS_TYPE_JOYTON &&
+        		   AP_GPS_JOYTON::_detect(dstate->nmea_detect_state, data)){
+        	new_gps = new AP_GPS_JOYTON(*this, state[instance], _port[instance]);
+        	//send joyton gps config
+        	int16_t space = _port[instance]->txspace();
+        	if (space > sizeof(JOYTON_GPS_CONFIG)-1) space = sizeof(JOYTON_GPS_CONFIG)-1;
+        	uint8_t* config = JOYTON_GPS_CONFIG;
+        	while (space > 0) {
+				_port[instance]->write(*config);
+				config++;
+				space--;
+        	}
         }
     }
 
