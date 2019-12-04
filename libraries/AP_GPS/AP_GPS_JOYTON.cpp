@@ -34,6 +34,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include <GCS_MAVLink/GCS.h>
+
 #include "AP_GPS_JOYTON.h"
 
 extern const AP_HAL::HAL& hal;
@@ -88,11 +90,11 @@ bool AP_GPS_JOYTON::read(void)
         if(parse_eventa(c))
         {
         	write_Log_mark_event();
-        	GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Mark Event index: %d", eventa_data.event_index);
+        	gcs().send_text(MAV_SEVERITY_INFO, "Mark Event index: %d", eventa_data.event_index);
         	/*
-        	GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "lat: %.8f lon: %.8f alt: %.2f",eventa_data.lat,eventa_data.lon,eventa_data.alt );
-        	GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "pos: %d stats: %d index: %df",eventa_data.pos_type, eventa_data.stats_num, eventa_data.event_index);
-        	GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "alt_error: %.2f", eventa_data.alt_error );
+        	gcs().send_text(MAV_SEVERITY_INFO, "lat: %.8f lon: %.8f alt: %.2f",eventa_data.lat,eventa_data.lon,eventa_data.alt );
+        	gcs().send_text(MAV_SEVERITY_INFO, "pos: %d stats: %d index: %df",eventa_data.pos_type, eventa_data.stats_num, eventa_data.event_index);
+        	gcs().send_text(MAV_SEVERITY_INFO, "alt_error: %.2f", eventa_data.alt_error );
         	*/
         }
     }
@@ -469,24 +471,6 @@ AP_GPS_JOYTON::_detect(struct NMEA_detect_state &state, uint8_t data)
     }
     return false;
 }
-
-/* EVENTALLA */
-void AP_GPS_JOYTON::eventa_init(eventa* event)
-{
-	if( (void*)0!=event )
-	{
-		unsigned char i = 0;
-		event->index = 0;
-		event->status = EVENT_NONE;
-
-		for( ; i<EVENT_MAX_LEN; ++i )
-		{
-			event->buff[i] = 0;
-		}
-	}
-}
-
-/* add by awesome */
 
 /*** �¼ӽ���Eventalla ���� ***/
 /* --------------------------------------------------------------------------

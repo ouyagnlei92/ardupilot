@@ -26,6 +26,9 @@
 #define JOYTON_GPS_CONFIG  "LOG EVENTALLA ONCHANGED\r\n" "CONFIG EVENT ENABLE NEGATIVE 20\r\n" \
 	"gpgga com1 0.2\r\n" "gprmc com1 0.2\r\n" "gpvtg com1 0.2\r\n" "saveconfig\r\n"
 
+#define EVENTA_MSG "EVENTALLA"
+#define CRC32_POLYNOMIAL 0xEDB88320L
+
 /// NMEA parser
 ///
 class AP_GPS_JOYTON : public AP_GPS_Backend

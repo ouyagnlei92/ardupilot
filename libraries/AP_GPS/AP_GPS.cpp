@@ -28,6 +28,7 @@
 #include "AP_GPS_MTK.h"
 #include "AP_GPS_MTK19.h"
 #include "AP_GPS_NMEA.h"
+#include "AP_GPS_JOYTON.h"
 #include "AP_GPS_SBF.h"
 #include "AP_GPS_SBP.h"
 #include "AP_GPS_SBP2.h"
@@ -562,7 +563,7 @@ void AP_GPS::detect_instance(uint8_t instance)
         	//send joyton gps config
         	int16_t space = _port[instance]->txspace();
         	if (space > sizeof(JOYTON_GPS_CONFIG)-1) space = sizeof(JOYTON_GPS_CONFIG)-1;
-        	uint8_t* config = JOYTON_GPS_CONFIG;
+        	const char* config = JOYTON_GPS_CONFIG;
         	while (space > 0) {
 				_port[instance]->write(*config);
 				config++;
