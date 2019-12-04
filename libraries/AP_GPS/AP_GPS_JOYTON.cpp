@@ -64,6 +64,7 @@ AP_GPS_JOYTON::AP_GPS_JOYTON(AP_GPS &_gps, AP_GPS::GPS_State &_state, AP_HAL::UA
     memset(_term, 0, sizeof(_term));
 
     init_event();  /* add by awesome */
+    gcs().send_text(MAV_SEVERITY_INFO, "Set Joyton GNSS");
 }
 
 bool AP_GPS_JOYTON::read(void)
@@ -90,7 +91,7 @@ bool AP_GPS_JOYTON::read(void)
         if(parse_eventa(c))
         {
         	write_Log_mark_event();
-        	gcs().send_text(MAV_SEVERITY_INFO, "Mark Event index: %d", eventa_data.event_index);
+        	gcs().send_text(MAV_SEVERITY_INFO, "Mark Event: %d", eventa_data.event_index);
         	/*
         	gcs().send_text(MAV_SEVERITY_INFO, "lat: %.8f lon: %.8f alt: %.2f",eventa_data.lat,eventa_data.lon,eventa_data.alt );
         	gcs().send_text(MAV_SEVERITY_INFO, "pos: %d stats: %d index: %df",eventa_data.pos_type, eventa_data.stats_num, eventa_data.event_index);
