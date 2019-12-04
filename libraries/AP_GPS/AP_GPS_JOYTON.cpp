@@ -55,7 +55,13 @@ AP_GPS_JOYTON::AP_GPS_JOYTON(AP_GPS &_gps, AP_GPS::GPS_State &_state, AP_HAL::UA
 {
     // this guarantees that _term is always nul terminated
     memset(_term, 0, sizeof(_term));
-    eventa_init(&_eventa);
+
+    gps.send_blob_start(state.instance, JOYTON_GPS_CONFIG, sizeof(JOYTON_GPS_CONFIG));
+
+    // this guarantees that _term is always nul terminated
+    memset(_term, 0, sizeof(_term));
+
+    init_event();  /* add by awesome */
 }
 
 bool AP_GPS_JOYTON::read(void)
@@ -78,9 +84,16 @@ bool AP_GPS_JOYTON::read(void)
         if (_decode(c)) {
             parsed = true;
         }
-        if( EVENT_END==eventa_parse(&_eventa, c) ){
-        	++_camera_feedback_count;    //have the camera feedback count
-        	//send GCS
+        /* parse event  add by awesome */
+        if(parse_eventa(c))
+        {
+        	write_Log_mark_event();
+        	GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Mark Event index: %d", eventa_data.event_index);
+        	/*
+        	GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "lat: %.8f lon: %.8f alt: %.2f",eventa_data.lat,eventa_data.lon,eventa_data.alt );
+        	GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "pos: %d stats: %d index: %df",eventa_data.pos_type, eventa_data.stats_num, eventa_data.event_index);
+        	GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "alt_error: %.2f", eventa_data.alt_error );
+        	*/
         }
     }
     return parsed;
@@ -473,44 +486,225 @@ void AP_GPS_JOYTON::eventa_init(eventa* event)
 	}
 }
 
-AP_GPS_JOYTON::event_status AP_GPS_JOYTON::eventa_parse(eventa* event, char c)
+/* add by awesome */
+
+/*** �¼ӽ���Eventalla ���� ***/
+/* --------------------------------------------------------------------------
+Calculate a CRC value to be used by CRC calculation functions.
+-------------------------------------------------------------------------- */
+unsigned long AP_GPS_JOYTON::CRC32Value(int i)
 {
-	if( (void*)0!=event )
+	int j;
+	unsigned long ulCRC;
+	ulCRC = i;
+	for( j=8; j>0; j-- )
 	{
-		if('#'==c)
-		{
-			event->status = EVENT_HEADER;
-			event->index = 0;
-			event->buff[event->index] = c;
-		}else if(EVENT_HEADER==event->status)
-		{
-			if('E'==c)
-			{
-				++event->index;
-				event->status = EVENT_CHAR;
-				event->buff[event->index] = c;
-			}else{
-				event->status = EVENT_NONE;
-			}
-		}else if(EVENT_CHAR==event->status)
-		{
-			++event->index;
-			event->buff[event->index] = c;
-			if(9==event->index)
-			{
-				/* #EVENTALLA */
-				if('#'==event->buff[0] && 'E'==event->buff[1] && 'E'==event->buff[3] && 'T'==event->buff[5]\
-					&& 'L'==event->buff[7] && 'A'==event->buff[9])
-				{
-					event->status = EVENT_NONE;
-					return EVENT_END;
-				}else
-				{
-					event->status = EVENT_NONE;
-					return EVENT_NONE;
-				}
-			}
-		}
+		if( ulCRC & 1 )
+			ulCRC = ( ulCRC>>1 ) ^ CRC32_POLYNOMIAL;
+		else
+			ulCRC >>= 1;
 	}
-	return event->status;
+
+	return ulCRC;
 }
+
+unsigned long AP_GPS_JOYTON::CalulateSingleCRC32(unsigned char c, unsigned long crc)
+{
+	unsigned long ulTemp1;
+	unsigned long ulTemp2;
+
+	ulTemp1 = ( crc >> 8 ) & 0x00FFFFFFL;
+	ulTemp2 = CRC32Value( ((int) crc ^ c ) & 0xff );
+
+	return (unsigned long)(ulTemp1 ^ ulTemp2);
+}
+
+/* --------------------------------------------------------------------------
+Calculates the CRC-32 of a block of data all at once
+-------------------------------------------------------------------------- */
+unsigned long AP_GPS_JOYTON::CalculateBlockCRC32(
+	unsigned long ulCount, /* Number of bytes in the data block */
+	unsigned char *ucBuffer ) /* Data block */
+{
+	unsigned long ulTemp1;
+	unsigned long ulTemp2;
+	unsigned long ulCRC = 0;
+	while ( ulCount-- != 0 )
+	{
+		ulTemp1 = ( ulCRC >> 8 ) & 0x00FFFFFFL;
+		ulTemp2 = CRC32Value( ((int) ulCRC ^ *ucBuffer++ ) & 0xff );
+		ulCRC = ulTemp1 ^ ulTemp2;
+	}
+	return( ulCRC );
+}
+
+void AP_GPS_JOYTON::CRC32ToString(unsigned long crc32, unsigned char* buff)
+{
+	char str[] = "0123456789abcdef";
+	unsigned long temp = 0;
+
+	if(NULL==buff) return;
+
+	temp = (crc32 & 0x0FF) & 0xFF;
+	buff[7] = str[temp%16];
+	buff[6] = str[temp/16];
+
+	temp = ( (crc32 & 0x0FF00)>>8 ) & 0xFF;
+	buff[4] = str[temp/16];
+	buff[5] = str[temp%16];
+
+	temp = ( (crc32 & 0x0FF0000)>>16 ) & 0xFF;
+	buff[2] = str[temp/16];
+	buff[3] = str[temp%16];
+
+	temp = ( (crc32 & 0x0FF000000)>>24) & 0xFF;
+	buff[0] = str[temp/16];
+	buff[1] = str[temp%16];
+
+	buff[8] = '\0';
+}
+
+void AP_GPS_JOYTON::eventa_process(const char *src, unsigned char index)
+{
+	if(NULL==src) return;
+
+	switch(index)
+	{
+		case 12: /* pos type */
+			eventa_data.pos_type = static_cast<unsigned int>(atoi(src));
+			break;
+		case 13:   /* lat */
+			eventa_data.lat = static_cast<double>(strtod(src, NULL));
+			break;
+		case 14:  /* lon */
+			eventa_data.lon = static_cast<double>(strtod(src, NULL));
+			break;
+		case 15: /* alt */
+			eventa_data.alt = static_cast<float>(strtod(src, NULL));
+			break;
+		case 16: /* alt_error */
+			eventa_data.alt_error = static_cast<float>(strtod(src, NULL));
+			break;
+		case 25: /* use stats num */
+			eventa_data.stats_num = static_cast<unsigned int>(atoi(src));
+			break;
+		default: break;
+	}
+}
+
+bool AP_GPS_JOYTON::parse_eventa(unsigned char c)
+{
+	bool error = false;
+	if( '#'==c && EVENT_PARSE_NONE==eventa_status.parse_status )
+	{
+		eventa_status.parse_status = EVENT_PARSE_AYNC;  /* get the Aync Anscii '#' */
+		eventa_status.count = 0;
+		eventa_status.dot_count = 0;
+		return false;
+	}
+	switch(eventa_status.parse_status)
+	{
+		case EVENT_PARSE_AYNC:
+			eventa_status.crc32 = CalulateSingleCRC32(c, eventa_status.crc32);
+			if(','!=c)
+			{
+				eventa_status.buff[eventa_status.count++] = c;  /* cache the data */
+				if(eventa_status.count>=29) error = true;
+			}else if( ','==c && eventa_status.count>0 )
+			{
+				eventa_status.buff[eventa_status.count] = '\0';
+				if( 0==strcmp((const char*)eventa_status.buff, EVENTA_MSG) )
+				{
+					eventa_status.parse_status = EVENT_PARSE_HEADER;
+					eventa_status.count = 0;
+				}else error = true;
+			}
+			break;
+		case EVENT_PARSE_HEADER:
+			eventa_status.crc32 = CalulateSingleCRC32(c, eventa_status.crc32);
+			if(';'!=c)
+			{
+				if(eventa_status.count>=50) error = true;
+			}else
+			{
+				eventa_status.parse_status = EVENT_PARSE_DATA;
+			}
+			break;
+		case EVENT_PARSE_DATA:
+			if(','==c)
+			{
+				eventa_status.crc32 = CalulateSingleCRC32(c, eventa_status.crc32);
+				eventa_status.buff[eventa_status.count] = '\0';
+				eventa_status.count = 0;
+				++eventa_status.dot_count;
+				eventa_process((const char *)eventa_status.buff, eventa_status.dot_count);
+			}else if('*'==c)
+			{
+				eventa_status.parse_status = EVENT_PARSE_CRC;
+				eventa_status.count = 0;
+			}else
+			{
+				eventa_status.crc32 = CalulateSingleCRC32(c, eventa_status.crc32);
+				eventa_status.buff[eventa_status.count++] = c;
+			}
+			break;
+		case EVENT_PARSE_CRC:
+			if(eventa_status.count>=8)
+			{
+				unsigned char buff[10];
+				CRC32ToString(eventa_status.crc32, buff);
+				eventa_status.buff[eventa_status.count] = '\0';
+				if(0==strcmp((const char*)buff, (const char*)eventa_status.buff))
+				{
+					eventa_status.parse_status = EVENT_PARSE_SUCCESS;
+					++eventa_data.event_index;
+				}else error = true;
+			}
+			eventa_status.buff[eventa_status.count++] = c;
+			break;
+		default: error = true; break;
+	}
+
+	/* parse error, reset the status */
+	if( error )
+	{
+		eventa_status.count = 0;
+		eventa_status.dot_count = 0;
+		eventa_status.parse_status = EVENT_PARSE_NONE;
+		eventa_status.crc32 = 0;
+		return false;
+	}
+
+	if(EVENT_PARSE_SUCCESS==eventa_status.parse_status)
+	{
+		eventa_status.count = 0;
+		eventa_status.dot_count = 0;
+		eventa_status.parse_status = EVENT_PARSE_NONE;
+		eventa_status.crc32 = 0;
+		return true;
+	}
+
+	return false;
+}
+
+void AP_GPS_JOYTON::write_Log_mark_event(void)
+{
+    struct log_camera_mark pkt = {
+        LOG_PACKET_HEADER_INIT(static_cast<uint8_t>(LOG_CAMERA_MARK)),
+        time_us     : AP_HAL::micros64(),
+        latitude	: eventa_data.lat,
+        longitude	: eventa_data.lon,
+        amsl_alt    : eventa_data.alt,
+        ell_alt 	: eventa_data.alt+eventa_data.alt_error ,
+        pos_type	: eventa_data.pos_type,
+        index		: eventa_data.event_index,
+        roll        : (int16_t)0,
+        pitch       : (int16_t)0,
+        yaw         : (uint16_t)0,
+        stats_num	: (uint8_t)eventa_data.stats_num
+    };
+    DataFlash_Class* pdata = DataFlash_Class::instance();
+    pdata->WriteCriticalBlock(&pkt, sizeof(pkt));
+}
+
+/* end add */

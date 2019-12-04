@@ -140,24 +140,61 @@ private:
     /// EVENTALLA Camera feedback
 	#define EVENT_MAX_LEN 12
 
-	typedef enum _event_status{
-		 EVENT_NONE = 0,
-		 EVENT_HEADER,
-		 EVENT_CHAR,
-		 EVENT_END
-	 }event_status;
+    /* add by awesome */
+        struct event_data {
+        	double lat;
+        	double lon;
+        	float alt;
+        	float alt_error;
+        	unsigned int pos_type;
+        	unsigned int event_index;
+        	unsigned char stats_num;
+        };
 
-	 typedef struct _eventa
-	 {
-		  event_status status;
-		  unsigned char index;
-		  char buff[EVENT_MAX_LEN];
-	 }eventa;
+        typedef enum event_parse_enum
+        {
+        	EVENT_PARSE_NONE = 0,
+        	EVENT_PARSE_AYNC,   	/* Aync # */
+        	EVENT_PARSE_MSG,		/* msg name "EVENTALLA" */
+        	EVENT_PARSE_HEADER,		/* ';'end */
+        	EVENT_PARSE_DATA,
+        	EVENT_PARSE_CRC,		/* CRC32  from '#' to '*' all anscii, but no '#' and '*'. */
+        	EVENT_PARSE_SUCCESS
+        }EVENT_PARSE_ENUM;
 
-	void eventa_init(eventa* event);
-	event_status eventa_parse(eventa* event, char c);
+        struct event_parse_status
+        {
+        	unsigned char buff[30];  /* save a message */
+        	unsigned long crc32;
+        	unsigned int count;
+        	unsigned int dot_count;  /* ','�ĸ��� */
+        	event_parse_enum parse_status;
+        };
 
-    uint16_t _camera_feedback_count = 0;
-    eventa _eventa;
+        event_data eventa_data;
+        event_parse_status eventa_status;
+
+        unsigned long CRC32Value(int i);
+        unsigned long CalulateSingleCRC32(unsigned char c, unsigned long crc);
+        unsigned long CalculateBlockCRC32(unsigned long ulCount,unsigned char *ucBuffer );
+        void CRC32ToString(unsigned long crc32, unsigned char* buff);
+
+        void init_event()
+        {
+        	int i = 0;
+        	for( i=0; i<30; ++i)
+        	{
+        		eventa_status.buff[i] = 0;
+        	}
+        	eventa_status.dot_count = 0;
+        	eventa_status.parse_status = EVENT_PARSE_NONE;
+        	eventa_status.count = 0;
+        	eventa_status.crc32 = 0;
+        };
+        void eventa_process(const char *src, unsigned char index);
+        bool parse_eventa(unsigned char c);
+        void write_Log_mark_event(void);
+
+        /* end add */
 
 };

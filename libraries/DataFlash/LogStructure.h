@@ -1064,6 +1064,24 @@ struct PACKED log_DSTL {
     float D;
 };
 
+/* add by awesome ppk mark event */
+struct PACKED log_camera_mark {
+	LOG_PACKET_HEADER;
+    uint64_t time_us;
+	double  latitude;
+	double  longitude;
+	float  amsl_alt;
+	float  ell_alt;
+	uint32_t  pos_type;
+	uint32_t index;
+	int16_t  roll;
+	int16_t  pitch;
+	uint16_t yaw;
+	uint8_t stats_num;
+};
+#define CAMERA_MARK "TimeUS,lat,lon,msl,ell,PT,ID,roll,pitch,yaw,SN"
+#define CAMERA_MARK_FMT "QddffIIhhHB"
+
 // #endif // SBP_HW_LOGGING
 
 // FMT messages define all message formats other than FMT
@@ -1408,7 +1426,9 @@ Format characters in the format string for binary log messages
     { LOG_RALLY_MSG, sizeof(log_Rally), \
       "RALY", "QBBLLh", "TimeUS,Tot,Seq,Lat,Lng,Alt", "s--DUm", "F--GGB" },  \
     { LOG_VISUALODOM_MSG, sizeof(log_VisualOdom), \
-      "VISO", "Qffffffff", "TimeUS,dt,AngDX,AngDY,AngDZ,PosDX,PosDY,PosDZ,conf", "ssrrrmmm-", "FF000000-" }
+      "VISO", "Qffffffff", "TimeUS,dt,AngDX,AngDY,AngDZ,PosDX,PosDY,PosDZ,conf", "ssrrrmmm-", "FF000000-" },\
+	{ LOG_CAMERA_MARK, sizeof(log_camera_mark), \
+	  "CAMM", CAMERA_MARK_FMT, CAMERA_MARK } /* add by awesome log camera mark */
 
 
 // #if SBP_HW_LOGGING
@@ -1560,7 +1580,9 @@ enum LogMessages : uint8_t {
     LOG_ISBD_MSG,
     LOG_ASP2_MSG,
     LOG_PERFORMANCE_MSG,
-    _LOG_LAST_MSG_
+    _LOG_LAST_MSG_,
+
+	LOG_CAMERA_MARK,   /* mark event log add by awesome*/
 };
 
 static_assert(_LOG_LAST_MSG_ <= 255, "Too many message formats");
