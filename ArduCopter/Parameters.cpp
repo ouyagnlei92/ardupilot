@@ -986,6 +986,11 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     AP_SUBGROUPINFO(follow, "FOLL", 27, ParametersG2, AP_Follow),
 #endif
 
+	AP_GROUPINFO("BATT_SMRTL_SW", 28, ParametersG2, bat_auto_rtl, 0),   //电池检测自动返航检测标志
+	AP_GROUPINFO("BATT_SMRTL_TP", 29, ParametersG2, bat_type, 0),
+	AP_GROUPINFO("BATT_SMRTL_CLL", 30, ParametersG2, bat_cell, 0),
+	AP_GROUPINFO("BATT_SMRTL_KP", 31, ParametersG2, bat_auto_rtl_keep_cap, 0.2),   //電池保存容量百分比
+
     AP_GROUPEND
 };
 

@@ -1072,6 +1072,21 @@ struct PACKED log_DSTL {
     float D;
 };
 
+/* 时间， 电压， 当前剩余容量， 电池类型， 爬升高度消耗电量， 水平平均消耗电量， 返回需要电量，回家距离 ,当前高度*/
+struct log_Bat_smart_rtl {
+	LOG_PACKET_HEADER;
+	uint64_t time_us;
+	float vol;
+	float currentmah;
+	uint8_t flyStatus;
+	uint8_t type;
+	float vertmah;
+	float hormahAvr;
+	float returnToHomeMah;
+	float homeDistance;
+	float currentAlt;
+}
+
 // #endif // SBP_HW_LOGGING
 
 // FMT messages define all message formats other than FMT
@@ -1159,6 +1174,12 @@ struct PACKED log_DSTL {
 #define ARSP_FMT "QffcffBBB"
 #define ARSP_UNITS "snPOPP---"
 #define ARSP_MULTS "F00B00---"
+
+/* 时间， 电压， 剩余容量， 电池类型， 爬升高度消耗电量， 水平平均消耗电量， 返回需要电量，回家距离 ,当前高度*/
+#define BAT_SMATR_RTL_LABELS "TimeUS,Volt,C,FS,Type,Verm,horAvrm,RTmah,HD,alt"
+#define BAT_SMATR_RTL_FMT    "QffBBfffff"
+#define BAT_SMATR_RTL_UNITS  "svvvvvvvvv"
+#define BAT_SMATR_RTL_MULTS  "F000000000"
 
 /*
 Format characters in the format string for binary log messages
@@ -1257,7 +1278,10 @@ Format characters in the format string for binary log messages
     { LOG_PERFORMANCE_MSG, sizeof(log_Performance),                     \
       "PM",  "QHHIIH", "TimeUS,NLon,NLoop,MaxT,Mem,Load", "s---b%", "F---0A" }, \
     { LOG_SRTL_MSG, sizeof(log_SRTL), \
-      "SRTL", "QBHHBfff", "TimeUS,Active,NumPts,MaxPts,Action,N,E,D", "s----mmm", "F----000" }
+      "SRTL", "QBHHBfff", "TimeUS,Active,NumPts,MaxPts,Action,N,E,D", "s----mmm", "F----000" },\
+	{ LOG_BAT_SMART_RTL, sizeof(log_Bat_smart_rtl), \
+	  "BATSMRTL", BAT_SMATR_RTL_FMT,BAT_SMATR_RTL_LABELS,BAT_SMATR_RTL_UNITS,BAT_SMATR_RTL_MULTS },
+
 
 // messages for more advanced boards
 #define LOG_EXTRA_STRUCTURES \
@@ -1568,7 +1592,8 @@ enum LogMessages : uint8_t {
     LOG_ISBD_MSG,
     LOG_ASP2_MSG,
     LOG_PERFORMANCE_MSG,
-    _LOG_LAST_MSG_
+    _LOG_LAST_MSG_,
+	LOG_BAT_SMART_RTL,   //智能电池自动返航log记录
 };
 
 static_assert(_LOG_LAST_MSG_ <= 255, "Too many message formats");

@@ -83,6 +83,7 @@
 #include <AP_Arming/AP_Arming.h>
 #include <AP_SmartRTL/AP_SmartRTL.h>
 #include <AP_TempCalibration/AP_TempCalibration.h>
+#include  "smart_auto_rtl.h"
 
 // Configuration
 #include "defines.h"
@@ -188,6 +189,7 @@ public:
     friend class Parameters;
     friend class ParametersG2;
     friend class AP_Avoidance_Copter;
+    friend class SmartAutoRTL;
 
 #if ADVANCED_FAILSAFE == ENABLED
     friend class AP_AdvancedFailsafe_Copter;
@@ -203,6 +205,8 @@ public:
 
 private:
     static const AP_FWVersion fwver;
+
+    SmartAutoRTL smartAutoRTL{this, this->battery};
 
     // key aircraft parameters passed to multiple libraries
     AP_Vehicle::MultiCopter aparm;
