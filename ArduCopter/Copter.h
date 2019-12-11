@@ -207,7 +207,7 @@ public:
 private:
     static const AP_FWVersion fwver;
 
-    Copter::SmartAutoRTL smartAutoRTL{this, this->battery};
+    SmartAutoRTL smartAutoRTL;
 
     // key aircraft parameters passed to multiple libraries
     AP_Vehicle::MultiCopter aparm;

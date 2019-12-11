@@ -190,7 +190,7 @@ const AP_Scheduler::Task Copter::scheduler_tasks[] = {
 #if STATS_ENABLED == ENABLED
     SCHED_TASK_CLASS(AP_Stats,             &copter.g2.stats,            update,           1, 100),
 #endif
-	SCHED_TASK(smartAutoRTL.update(),              10,    100),
+    SCHED_TASK_CLASS(SmartAutoRTL, 	   &copter.smartAutoRTL,        update,           10,    100),
 };
 
 constexpr int8_t Copter::_failsafe_priorities[7];

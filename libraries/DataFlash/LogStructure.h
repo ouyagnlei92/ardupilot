@@ -1280,7 +1280,7 @@ Format characters in the format string for binary log messages
     { LOG_SRTL_MSG, sizeof(log_SRTL), \
       "SRTL", "QBHHBfff", "TimeUS,Active,NumPts,MaxPts,Action,N,E,D", "s----mmm", "F----000" },\
 	{ LOG_BAT_SMART_RTL, sizeof(log_Bat_smart_rtl), \
-	  "BATSMRTL", BAT_SMATR_RTL_FMT,BAT_SMATR_RTL_LABELS,BAT_SMATR_RTL_UNITS,BAT_SMATR_RTL_MULTS },
+	  "BATSMRTL", BAT_SMATR_RTL_FMT,BAT_SMATR_RTL_LABELS,BAT_SMATR_RTL_UNITS,BAT_SMATR_RTL_MULTS }
 
 
 // messages for more advanced boards

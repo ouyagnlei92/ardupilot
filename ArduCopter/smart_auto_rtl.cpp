@@ -5,8 +5,9 @@
  *      Author: JoytonAwesome
  */
 
-#include "smart_auto_rtl.h"
+#include "Copter.h"
 
+#include "smart_auto_rtl.h"
 
 SmartAutoRTL::SmartAutoRTL(void){
 	_mv_count = 0;
@@ -134,7 +135,7 @@ void SmartAutoRTL::horUserMahCal(void){    //水平飞行检测
 			float distance = 0.0;
 
 			curr_pos = copter.inertial_nav.get_position();
-			distance = copter.get_horizontal_distance_cm(curr_pos, _old_pos); /* 飞行位移 */
+			distance = get_horizontal_distance_cm(curr_pos, _old_pos); /* 飞行位移 */
 			_old_pos = curr_pos;
 
     		float curr_mah = copter.battery.consumed_mah(); /* 当前消耗电量 */
@@ -194,7 +195,7 @@ void SmartAutoRTL::horClimbUseMahCal(void){   //爬升或者水平飞行检测
 			float distance = 0.0;
 
 			curr_pos = copter.inertial_nav.get_position();
-			distance = copter.pv_get_horizontal_distance_cm(curr_pos, _old_pos); /* 飞行位移 */
+			distance = get_horizontal_distance_cm(curr_pos, _old_pos); /* 飞行位移 */
 			_old_pos = curr_pos;
 
 			float curr_alt = copter.barometer.get_altitude()*100;
@@ -321,7 +322,7 @@ void SmartAutoRTL::LiPoBatteryAutoRTL(void){
 	if(!copter.battery.has_current()) return;
 
 	//检测是否存在智能电池监控
-	if(copter._battery_type!=0) return;
+	if(_battery_type!=0) return;
 
 	//查看解锁状态，解锁，则运行电池监控程序，自动返航条件检测处理
 	if(copter.arming.is_armed()){

@@ -6,12 +6,12 @@
  */
 #pragma once
 
-
 class SmartAutoRTL{
-friend class Copter;
 
 public:
 	SmartAutoRTL(void);
+
+    	void update(void);
 
 	void smartBatteryAutoRTL(void);
 
@@ -80,7 +80,6 @@ private:
 
     control_mode_t _old_mode;
 
-    void update(void);
     void init(void);
     void climbUseMahCal(void);
     void horUserMahCal(void);
@@ -92,7 +91,5 @@ private:
 
 };
 
-#include "Copter.h"
-extern Copter copter;
 
 
