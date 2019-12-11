@@ -4,16 +4,14 @@
  *  Created on: 2019年12月8日
  *      Author: JoytonAwesome
  */
+#pragma once
 
-#ifndef ARDUCOPTER_SMART_AUTO_RTL_H_
-#define ARDUCOPTER_SMART_AUTO_RTL_H_
-
-#include "copter.h"
 
 class SmartAutoRTL{
+friend class Copter;
 
 public:
-	SmartAutoRTL( Copter* copter,  AP_BattMonitor* battery);
+	SmartAutoRTL(void);
 
 	void smartBatteryAutoRTL(void);
 
@@ -28,8 +26,6 @@ public:
 	}FLY_STATUS;
 
 private:
-	Copter* _pCopter;
-	AP_BattMonitor* _pBattery;
 
 	uint8_t _battery_type;
 
@@ -37,8 +33,8 @@ private:
 	float _pre_arm_mah;    		 //解锁之前消耗的电量
 	float _mah_speed_avr;  		 //平均消耗速度  mah/cm
 
-	const unsigned short vol[] = {2500, 3500, 3680, 3700, 3730, 3770, 3790, 3820, 3870, 3930, 4000, 4060, 4200};
-	const float vol_mah_pre[] =  {0,    0.05,  0.1,  0.15, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.0};
+	const unsigned short vol[13] = {2500, 3500, 3680, 3700, 3730, 3770, 3790, 3820, 3870, 3930, 4000, 4060, 4200};
+	const float vol_mah_pre[13] =  {0,    0.05,  0.1,  0.15, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.0};
 	                                      /* 0%   5%   10%  15%  20%  30%  40%  50%  60%  70%  80%  90%  100%*/
 
 	unsigned short _mv[5];      //上电采样五次电压
@@ -96,5 +92,7 @@ private:
 
 };
 
+#include "Copter.h"
+extern Copter copter;
 
-#endif /* ARDUCOPTER_SMART_AUTO_RTL_H_ */
+

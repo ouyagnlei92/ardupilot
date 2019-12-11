@@ -1072,7 +1072,7 @@ struct PACKED log_DSTL {
     float D;
 };
 
-/* Ê±¼ä£¬ µçÑ¹£¬ µ±Ç°Ê£ÓàÈÝÁ¿£¬ µç³ØÀàÐÍ£¬ ÅÀÉý¸ß¶ÈÏûºÄµçÁ¿£¬ Ë®Æ½Æ½¾ùÏûºÄµçÁ¿£¬ ·µ»ØÐèÒªµçÁ¿£¬»Ø¼Ò¾àÀë ,µ±Ç°¸ß¶È*/
+/* Ê±\BCä£¬ \B5\E7Ñ¹\A3\AC \B5\B1Ç°Ê£\D3\E0\C8\DD\C1\BF\A3\AC \B5\E7\B3\D8\C0\E0\D0Í£\AC \C5\C0\C9\FD\B8ß¶\C8\CF\FB\BAÄµ\E7\C1\BF\A3\AC Ë®Æ½Æ½\BE\F9\CF\FB\BAÄµ\E7\C1\BF\A3\AC \B7\B5\BB\D8\D0\E8Òª\B5\E7\C1\BF\A3\AC\BBØ¼Ò¾\E0\C0\EB ,\B5\B1Ç°\B8ß¶\C8*/
 struct log_Bat_smart_rtl {
 	LOG_PACKET_HEADER;
 	uint64_t time_us;
@@ -1085,7 +1085,7 @@ struct log_Bat_smart_rtl {
 	float returnToHomeMah;
 	float homeDistance;
 	float currentAlt;
-}
+};
 
 // #endif // SBP_HW_LOGGING
 
@@ -1175,7 +1175,7 @@ struct log_Bat_smart_rtl {
 #define ARSP_UNITS "snPOPP---"
 #define ARSP_MULTS "F00B00---"
 
-/* Ê±¼ä£¬ µçÑ¹£¬ Ê£ÓàÈÝÁ¿£¬ µç³ØÀàÐÍ£¬ ÅÀÉý¸ß¶ÈÏûºÄµçÁ¿£¬ Ë®Æ½Æ½¾ùÏûºÄµçÁ¿£¬ ·µ»ØÐèÒªµçÁ¿£¬»Ø¼Ò¾àÀë ,µ±Ç°¸ß¶È*/
+/* Ê±\BCä£¬ \B5\E7Ñ¹\A3\AC Ê£\D3\E0\C8\DD\C1\BF\A3\AC \B5\E7\B3\D8\C0\E0\D0Í£\AC \C5\C0\C9\FD\B8ß¶\C8\CF\FB\BAÄµ\E7\C1\BF\A3\AC Ë®Æ½Æ½\BE\F9\CF\FB\BAÄµ\E7\C1\BF\A3\AC \B7\B5\BB\D8\D0\E8Òª\B5\E7\C1\BF\A3\AC\BBØ¼Ò¾\E0\C0\EB ,\B5\B1Ç°\B8ß¶\C8*/
 #define BAT_SMATR_RTL_LABELS "TimeUS,Volt,C,FS,Type,Verm,horAvrm,RTmah,HD,alt"
 #define BAT_SMATR_RTL_FMT    "QffBBfffff"
 #define BAT_SMATR_RTL_UNITS  "svvvvvvvvv"
@@ -1593,7 +1593,7 @@ enum LogMessages : uint8_t {
     LOG_ASP2_MSG,
     LOG_PERFORMANCE_MSG,
     _LOG_LAST_MSG_,
-	LOG_BAT_SMART_RTL,   //ÖÇÄÜµç³Ø×Ô¶¯·µº½log¼ÇÂ¼
+	LOG_BAT_SMART_RTL,   //\D6\C7\C4Üµ\E7\B3\D8\D7Ô¶\AF\B7\B5\BA\BDlog\BC\C7Â¼
 };
 
 static_assert(_LOG_LAST_MSG_ <= 255, "Too many message formats");

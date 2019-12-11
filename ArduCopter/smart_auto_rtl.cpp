@@ -8,9 +8,7 @@
 #include "smart_auto_rtl.h"
 
 
-SmartAutoRTL::SmartAutoRTL( Copter* copter,  AP_BattMonitor* battery){
-	this->_pCopter = copter;
-	this->_pBattery = battery;
+SmartAutoRTL::SmartAutoRTL(void){
 	_mv_count = 0;
 	_fly_status = SmartAutoRTL::DISARMING;
 	_system_init = false;
@@ -20,21 +18,21 @@ SmartAutoRTL::SmartAutoRTL( Copter* copter,  AP_BattMonitor* battery){
 /* 100ms调用一次 */
 void SmartAutoRTL::update(void){
 
-	if(_pCopter->ap.initialised&&!_system_init){
+	if(copter.ap.initialised&&!_system_init){
 		_system_init = true;
-		_battery_type = _pCopter->g2.bat_type;
+		_battery_type = copter.g2.bat_type;
 	}
 
-	if(_pCopter->control_mode==RTL || _old_mode==RTL || !_pCopter->position_ok()) return;
+	if(copter.control_mode==RTL || _old_mode==RTL || !copter.position_ok()) return;
 
-	if(!_pCopter->flightmode->requires_GPS()) return;     //当前飞行模式不需要GPS
+	if(!copter.flightmode->requires_GPS()) return;     //当前飞行模式不需要GPS
 
-	if(_pCopter->mode_auto.mode()==Auto_RTL || _pCopter->mode_auto.mode()==Auto_Land) return;
+	if(copter.mode_auto.mode()==Auto_RTL || copter.mode_auto.mode()==Auto_Land) return;
 
 
-	if(_pCopter->control_mode!=_old_mode) _old_mode=_pCopter->control_mode;
+	if(copter.control_mode!=_old_mode) _old_mode=copter.control_mode;
 
-	if(_pCopter->g2.bat_auto_rtl){    //开启自动检测电池电量
+	if(copter.g2.bat_auto_rtl){    //开启自动检测电池电量
 		if(_battery_type==0){  //0-Lipo电池
 			LiPoBatteryAutoRTL();
 
@@ -78,7 +76,7 @@ void SmartAutoRTL::climbUseMahCal(void){   //爬升检测
 		}
 		if(_climbing && (AP_HAL::millis()-_old_climb_time)>=500){  //持续500ms爬升
 			_climb_start = true;  //爬升开始
-			_old_use_mah = _pBattery->consumed_mah();  //获取已经消耗的能量
+			_old_use_mah = copter.battery.consumed_mah();  //获取已经消耗的能量
 			_fly_status = SmartAutoRTL::CLIMB;
 			_old_pos_ms = AP_HAL::millis();
 
@@ -94,7 +92,7 @@ void SmartAutoRTL::climbUseMahCal(void){   //爬升检测
 	}
 
 	if(_climb_start && AP_HAL::millis()-_old_pos_ms>=1000){
-		float cu =  _pBattery->consumed_mah();
+		float cu =  copter.battery.consumed_mah();
     	if(!_up_flag){ //不是爬升
     		_verUseMah -= cu-_old_use_mah;
     	}else if(_up_flag){ //爬升中，爬升消耗的总电量
@@ -113,8 +111,8 @@ void SmartAutoRTL::horUserMahCal(void){    //水平飞行检测
 		}
 		if(_horMoving && (AP_HAL::millis()-_old_hormove_time)>=500){  //持续500ms爬升
 			_hormove_start = true;  //爬升开始
-			_old_use_mah = _pBattery->consumed_mah();  //获取当前使用容量
-			_old_pos = _pCopter->inertial_nav.get_position();   //获取开始位置
+			_old_use_mah = copter.battery.consumed_mah();  //获取当前使用容量
+			_old_pos = copter.inertial_nav.get_position();   //获取开始位置
 			_old_pos_ms = AP_HAL::millis();
 			_fly_status = SmartAutoRTL::HOR_MOVING;
 
@@ -131,15 +129,15 @@ void SmartAutoRTL::horUserMahCal(void){    //水平飞行检测
 	}
 
 	if(_hormove_start){
-		if(AP_HAL::millis()-_old_pos_ms>=1000 && _pCopter->position_ok() && _pCopter->control_mode!=RTL){   //1S计算一次平均值
+		if(AP_HAL::millis()-_old_pos_ms>=1000 && copter.position_ok() && copter.control_mode!=RTL){   //1S计算一次平均值
     		Vector3f  curr_pos;
 			float distance = 0.0;
 
-			curr_pos = _pCopter->inertial_nav.get_position();
-			distance = _pCopter->get_horizontal_distance_cm(curr_pos, _old_pos); /* 飞行位移 */
+			curr_pos = copter.inertial_nav.get_position();
+			distance = copter.get_horizontal_distance_cm(curr_pos, _old_pos); /* 飞行位移 */
 			_old_pos = curr_pos;
 
-    		float curr_mah = _pBattery->consumed_mah(); /* 当前消耗电量 */
+    		float curr_mah = copter.battery.consumed_mah(); /* 当前消耗电量 */
     		float mah_speed = (curr_mah-_old_use_mah)/distance;     /*mah/cm*/
     		_old_use_mah = curr_mah;
 
@@ -171,10 +169,10 @@ void SmartAutoRTL::horClimbUseMahCal(void){   //爬升或者水平飞行检测
 		}
 		if(_horclimbing && (AP_HAL::millis()-_old_horclimb_time)>=500){  //持续200ms爬升
 			_horclimbe_start = true;  //爬升开始
-			_old_use_mah = _pBattery->consumed_mah();  //获取当前容量
-			_old_pos = _pCopter->inertial_nav.get_position();   //获取开始位置
+			_old_use_mah = copter.battery.consumed_mah();  //获取当前容量
+			_old_pos = copter.inertial_nav.get_position();   //获取开始位置
 			_old_pos_ms = AP_HAL::millis();
-			_old_alt = _pCopter->barometer.get_altitude()*100;
+			_old_alt = copter.barometer.get_altitude()*100;
 			_fly_status = SmartAutoRTL::HOR_CLIMB;
 
 			//清楚其他标志
@@ -191,16 +189,16 @@ void SmartAutoRTL::horClimbUseMahCal(void){   //爬升或者水平飞行检测
 	}
 
 	if(_horclimbe_start){
-    	if(AP_HAL::millis()-_old_pos_ms>=1000 && _pCopter->position_ok() && _pCopter->control_mode!=RTL){   //1S计算一次平均值
+    	if(AP_HAL::millis()-_old_pos_ms>=1000 && copter.position_ok() && copter.control_mode!=RTL){   //1S计算一次平均值
 			Vector3f  curr_pos;
 			float distance = 0.0;
 
-			curr_pos = _pCopter->inertial_nav.get_position();
-			distance = _pCopter->pv_get_horizontal_distance_cm(curr_pos, _old_pos); /* 飞行位移 */
+			curr_pos = copter.inertial_nav.get_position();
+			distance = copter.pv_get_horizontal_distance_cm(curr_pos, _old_pos); /* 飞行位移 */
 			_old_pos = curr_pos;
 
-			float curr_alt = _pCopter->barometer.get_altitude()*100;
-			float curr_mah = _pBattery->consumed_mah(); /* 当前消耗电量 */
+			float curr_alt = copter.barometer.get_altitude()*100;
+			float curr_mah = copter.battery.consumed_mah(); /* 当前消耗电量 */
 			float diffalt = curr_alt-_old_alt;
 			float mah_speed = (curr_mah-_old_use_mah)/(distance+fabs(diffalt));     /*mah/cm*/
 			_old_use_mah = curr_mah;
@@ -250,21 +248,21 @@ void SmartAutoRTL::stopUseMahCal(void){   //悬停检测
 			_horclimbe_start = false;
 			_horclimbing = false;
 
-			gcs().send_text(MAV_SEVERITY_WARNING, "Stop Move! Used %.1fmah", _pBattery->consumed_mah());
+			gcs().send_text(MAV_SEVERITY_WARNING, "Stop Move! Used %.1fmah", copter.battery.consumed_mah());
 
 		}
 	}
 }
 
 void SmartAutoRTL::lowPowerRTL(void){
-	_to_home_distance = _pCopter->home_distance(); /* 当前位置离回家点位置距离 */
+	_to_home_distance = copter.home_distance(); /* 当前位置离回家点位置距离 */
 
 	_to_home_mah = _to_home_distance*_hor_mah_speed_avr + _verUseMah + _verUseMah*0.10;      /* 计算以当前状态的耗电量返回到回家点需要的电量 */
 
 	/* 判断容量是否能返回，保留电量10%， 爬升和下降电量， 下降电量稍微大于爬升电量，多取10% */
-	if(_to_home_mah>=(_pre_arm_mah-_pBattery->pack_capacity_mah()*_pCopter->g2.bat_auto_rtl_keep_cap-_pBattery->consumed_mah()))	{
-		gcs().send_text(MAV_SEVERITY_INFO, "BATTERY FAILSAFE RTL! Used %.1fmah", _pBattery->consumed_mah());
-		_pCopter->set_mode(RTL, MODE_REASON_BATTERY_FAILSAFE);
+	if(_to_home_mah>=(_pre_arm_mah-copter.battery.pack_capacity_mah()*copter.g2.bat_auto_rtl_keep_cap-copter.battery.consumed_mah()))	{
+		gcs().send_text(MAV_SEVERITY_INFO, "BATTERY FAILSAFE RTL! Used %.1fmah", copter.battery.consumed_mah());
+		copter.set_mode(RTL, MODE_REASON_BATTERY_FAILSAFE);
 		return;
 	}
 }
@@ -276,22 +274,22 @@ void SmartAutoRTL::lowPowerRTL(void){
 void SmartAutoRTL::smartBatteryAutoRTL(void){
 
 	//检测电池检测器是否存在，自动返航开关是否开启
-	if(!_pBattery->has_current()) return;
+	if(!copter.battery.has_current()) return;
 
 	//检测是否存在智能电池监控
-	if(_pBattery->get_type()!=AP_BattMonitor_Params::BattMonitor_TYPE_MAXELL) return;
+	if(copter.battery.get_type()!=AP_BattMonitor_Params::BattMonitor_TYPE_MAXELL) return;
 
 	//查看解锁状态，解锁，则运行电池监控程序，自动返航条件检测处理
-	if(_pCopter->arming.is_armed()){
+	if(copter.arming.is_armed()){
 		if(!_armed){
 			init();
-			_pre_arm_mah = _pBattery->remaining_mah();   //获取解锁时候的剩餘容量
+			_pre_arm_mah = copter.battery.remaining_mah();   //获取解锁时候的剩餘容量
 			_armed = true;
 			gcs().send_text(MAV_SEVERITY_WARNING, "Armed! Smart Battery Remaining %.1fmah, type:%d", _pre_arm_mah, _battery_type);
 		}
 		//检测爬升
-		float climb_rate = _pCopter->inertial_nav.get_velocity_z(); //获取爬升速度 cm/s
-		float groundSpeed = _pCopter->ahrs.groundspeed()*100;    //获取当前地速   cm/s
+		float climb_rate = copter.inertial_nav.get_velocity_z(); //获取爬升速度 cm/s
+		float groundSpeed = copter.ahrs.groundspeed()*100;    //获取当前地速   cm/s
 
 	    _up_flag = climb_rate>=0 ? true:false;				     //爬升方向  true为向上
 
@@ -320,16 +318,16 @@ void SmartAutoRTL::smartBatteryAutoRTL(void){
 void SmartAutoRTL::LiPoBatteryAutoRTL(void){
 
 	//检测电池检测器是否存在，自动返航开关是否开启
-	if(!_pBattery->has_current()) return;
+	if(!copter.battery.has_current()) return;
 
 	//检测是否存在智能电池监控
-	if(_pCopter->_battery_type!=0) return;
+	if(copter._battery_type!=0) return;
 
 	//查看解锁状态，解锁，则运行电池监控程序，自动返航条件检测处理
-	if(_pCopter->arming.is_armed()){
+	if(copter.arming.is_armed()){
 		if(!_mv_success) /* 检测是否完成  */
 		{
-			_mv[_mv_count] = (unsigned short)(_pBattery->voltage()*1000.0/(_pCopter->g2.bat_cell));
+			_mv[_mv_count] = (unsigned short)(copter.battery.voltage()*1000.0/(copter.g2.bat_cell));
 			++_mv_count;
 			if(5==_mv_count) /* 采样五次完成 */
 			{
@@ -362,21 +360,21 @@ void SmartAutoRTL::LiPoBatteryAutoRTL(void){
 					gcs().send_text(MAV_SEVERITY_INFO, "No Power");
 				}else if((sizeof(vol)/sizeof(unsigned short)-1)==index1)
 				{
-					_pre_arm_mah = _pBattery->pack_capacity_mah();
+					_pre_arm_mah = copter.battery.pack_capacity_mah();
 					gcs().send_text(MAV_SEVERITY_INFO, "Power Full");
 				}else
 				{
-					_pre_arm_mah = (((vol_mah_pre[index2]-vol_mah_pre[index1])/(vol[index2]-vol[index1]))*(avr-vol[index1]))*_pBattery->pack_capacity_mah(); /* 计算上电时的电量 */
+					_pre_arm_mah = (((vol_mah_pre[index2]-vol_mah_pre[index1])/(vol[index2]-vol[index1]))*(avr-vol[index1]))*copter.battery.pack_capacity_mah(); /* 计算上电时的电量 */
 					gcs().send_text(MAV_SEVERITY_INFO, "Armed! Lipo Remaining %.1fmah", _pre_arm_mah);
 				}
-				_old_mah = _pBattery->consumed_mah();
+				_old_mah = copter.battery.consumed_mah();
 				init();
 			}
 		}
 
 		//检测爬升
-		float climb_rate = _pCopter->inertial_nav.get_velocity_z(); //获取爬升速度 cm/s
-		float groundSpeed = _pCopter->ahrs.groundspeed()*100;    //获取当前地速   cm/s
+		float climb_rate = copter.inertial_nav.get_velocity_z(); //获取爬升速度 cm/s
+		float groundSpeed = copter.ahrs.groundspeed()*100;    //获取当前地速   cm/s
 
 	    _up_flag = climb_rate>=0 ? true:false;				     //爬升方向  true为向上
 
@@ -408,15 +406,15 @@ void SmartAutoRTL::writeLog(void){
 	struct log_Bat_smart_rtl bat_smart{
 		LOG_PACKET_HEADER_INIT(LOG_BAT_SMART_RTL),
 		time_us	:	AP_HAL::micros64(),
-		vol : _pBattery->voltage(),
-		currentmah : _pBattery->remaining_mah(),
+		vol : copter.battery.voltage(),
+		currentmah : copter.battery.remaining_mah(),
 		flyStatus : _fly_status,
 		type : _battery_type,
 		vertmah : _verUseMah,
 		hormahAvr : _hor_mah_speed_avr,
 		returnToHomeMah : _to_home_mah,
 		homeDistance : _to_home_distance,
-		currentAlt : _pCopter->barometer.get_altitude(),
+		currentAlt : copter.barometer.get_altitude(),
 	};
 
 	DataFlash_Class::instance()->WriteBlock(&bat_smart, sizeof(bat_smart));

@@ -83,7 +83,6 @@
 #include <AP_Arming/AP_Arming.h>
 #include <AP_SmartRTL/AP_SmartRTL.h>
 #include <AP_TempCalibration/AP_TempCalibration.h>
-#include  "smart_auto_rtl.h"
 
 // Configuration
 #include "defines.h"
@@ -180,6 +179,8 @@
 #include <SITL/SITL.h>
 #endif
 
+#include "smart_auto_rtl.h"
+
 
 class Copter : public AP_HAL::HAL::Callbacks {
 public:
@@ -206,7 +207,7 @@ public:
 private:
     static const AP_FWVersion fwver;
 
-    SmartAutoRTL smartAutoRTL{this, this->battery};
+    Copter::SmartAutoRTL smartAutoRTL{this, this->battery};
 
     // key aircraft parameters passed to multiple libraries
     AP_Vehicle::MultiCopter aparm;
