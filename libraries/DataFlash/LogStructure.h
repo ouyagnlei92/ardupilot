@@ -1178,6 +1178,7 @@ struct log_Bat_smart_rtl {
 #define BAT_SMATR_RTL_LABELS "TimeUS,Volt,C,FS,Type,Verm,horAvrm,RTmah,HD,alt"
 #define BAT_SMATR_RTL_FMT    "QffBBfffff"
 #define BAT_SMATR_RTL_UNITS  "svvvvvvvvv"
+#define BAT_SMATR_RTL_MULTS  "F000000000"
 
 /*
 Format characters in the format string for binary log messages
