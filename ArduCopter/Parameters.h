@@ -361,14 +361,22 @@ public:
         k_param_DataFlash = 253, // 253 - Logging Group
 
         // 254,255: reserved
-
+/*
 		k_param_bat_auto_rtl = 258,
 		k_param_bat_type,
 		k_param_bat_cell,
-		k_param_bat_auto_rtl_keep_cap,
+		k_param_bat_auto_rtl_keep_cap,*/
         // the k_param_* space is 9-bits in size
         // 511: reserved
     };
+ /*
+    AP_Int8 bat_auto_rtl;
+
+    AP_Int8 bat_type;
+
+    AP_Int8 bat_cell;
+
+    AP_Float bat_auto_rtl_keep_cap;*/
 
     AP_Int16        format_version;
 
@@ -576,14 +584,6 @@ public:
 
     // Land alt final stage
     AP_Int16 land_alt_low;
-
-    AP_Int8 bat_auto_rtl;
-
-    AP_Int8 bat_type;
-
-    AP_Int8 bat_cell;
-
-    AP_Float bat_auto_rtl_keep_cap;
 
 #if TOY_MODE_ENABLED == ENABLED
     ToyMode toy_mode;
