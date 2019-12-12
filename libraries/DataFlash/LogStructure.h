@@ -1072,7 +1072,7 @@ struct PACKED log_DSTL {
     float D;
 };
 
-/* ʱ\BC䣬 \B5\E7ѹ\A3\AC \B5\B1ǰʣ\D3\E0\C8\DD\C1\BF\A3\AC \B5\E7\B3\D8\C0\E0\D0ͣ\AC \C5\C0\C9\FD\B8߶\C8\CF\FB\BAĵ\E7\C1\BF\A3\AC ˮƽƽ\BE\F9\CF\FB\BAĵ\E7\C1\BF\A3\AC \B7\B5\BB\D8\D0\E8Ҫ\B5\E7\C1\BF\A3\AC\BBؼҾ\E0\C0\EB ,\B5\B1ǰ\B8߶\C8*/
+/* 时\BC洌� \B5\E7压\A3\AC \B5\B1前剩\D3\E0\C8\DD\C1\BF\A3\AC \B5\E7\B3\D8\C0\E0\D0停\AC \C5\C0\C9\FD\B8叨\C8\CF\FB\BA牡\E7\C1\BF\A3\AC 水平平\BE\F9\CF\FB\BA牡\E7\C1\BF\A3\AC \B7\B5\BB\D8\D0\E8要\B5\E7\C1\BF\A3\AC\BB丶揖\E0\C0\EB ,\B5\B1前\B8叨\C8*/
 struct log_Bat_smart_rtl {
 	LOG_PACKET_HEADER;
 	uint64_t time_us;
@@ -1175,7 +1175,7 @@ struct log_Bat_smart_rtl {
 #define ARSP_UNITS "snPOPP---"
 #define ARSP_MULTS "F00B00---"
 
-/* ʱ\BC䣬 \B5\E7ѹ\A3\AC ʣ\D3\E0\C8\DD\C1\BF\A3\AC \B5\E7\B3\D8\C0\E0\D0ͣ\AC \C5\C0\C9\FD\B8߶\C8\CF\FB\BAĵ\E7\C1\BF\A3\AC ˮƽƽ\BE\F9\CF\FB\BAĵ\E7\C1\BF\A3\AC \B7\B5\BB\D8\D0\E8Ҫ\B5\E7\C1\BF\A3\AC\BBؼҾ\E0\C0\EB ,\B5\B1ǰ\B8߶\C8*/
+/* 时\BC洌� \B5\E7压\A3\AC 剩\D3\E0\C8\DD\C1\BF\A3\AC \B5\E7\B3\D8\C0\E0\D0停\AC \C5\C0\C9\FD\B8叨\C8\CF\FB\BA牡\E7\C1\BF\A3\AC 水平平\BE\F9\CF\FB\BA牡\E7\C1\BF\A3\AC \B7\B5\BB\D8\D0\E8要\B5\E7\C1\BF\A3\AC\BB丶揖\E0\C0\EB ,\B5\B1前\B8叨\C8*/
 #define BAT_SMATR_RTL_LABELS "TimeUS,Volt,C,FS,Type,Verm,horAvrm,RTmah,HD,alt"
 #define BAT_SMATR_RTL_FMT    "QffBBfffff"
 #define BAT_SMATR_RTL_UNITS  "svvvvvvvvv"
@@ -1593,7 +1593,7 @@ enum LogMessages : uint8_t {
     LOG_ASP2_MSG,
     LOG_PERFORMANCE_MSG,
     _LOG_LAST_MSG_,
-	LOG_BAT_SMART_RTL,   //\D6\C7\C4ܵ\E7\B3\D8\D7Զ\AF\B7\B5\BA\BDlog\BC\C7¼
+	LOG_BAT_SMART_RTL,   //\D6\C7\C4艿\E7\B3\D8\D7远\AF\B7\B5\BA\BDlog\BC\C7录
 };
 
 static_assert(_LOG_LAST_MSG_ <= 255, "Too many message formats");

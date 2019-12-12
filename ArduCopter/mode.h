@@ -3,7 +3,6 @@
 // this class is #included into the Copter:: namespace
 
 class Mode {
-    friend class SmartAutoRTL;
     friend class Copter;
     friend class AP_Arming_Copter;
     friend class ToyMode;
