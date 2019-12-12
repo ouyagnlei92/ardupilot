@@ -1013,7 +1013,7 @@ private:
     // mode.cpp
     Mode *mode_from_mode_num(const uint8_t mode);
     void exit_mode(Mode *&old_flightmode, Mode *&new_flightmode);
-
+/*
     //智能电池智能返航定义
     typedef enum FLY_STATUS{
     		DISARMING,
@@ -1031,7 +1031,7 @@ private:
 
 	const unsigned short vol[13] = {2500, 3500, 3680, 3700, 3730, 3770, 3790, 3820, 3870, 3930, 4000, 4060, 4200};
 	const float vol_mah_pre[13] =  {0,    0.05,  0.1,  0.15, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.0};
-										  /* 0%   5%   10%  15%  20%  30%  40%  50%  60%  70%  80%  90%  100%*/
+										  /* 0%   5%   10%  15%  20%  30%  40%  50%  60%  70%  80%  90%  100%*//*
 
 	unsigned short _mv[5];      //上电采样五次电压
 	uint8_t _mv_count; //上电采样五次电压次数
@@ -1087,7 +1087,7 @@ private:
 	void stopUseMahCal(void);
 	void lowPowerRTL(void);
 
-	void writeLog(void);
+	void writeLog(void);*/
 
 public:
     void mavlink_delay_cb();    // GCS_Mavlink.cpp

@@ -47,6 +47,7 @@ Copter::Copter(void)
 	_old_mode = STABILIZE;
 }
 
+/*
 // 100ms调用一次
 void Copter::batterySmartRTLUpdate(void){
 
@@ -298,12 +299,12 @@ void Copter::lowPowerRTL(void){
 		set_mode(RTL, MODE_REASON_BATTERY_FAILSAFE);
 		return;
 	}
-}
+}*/
 
 
 /*    带有智能电池的返航
  * 分四种种情况:  1、只爬高或降落，不水平移动    2、只水平移动，不爬高     3、既水平移动又爬高     4、悬停
- */
+ *//*
 void Copter::smartBatteryAutoRTL(void){
 
 	//检测电池检测器是否存在，自动返航开关是否开启
@@ -343,11 +344,11 @@ void Copter::smartBatteryAutoRTL(void){
 		_armed = false;
 	}
 
-}
+}*/
 
 /*   18650计算自动返航
  * 分四种种情况:  1、只爬高或降落，不水平移动    2、只水平移动，不爬高     3、既水平移动又爬高     4、悬停
- */
+ *//*
 void Copter::LiPoBatteryAutoRTL(void){
 
 	//检测电池检测器是否存在，自动返航开关是否开启
@@ -451,7 +452,7 @@ void Copter::writeLog(void){
 	};
 
 	DataFlash_Class::instance()->WriteBlock(&bat_smart, sizeof(bat_smart));
-}
+}*/
 
 
 Copter copter;
