@@ -363,8 +363,18 @@ public:
         // 254,255: reserved
 
         // the k_param_* space is 9-bits in size
+
+		k_param_bat_auto_rtl = 258,
+		k_param_bat_type,
+		k_param_bat_cell,
+		k_param_bat_auto_rtl_keep_cap,
         // 511: reserved
     };
+
+    AP_Int8 bat_auto_rtl;
+	AP_Int8 bat_type;
+	AP_Int8 bat_cell;
+	AP_Float bat_auto_rtl_keep_cap;
 
     AP_Int16        format_version;
 
