@@ -1071,10 +1071,11 @@ private:
 
 	uint8_t _fly_status;
 
+	bool _open_rtl;
+	bool _set_error;
+	uint32_t _error_time;  //悬停开始时间
 	bool _armed;
 	bool _system_init;
-
-	control_mode_t _old_mode;
 
 	void batterySmartRTLUpdate(void);
 	void smartBatteryAutoRTL(void);
