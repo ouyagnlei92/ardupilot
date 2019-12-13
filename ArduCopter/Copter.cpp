@@ -50,6 +50,7 @@ void Copter::batterySmartRTLUpdate(void){
 	if(ap.initialised && !_system_init){
 		_system_init = true;
 		_battery_type = g.bat_type;
+		gcs().send_text(MAV_SEVERITY_WARNING, "Batt SmartRTL Type: %d", _battery_type);
 	}
 
 	if(control_mode==RTL || _old_mode==RTL || !position_ok()) return;
@@ -438,16 +439,16 @@ void Copter::writeLog(void){
 		time_us	:	AP_HAL::micros64(),
 		vol : battery.voltage(),
 		currentmah : battery.remaining_mah(),
-		flyStatus : _fly_status,
-		type : _battery_type,
 		vertmah : _verUseMah,
 		hormahAvr : _hor_mah_speed_avr,
 		returnToHomeMah : _to_home_mah,
 		homeDistance : _to_home_distance,
 		currentAlt : barometer.get_altitude(),
+		flyStatus : _fly_status,
+		type : _battery_type,
 	};
 
-	DataFlash_Class::instance()->WriteBlock(&bat_smart, sizeof(bat_smart));
+	DataFlash.WriteCriticalBlock(&bat_smart, sizeof(bat_smart));
 }
 
 
