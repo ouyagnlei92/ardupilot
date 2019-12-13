@@ -465,5 +465,16 @@ void Copter::writeLog(void){
 	DataFlash.WriteCriticalBlock(&bat_smart, sizeof(bat_smart));
 }
 
+void Copter::switchModeMessage(control_mode_t mode, mode_reason_t reason){
+	uint8_t md;
+	if(mode==LAND) md = 8;
+	else if(mode==DRIFT) md = 9;
+	else if(mode<=CIRCLE) md = (uint8_t)mode;
+	else if(mode>=SPORT) md = (uint8_t)(mode-3);
+
+	gcs().send_text(MAV_SEVERITY_WARNING, "Mode:%s, Reason:%s", MODE_STRING[mode], MODE_REASON[(uint8_t)reason]);
+
+}
+
 
 Copter copter;

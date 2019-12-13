@@ -179,6 +179,33 @@
 #include <SITL/SITL.h>
 #endif
 
+const char MODE_STRING[][15]={
+		"STABILIZE", "ACRO", "ALT_HOLD", "AUTO", "GUIDED", "LOITER", "RTL", "CIRCLE",\
+		"LAND", "DRIFT",\
+		"SPORT", "FLIP", "AUTOTUNE", "POSHOLD", "BRAKE", "THROW", "AVOID_ADSB", "GUIDED_NOGPS", "SMART_RTL", "FLOWHOLD", "FOLLOW",
+};
+
+const char MODE_REASON[][22]={
+	    "UNKNOWN",
+	    "TX_COMMAND",
+	    "GCS_COMMAND",
+	    "RADIO_FAILSAFE",
+	    "BATTERY_FAILSAFE",
+	    "GCS_FAILSAFE",
+	    "EKF_FAILSAFE",
+	    "GPS_GLITCH",
+	    "MISSION_END",
+	    "THROTTLE_LAND_ESCAPE",
+	    "FENCE_BREACH",
+	    "TERRAIN_FAILSAFE",
+	    "BRAKE_TIMEOUT",
+	    "FLIP_COMPLETE",
+	    "AVOIDANCE",
+	    "AVOIDANCE_RECOVERY",
+	    "THROW_COMPLETE",
+	    "TERMINATE",
+	    "TMODE",
+};
 
 class Copter : public AP_HAL::HAL::Callbacks {
 public:
@@ -1089,6 +1116,9 @@ private:
 	void lowPowerRTL(void);
 
 	void writeLog(void);
+
+	//Ä£Ê½ÇÐ»»ÌáÐÑ
+	void switchModeMessage(control_mode_t mode, mode_reason_t reason);
 
 public:
     void mavlink_delay_cb();    // GCS_Mavlink.cpp
