@@ -42,7 +42,6 @@ Copter::Copter(void)
 	_mv_success = false;
 	_fly_status = Copter::DISARMING;
 	_system_init = false;
-	_old_mode = STABILIZE;
 	_log_record_time = 0;
     _hor_count = 0;
 	_open_rtl = false;
@@ -57,31 +56,32 @@ void Copter::batterySmartRTLUpdate(void){
 
 	if(ap.initialised && !_system_init){   //确定系统是否初始化
 		_system_init = true;
+		if(g.bat_auto_rtl) gcs().send_text(MAV_SEVERITY_WARNING, "Batt SmartRTL Type: %d", _battery_type);
+                else return;
 		_battery_type = g.bat_type;
-		gcs().send_text(MAV_SEVERITY_WARNING, "Batt SmartRTL Type: %d", _battery_type);
 	}
+
+       if(g.bat_auto_rtl==0) return;
 
 	if(!position_ok()) return;   //当前模式为RTL 或者 位置定位不满足
 
 	if(!flightmode->requires_GPS()) return;     //当前飞行模式不需要GPS
 
-	if(g.bat_auto_rtl){    //开启自动检测电池电量
-		if(_battery_type==0){  //0-Lipo电池
-			LiPoBatteryAutoRTL();
-		}else if(_battery_type==1){  //1-智能电池
-			smartBatteryAutoRTL();
-		}
+	if(_battery_type==0){  //0-Lipo电池
+		LiPoBatteryAutoRTL();
+	}else if(_battery_type==1){  //1-智能电池
+		smartBatteryAutoRTL();
+	}
 
-		++_log_record_time;
-		if(_log_record_time>=5){  //500ms保存一次log
-			_log_record_time = 0;
-			writeLog();
-		}
+	++_log_record_time;
+	if(_log_record_time>=5){  //500ms保存一次log
+		_log_record_time = 0;
+		writeLog();
+	}
 
-		if(_set_error && AP_HAL::millis()-_error_time>5000){   //电池参数设置错误，5秒提醒一次
-			_error_time = AP_HAL::millis();
-			gcs().send_text(MAV_SEVERITY_WARNING, "Batt SmartRTL Set Error!Type:%d, Cell:%d", _battery_type, g.bat_cell);
-		}
+	if(_set_error && AP_HAL::millis()-_error_time>5000){   //电池参数设置错误，5秒提醒一次
+		_error_time = AP_HAL::millis();
+		gcs().send_text(MAV_SEVERITY_WARNING, "Batt SmartRTL Set Error!Type:%d, Cell:%d", _battery_type, g.bat_cell);
 	}
 }
 
@@ -466,13 +466,13 @@ void Copter::writeLog(void){
 }
 
 void Copter::switchModeMessage(control_mode_t mode, mode_reason_t reason){
-	uint8_t md;
+	uint8_t md = 0;
 	if(mode==LAND) md = 8;
 	else if(mode==DRIFT) md = 9;
 	else if(mode<=CIRCLE) md = (uint8_t)mode;
 	else if(mode>=SPORT) md = (uint8_t)(mode-3);
 
-	gcs().send_text(MAV_SEVERITY_WARNING, "Mode:%s, Reason:%s", MODE_STRING[mode], MODE_REASON[(uint8_t)reason]);
+	gcs().send_text(MAV_SEVERITY_WARNING, "Mode:%s, Reason:%s", MODE_STRING[md], MODE_REASON[(uint8_t)reason]);
 
 }
 
