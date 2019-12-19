@@ -23,8 +23,7 @@
 #include "AP_GPS.h"
 #include "GPS_Backend.h"
 
-#define JOYTON_GPS_CONFIG  "LOG EVENTALLA ONCHANGED\r\n" "CONFIG EVENT ENABLE NEGATIVE 20\r\n" \
-	"gpgga com1 0.2\r\n" "gprmc com1 0.2\r\n" "gpvtg com1 0.2\r\n" "saveconfig\r\n"
+#define JOYTON_GPS_CONFIG  "LOG EVENTALLA ONCHANGED\r\n""CONFIG EVENT ENABLE NEGATIVE 20\r\n""gpgga com1 0.2\r\n""gprmc com1 0.2\r\n""gpvtg com1 0.2\r\n""saveconfig\r\n"
 
 /// NMEA parser
 ///
