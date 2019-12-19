@@ -339,6 +339,7 @@ void Copter::do_aux_switch_function(int8_t ch_function, uint8_t ch_flag)
                     if (mission.add_cmd(cmd)) {
                         // log event
                         Log_Write_Event(DATA_SAVEWP_ADD_WP);
+                        gcs().send_text(MAV_SEVERITY_INFO, "Add WP: TakeOff-%.2fm", cmd.content.location.alt/100.0);
                     }
                 }
 
@@ -348,9 +349,11 @@ void Copter::do_aux_switch_function(int8_t ch_function, uint8_t ch_flag)
                 // if throttle is above zero, create waypoint command
                 if (channel_throttle->get_control_in() > 0) {
                     cmd.id = MAV_CMD_NAV_WAYPOINT;
+                    gcs().send_text(MAV_SEVERITY_INFO, "Add WP POS: Alt=%.2fm", cmd.content.location.alt/100.0);
                 } else {
                     // with zero throttle, create LAND command
                     cmd.id = MAV_CMD_NAV_LAND;
+                    gcs().send_text(MAV_SEVERITY_INFO, "Add WP LAND");
                 }
 
                 // save command
