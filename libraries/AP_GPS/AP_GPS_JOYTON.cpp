@@ -33,6 +33,7 @@
 #include <stdlib.h>
 
 #include "AP_GPS_JOYTON.h"
+#include "AP_GPS.h"
 
 #include <GCS_MAVLink/GCS.h>
 
@@ -56,7 +57,6 @@ AP_GPS_JOYTON::AP_GPS_JOYTON(AP_GPS &_gps, AP_GPS::GPS_State &_state, AP_HAL::UA
     // this guarantees that _term is always nul terminated
     memset(_term, 0, sizeof(_term));
     eventa_init(&_eventa);
-    _camera_feedback_count = 0;
 }
 
 bool AP_GPS_JOYTON::read(void)
@@ -80,9 +80,9 @@ bool AP_GPS_JOYTON::read(void)
             parsed = true;
         }
         if( EVENT_END==eventa_parse(&_eventa, c) ){
-        	++_camera_feedback_count;    //have the camera feedback count
+        	++AP::gps()._camera_feedback_count;    //have the camera feedback count
         	//send GCS
-        	gcs().send_text(MAV_SEVERITY_INFO, "Photo:%d", _camera_feedback_count);
+        	gcs().send_text(MAV_SEVERITY_INFO, "Photo:%d", AP::gps()._camera_feedback_count);
         }
     }
     return parsed;

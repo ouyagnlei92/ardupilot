@@ -157,7 +157,6 @@ private:
 	void eventa_init(eventa* event);
 	event_status eventa_parse(eventa* event, char c);
 
-    uint16_t _camera_feedback_count = 0;
     eventa _eventa;
 
 };

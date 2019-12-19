@@ -274,6 +274,7 @@ AP_GPS::AP_GPS()
         AP_HAL::panic("AP_GPS must be singleton");
     }
     _singleton = this;
+   _camera_feedback_count = 0;
 }
 
 /// Startup initialisation.
@@ -554,7 +555,7 @@ void AP_GPS::detect_instance(uint8_t instance)
         else if ((_type[instance] == GPS_TYPE_AUTO || _type[instance] == GPS_TYPE_ERB) &&
                  AP_GPS_ERB::_detect(dstate->erb_detect_state, data)) {
             new_gps = new AP_GPS_ERB(*this, state[instance], _port[instance]);
-        } else if (_type[instance] == GPS_TYPE_NMEA &&
+        }else if (_type[instance] == GPS_TYPE_NMEA &&
                    AP_GPS_NMEA::_detect(dstate->nmea_detect_state, data)) {
             new_gps = new AP_GPS_NMEA(*this, state[instance], _port[instance]);
         }else if(_type[instance] ==GPS_TYPE_JOYTON &&
@@ -563,14 +564,16 @@ void AP_GPS::detect_instance(uint8_t instance)
      	//send joyton gps config
      	int16_t space = _port[instance]->txspace();
      	if (space > sizeof(JOYTON_GPS_CONFIG)-1) space = sizeof(JOYTON_GPS_CONFIG)-1;
-     	uint8_t* config = JOYTON_GPS_CONFIG;
+     	uint8_t* config = (uint8_t*)JOYTON_GPS_CONFIG;
      	while (space > 0) {
 				_port[instance]->write(*config);
 				config++;
 				space--;
      	}
      	gcs().send_text(MAV_SEVERITY_INFO, "Joyton GPS Configured!");
+	}
     }
+
 
 found_gps:
     if (new_gps != nullptr) {

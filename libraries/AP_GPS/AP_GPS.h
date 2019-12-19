@@ -419,6 +419,8 @@ public:
     // returns true if all GPS instances have passed all final arming checks/state changes
     bool prepare_for_arming(void);
 
+    uint16_t _camera_feedback_count;
+
 protected:
 
     // configuration parameters
