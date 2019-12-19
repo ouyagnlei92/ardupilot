@@ -62,6 +62,7 @@ class AP_GPS
     friend class AP_GPS_SIRF;
     friend class AP_GPS_UBLOX;
     friend class AP_GPS_Backend;
+    friend class AP_GPS_JOYTON;
 
 public:
     AP_GPS();
@@ -90,7 +91,8 @@ public:
         GPS_TYPE_GSOF  = 11,
         GPS_TYPE_ERB = 13,
         GPS_TYPE_MAV = 14,
-        GPS_TYPE_NOVA = 15
+        GPS_TYPE_NOVA = 15,
+		GPS_TYPE_JOYTON = 16,
     };
 
     /// GPS status codes
