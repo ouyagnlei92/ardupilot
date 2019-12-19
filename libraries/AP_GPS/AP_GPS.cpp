@@ -35,6 +35,7 @@
 #include "AP_GPS_UBLOX.h"
 #include "AP_GPS_MAV.h"
 #include "GPS_Backend.h"
+#include "AP_GPS_JOYTON.h"
 
 #if HAL_WITH_UAVCAN
 #include <AP_BoardConfig/AP_BoardConfig_CAN.h>
