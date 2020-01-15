@@ -587,5 +587,5 @@ public:
     void wp_continue_stop(void);                                             //复位断点续航自动程序
     void wp_continue_abort_pos(Location& loc);                               //设置任务中断位置
     void wp_continue_set_cmd_index(int16_t index);                           //设置断点续航下次继续飞行点序号
-    int16_t wp_continue_cmd_index(void) const { return _continue_wp_index};//设置断点续航下次继续飞行点序号
+    int16_t wp_continue_cmd_index(void) const { return _continue_wp_index; }//设置断点续航下次继续飞行点序号
 };
