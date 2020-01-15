@@ -225,7 +225,7 @@ void AP_Mission::truncate(uint16_t index)
 
 /// update - ensures the command queues are loaded with the next command and calls main programs command_init and command_verify functions to progress the mission
 ///     should be called at 10hz or higher
-void AP_Mission::update(Location_Class& currentLoc, bool armed, bool isRTL, bool isLandComplete)
+void AP_Mission::update(Location& currentLoc, bool armed, bool isRTL, bool isLandComplete)
 {
     //自主模式下遇到返航和自主模式指令不进行断点续航记录飞行
     if(_mission_nav_start && isRTL){  //自主模式下
