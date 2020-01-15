@@ -370,7 +370,7 @@ public:
 
     /// update - ensures the command queues are loaded with the next command and calls main programs command_init and command_verify functions to progress the mission
     ///     should be called at 10hz or higher
-    void update(Location& currentLoc, bool armed, bool isRTL, bool isLandComplete);
+    void update();
 
     ///
     /// public command methods
@@ -560,24 +560,30 @@ private:
 
     // last time that mission changed
     uint32_t _last_change_time_ms;
+    AP_Int8 _continue;              //断点续飞打开参数
+    AP_Float _pos_distance;         //位置采集间隔
+    AP_Int16 _continue_wp_cmd_total; //新加航点后的航点总数
+    uint32_t _pos_time_ms;     //位置采集时间间隔
+    AP_Mission::Mission_Command _mission_add_cmd[2];   //新加航点  [0]-speed  [1]-相机触发距离
 
     bool _mission_nav_end;     //断点续飞航点记录完毕
     bool _mission_nav_start;   //执行了航点指令  true
-    bool _auto_continue_success;  //自动断点完成
-    uint32_t _pos_time_ms;     //位置采集时间间隔
     uint32_t _pos_last_time_ms;     //最后一次采集位置时间
-    float old_ground_speed;         //上次记录的地速
-    uint8_t _current_cmd_index;
-    AP_Mission::Mission_Command _old_cmd; //飞过的航点
-    //Location _old_location;         //记录最近飞过的航点位置
-    Location _stop_mission_location;         //航点任务停止时的位置
-    AP_Mission::Mission_Command _mission_cmd[2];
-    AP_Mission::Mission_Command _mission_add_cmd[2];   //新加航点  [0]-speed  [1]-相机触发距离
-    AP_Int8 _continue;              //断点续飞打开参数
-    AP_Float _pos_distance;         //位置采集间隔
-    AP_Int16 _continue_wp_index;    //下次自主飞行时记录的航点索引，自动切点用
-    AP_Int16 _continue_wp_cmd_total; //新加航点后的航点总数
+    float _old_ground_speed;         //上次记录的地速
+    bool _auto_continue_success;  //自动断点完成
 
-    bool reset_wp(uint16_t index, AP_Mission::Mission_Command& wpcmd);   //重新排列航点
+public:
+    AP_Int16 continue_wp_index;    //下次自主飞行时记录的航点索引，自动切点用
+    uint8_t current_cmd_index;
+    AP_Mission::Mission_Command old_cmd; //飞过的航点
+    Location stop_mission_location;         //航点任务停止时的位置
+    AP_Mission::Mission_Command mission_cmd[2];
 
+    bool wp_continue_is_open() const { return _continue>=1?true:false; }     //是否开启断点续航程序
+    bool wp_continue_reset_wp(uint16_t index, AP_Mission::Mission_Command& wpcmd);       //重新排列航点
+    bool wp_continue_is_start(void) const { return _mission_nav_start; }     //断点续航自动程序开始标志
+    bool wp_continue_is_end(void) const { return _mission_nav_end; }         //断点续航自动程序重整航点结束标志
+    void wp_continue_start(void);                                            //断点续航开始
+    void wp_continue_stop(void);                                             //复位断点续航自动程序
+    void wp_continue_abort_pos(Location& loc);                               //设置任务中断位置
 };

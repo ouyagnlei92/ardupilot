@@ -631,12 +631,7 @@ bool Copter::ModeAuto::get_wp(Location_Class& destination)
 // update mission
 void Copter::ModeAuto::run_autopilot()
 {
-	bool isrtl = false;
-	if(mode()==Auto_RTL || mode()==Auto_Land)
-	{
-		isrtl = true;
-	}
-    copter.mission.update(current_loc, motors->armed(), isrtl, ap.land_complete);
+    copter.mission.update();
 }
 
 /*******************************************************************************

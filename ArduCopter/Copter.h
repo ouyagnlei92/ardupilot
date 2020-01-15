@@ -970,6 +970,8 @@ private:
     void userhook_auxSwitch2(uint8_t ch_flag);
     void userhook_auxSwitch3(uint8_t ch_flag);
 
+    void wp_continue_fly();  //断点续航飞行任务
+
 #include "mode.h"
 
     Mode *flightmode;
