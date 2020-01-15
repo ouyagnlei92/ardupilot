@@ -370,7 +370,7 @@ public:
 
     /// update - ensures the command queues are loaded with the next command and calls main programs command_init and command_verify functions to progress the mission
     ///     should be called at 10hz or higher
-    void update();
+    void update(Location_Class& currentLoc, bool armed, bool isRTL, bool isLandComplete);
 
     ///
     /// public command methods

@@ -5,9 +5,6 @@
 #include <AP_Terrain/AP_Terrain.h>
 #include <GCS_MAVLink/GCS.h>
 
-#include "Copter.h"
-extern Copter copter;
-
 const AP_Param::GroupInfo AP_Mission::var_info[] = {
 
     // @Param: TOTAL
@@ -228,20 +225,18 @@ void AP_Mission::truncate(uint16_t index)
 
 /// update - ensures the command queues are loaded with the next command and calls main programs command_init and command_verify functions to progress the mission
 ///     should be called at 10hz or higher
-void AP_Mission::update()
+void AP_Mission::update(Location_Class& currentLoc, bool armed, bool isRTL, bool isLandComplete)
 {
     //自主模式下遇到返航和自主模式指令不进行断点续航记录飞行
-    if(_mission_nav_start && copter.flightmode==&copter.mode_auto){  //自主模式下
-    	if(copter.mode_auto.mode()==Auto_RTL || copter.mode_auto.mode()==Auto_Land){
-    		_mission_nav_start = false;
-    		_mission_nav_end = false;
-    		_continue_wp_cmd_total.set_and_save(0);
-    	}
+    if(_mission_nav_start && isRTL){  //自主模式下
+		_mission_nav_start = false;
+		_mission_nav_end = false;
+		_continue_wp_cmd_total.set_and_save(0);
     }
 
 	//停止自主任务,并且记录当前位置
 	if(!_mission_nav_end && _mission_nav_start && _flags.state==MISSION_STOPPED){
-		_stop_mission_location = copter.current_loc;
+		_stop_mission_location = currentLoc;
 		_mission_nav_end = true;
 		_mission_nav_start = false;
 	}
@@ -251,7 +246,7 @@ void AP_Mission::update()
 	}
 
     //着落完成并且有开启过断点续航,重新排列航点,在加锁的时候进行
-	if(!copter.motors->armed() && _mission_nav_end && copter.ap.land_complete && _flags.state!=MISSION_COMPLETE){
+	if(!armed && _mission_nav_end && isLandComplete && _flags.state!=MISSION_COMPLETE){
 
 		//选择第一个记录的点
 		if(_mission_cmd[_current_cmd_index].id!=MAV_CMD_NAV_WAYPOINT){
@@ -307,7 +302,7 @@ void AP_Mission::update()
     	if(AP_HAL::millis()-_pos_last_time_ms>=_pos_time_ms){ //记录一个航点位置
     		_current_cmd_index %= 2;
     		_mission_cmd[_current_cmd_index].id = MAV_CMD_NAV_WAYPOINT;
-    		_mission_cmd[_current_cmd_index].content.location = copter.current_loc;  //记录当前位置
+    		_mission_cmd[_current_cmd_index].content.location = currentLoc;  //记录当前位置
     		++_current_cmd_index;
     		_pos_last_time_ms = AP_HAL::millis();
     	}
