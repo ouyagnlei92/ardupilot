@@ -563,6 +563,7 @@ private:
     AP_Int8 _continue;              //断点续飞打开参数
     AP_Float _pos_distance;         //位置采集间隔
     AP_Int16 _continue_wp_cmd_total; //新加航点后的航点总数
+    AP_Int16 _continue_wp_index;    //下次自主飞行时记录的航点索引，自动切点用
     uint32_t _pos_time_ms;     //位置采集时间间隔
     AP_Mission::Mission_Command _mission_add_cmd[2];   //新加航点  [0]-speed  [1]-相机触发距离
 
@@ -573,7 +574,6 @@ private:
     bool _auto_continue_success;  //自动断点完成
 
 public:
-    AP_Int16 continue_wp_index;    //下次自主飞行时记录的航点索引，自动切点用
     uint8_t current_cmd_index;
     AP_Mission::Mission_Command old_cmd; //飞过的航点
     Location stop_mission_location;         //航点任务停止时的位置
@@ -586,4 +586,6 @@ public:
     void wp_continue_start(void);                                            //断点续航开始
     void wp_continue_stop(void);                                             //复位断点续航自动程序
     void wp_continue_abort_pos(Location& loc);                               //设置任务中断位置
+    void wp_continue_set_cmd_index(int16_t index);                           //设置断点续航下次继续飞行点序号
+    int16_t wp_continue_cmd_index(void) const { return _continue_wp_index};//设置断点续航下次继续飞行点序号
 };

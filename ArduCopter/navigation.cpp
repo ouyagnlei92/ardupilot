@@ -77,9 +77,9 @@ void Copter::wp_continue_fly()
 				float insertwp_curr = get_horizontal_distance_cm(stopwp, insertwp);
 
 				if(wpo_curr-insertwp_curr>=0.001){ //退出自主模式位置与前一航点的距离大于记录航点的距离，则将插入航点到之前航点之后
-					copter.mission.continue_wp_index = copter.mission.old_cmd.index+1;
+					copter.mission.wp_continue_set_cmd_index(copter.mission.old_cmd.index+1);
 				}else if(insertwp_curr-wpo_curr>=0.001){ //退出自主模式位置与前一航点的距离小于记录航点的距离，则将插入航点到之前航点之前
-					copter.mission.continue_wp_index = copter.mission.old_cmd.index;
+					copter.mission.wp_continue_set_cmd_index(copter.mission.old_cmd.index);
 				}
 
 				copter.mission.mission_cmd[copter.mission.current_cmd_index].id = MAV_CMD_NAV_WAYPOINT;
@@ -87,7 +87,7 @@ void Copter::wp_continue_fly()
 				copter.mission.mission_cmd[copter.mission.current_cmd_index].p1 = copter.mission.old_cmd.p1;
 
 			    //开始排序航点,此时解锁无效
-				if(copter.mission.wp_continue_reset_wp(copter.mission.continue_wp_index, copter.mission.mission_cmd[copter.mission.current_cmd_index])){
+				if(copter.mission.wp_continue_reset_wp(copter.mission.wp_continue_cmd_index(), copter.mission.mission_cmd[copter.mission.current_cmd_index])){
 					gcs().send_text(MAV_SEVERITY_INFO, "Reset WP Success!");
 					copter.mission.wp_continue_stop();
 					pos_record_falg = false;

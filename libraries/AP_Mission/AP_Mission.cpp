@@ -303,10 +303,10 @@ void AP_Mission::update()
         	}else if(_do_cmd.id==MAV_CMD_DO_SET_CAM_TRIGG_DIST){
         		_mission_add_cmd[1] = _do_cmd;
         	}else if(_do_cmd.id==MAV_CMD_NAV_TAKEOFF){   //TAKE OFF执行完毕，选择自动续飞
-        		if(_continue_wp_cmd_total==_cmd_total && continue_wp_index>0 && _continue_wp_cmd_total>1){  //航点没有被外界修改过，则选择断点续飞
-        			if(!_auto_continue_success && set_current_cmd(continue_wp_index)){
+        		if(_continue_wp_cmd_total==_cmd_total && _continue_wp_index>0 && _continue_wp_cmd_total>1){  //航点没有被外界修改过，则选择断点续飞
+        			if(!_auto_continue_success && set_current_cmd(_continue_wp_index)){
         				_auto_continue_success = true;
-            			gcs().send_text(MAV_SEVERITY_INFO, "Auto Switch to WP %d", continue_wp_index);
+            			gcs().send_text(MAV_SEVERITY_INFO, "Auto Switch to WP %d", _continue_wp_index);
         			}
         		}
         	}
@@ -1920,4 +1920,9 @@ void AP_Mission::wp_continue_stop(void){
 
 void AP_Mission::wp_continue_abort_pos(Location& loc){
 	stop_mission_location = loc;
+}
+
+void AP_Mission::wp_continue_set_cmd_index(int16_t index){
+	_continue_wp_index = index;
+	_continue_wp_index.set_and_save(_continue_wp_index);
 }
