@@ -1961,7 +1961,7 @@ bool AP_Mission::reset_wp(uint16_t index, AP_Mission::Mission_Command& wpcmd)
 
 	_continue_wp_cmd_total.set_and_save(_continue_wp_cmd_total);
 
-	return false;
+	return true;
 
 }
 

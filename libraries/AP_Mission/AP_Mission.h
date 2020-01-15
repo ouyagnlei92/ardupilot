@@ -579,4 +579,5 @@ private:
     AP_Int16 _continue_wp_cmd_total; //新加航点后的航点总数
 
     bool AP_Mission::reset_wp(uint16_t index, AP_Mission::Mission_Command& wpcmd);   //重新排列航点
+
 };
