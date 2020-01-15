@@ -578,6 +578,6 @@ private:
     AP_Int16 _continue_wp_index;    //下次自主飞行时记录的航点索引，自动切点用
     AP_Int16 _continue_wp_cmd_total; //新加航点后的航点总数
 
-    bool AP_Mission::reset_wp(uint16_t index, AP_Mission::Mission_Command& wpcmd);   //重新排列航点
+    bool reset_wp(uint16_t index, AP_Mission::Mission_Command& wpcmd);   //重新排列航点
 
 };
