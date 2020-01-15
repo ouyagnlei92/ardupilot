@@ -306,9 +306,9 @@ public:
         _mission_nav_start = false;
         _mission_nav_end = false;
         _auto_continue_success = false;
-        _current_cmd_index = 0;
-        _mission_cmd[0] = {};
-        _mission_cmd[1] = {};
+        current_cmd_index = 0;
+        mission_cmd[0] = {};
+        mission_cmd[1] = {};
         _mission_add_cmd[0] = {};
         _mission_add_cmd[1] = {};
     }
