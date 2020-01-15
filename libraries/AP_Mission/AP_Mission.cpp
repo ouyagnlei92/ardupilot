@@ -5,6 +5,9 @@
 #include <AP_Terrain/AP_Terrain.h>
 #include <GCS_MAVLink/GCS.h>
 
+#include "Copter.h"
+extern Copter copter;
+
 const AP_Param::GroupInfo AP_Mission::var_info[] = {
 
     // @Param: TOTAL
@@ -28,6 +31,15 @@ const AP_Param::GroupInfo AP_Mission::var_info[] = {
     // @Bitmask: 0:Clear Mission on reboot
     // @User: Advanced
     AP_GROUPINFO("OPTIONS",  2, AP_Mission, _options, AP_MISSION_OPTIONS_DEFAULT),
+
+	AP_GROUPINFO("CONTINUE",  3, AP_Mission, _continue, 0),  //断点飞行打开标志
+
+	AP_GROUPINFO("POSDIST",  4, AP_Mission, _pos_distance, 10.0),  //位置采集间隔
+
+	AP_GROUPINFO("BREAK",  5, AP_Mission, _continue_wp_index, 0),  //断点续航点位置
+
+	AP_GROUPINFO("CNTALL",  6, AP_Mission, _continue_wp_cmd_total, 0), //续飞航点任务包括的航点数量
+
 
     AP_GROUPEND
 };
@@ -218,9 +230,87 @@ void AP_Mission::truncate(uint16_t index)
 ///     should be called at 10hz or higher
 void AP_Mission::update()
 {
+    //自主模式下遇到返航和自主模式指令不进行断点续航记录飞行
+    if(_mission_nav_start && copter.flightmode==&copter.mode_auto){  //自主模式下
+    	if(copter.mode_auto.mode()==Auto_RTL || copter.mode_auto.mode()==Auto_Land){
+    		_mission_nav_start = false;
+    		_mission_nav_end = false;
+    		_continue_wp_cmd_total.set_and_save(0);
+    	}
+    }
+
+	//停止自主任务,并且记录当前位置
+	if(!_mission_nav_end && _mission_nav_start && _flags.state==MISSION_STOPPED){
+		_stop_mission_location = copter.current_loc;
+		_mission_nav_end = true;
+		_mission_nav_start = false;
+	}
+
+	if(AP_Notify::flags.wp_continue && AP_HAL::millis()-_pos_last_time_ms>=10000){ //停止灯指示
+		AP_Notify::flags.wp_continue = false;
+	}
+
+    //着落完成并且有开启过断点续航,重新排列航点,在加锁的时候进行
+	if(!copter.motors->armed() && _mission_nav_end && copter.ap.land_complete && _flags.state!=MISSION_COMPLETE){
+
+		//选择第一个记录的点
+		if(_mission_cmd[_current_cmd_index].id!=MAV_CMD_NAV_WAYPOINT){
+			_current_cmd_index = (_current_cmd_index==0?1:0);
+		}
+
+		if(_mission_cmd[_current_cmd_index].id==MAV_CMD_NAV_WAYPOINT){
+
+			//求得需插入的航点号
+			const Vector3f wpo = pv_location_to_vector(_old_cmd.content.location); //最近飞过的一个航点
+			const Vector3f stopwp = pv_location_to_vector(_stop_mission_location); //停止自主飞行时的位置
+			Vector3f insertwp;
+
+			insertwp = pv_location_to_vector(_mission_cmd[_current_cmd_index].content.location);  //等待插入的航点
+
+			float wpo_curr = get_horizontal_distance_cm(stopwp, wpo);
+			float insertwp_curr = get_horizontal_distance_cm(stopwp, insertwp);
+
+			if(wpo_curr-insertwp_curr>=0.001){ //退出自主模式位置与前一航点的距离大于记录航点的距离，则将插入航点到之前航点之后
+				_continue_wp_index = _old_cmd_index+1;
+			}else if(insertwp_curr-wpo_curr>=0.001){ //退出自主模式位置与前一航点的距离小于记录航点的距离，则将插入航点到之前航点之前
+				_continue_wp_index = _old_cmd_index;
+			}
+
+			_mission_cmd[_current_cmd_index].id = MAV_CMD_NAV_WAYPOINT;
+			_mission_cmd[_current_cmd_index].index = insert_index;
+			_mission_cmd[_current_cmd_index].p1 = _old_cmd.p1;
+
+		    //开始排序航点,此时解锁无效
+			if(reset_wp(_continue_wp_index, _mission_cmd[_current_cmd_index])){
+				gcs().send_text(MAV_SEVERITY_INFO, "Reset WP Success!");
+				_pos_last_time_ms = AP_HAL::millis();
+				_mission_nav_end = false;
+				_mission_nav_start = false;
+			}
+		}
+
+	}
+
     // exit immediately if not running or no mission commands
     if (_flags.state != MISSION_RUNNING || _cmd_total == 0) {
         return;
+    }
+
+    //执行航点指令，开始计数记时，并且记录位置
+    if(_mission_nav_start){
+    	float groundSpeed = _ahrs.groundspeed()*100;    //获取当前地速   cm/s
+    	float posdist = (_pos_distance<=10.0?10.0:_pos_distance)*100.0;
+    	if(groundSpeed<=100) _pos_time_ms = posdist/100;
+    	else _pos_time_ms = posdist/(groundSpeed*0.6+old_ground_speed*0.4);
+    	old_ground_speed = groundSpeed;
+
+    	if(AP_HAL::millis()-_pos_last_time_ms>=_pos_time_ms){ //记录一个航点位置
+    		_current_cmd_index %= 2;
+    		_mission_cmd[_current_cmd_index].id = MAV_CMD_NAV_WAYPOINT;
+    		_mission_cmd[_current_cmd_index].content.location = copter.current_loc;  //记录当前位置
+    		++_current_cmd_index;
+    		_pos_last_time_ms = AP_HAL::millis();
+    	}
     }
 
     // check if we have an active nav command
@@ -233,7 +323,17 @@ void AP_Mission::update()
         }
     }else{
         // run the active nav command
-        if (_cmd_verify_fn(_nav_cmd)) {
+        if (_cmd_verify_fn(_nav_cmd)) {    //执行完一个航点调用
+            if(_continue && !_mission_nav_start && _nav_cmd.id==MAV_CMD_NAV_WAYPOINT){ //已经到达航点
+            	_mission_nav_start = true;
+            	old_ground_speed = _ahrs.groundspeed()*100;     //获取当前地速   cm/s
+            	_pos_last_time_ms = AP_HAL::millis();
+            	gcs().send_text(MAV_SEVERITY_INFO, "Start Record Waypoint");
+            }
+            if(_mission_nav_start && _nav_cmd.id==MAV_CMD_NAV_WAYPOINT) //当前航点指令已经完成
+            {
+            	_old_cmd =  _nav_cmd;  //记录当前已经飞过的航点
+            }
             // market _nav_cmd as complete (it will be started on the next iteration)
             _flags.nav_cmd_loaded = false;
             // immediately advance to the next mission command
@@ -251,6 +351,18 @@ void AP_Mission::update()
     }else{
         // run the active do command
         if (_cmd_verify_fn(_do_cmd)) {
+        	if(_do_cmd.id==MAV_CMD_DO_CHANGE_SPEED){
+        		_mission_add_cmd[0] = _do_cmd;
+        	}else if(_do_cmd.id==MAV_CMD_DO_SET_CAM_TRIGG_DIST){
+        		_mission_add_cmd[1] = _do_cmd;
+        	}else if(_do_cmd.id==MAV_CMD_NAV_TAKEOFF){   //TAKE OFF执行完毕，选择自动续飞
+        		if(_continue_wp_cmd_total==_cmd_total && _continue_wp_index>0 && _continue_wp_cmd_total>1){  //航点没有被外界修改过，则选择断点续飞
+        			if(!_auto_continue_success && set_current_cmd(_continue_wp_index)){
+        				_auto_continue_success = true;
+            			gcs().send_text(MAV_SEVERITY_INFO, "Auto Switch to WP %d", _continue_wp_index);
+        			}
+        		}
+        	}
             // market _nav_cmd as complete (it will be started on the next iteration)
             _flags.do_cmd_loaded = false;
         }
@@ -493,6 +605,16 @@ bool AP_Mission::read_cmd_from_storage(uint16_t index, Mission_Command& cmd) con
 
         // set command's index to it's position in eeprom
         cmd.index = index;
+
+        if(cmd.id==MAV_CMD_DO_CHANGE_SPEED)  //飞机飞行速度
+        {
+        	_mission_add_cmd[0] = cmd;
+        }else if(cmd.id==MAV_CMD_DO_SET_CAM_TRIGG_DIST){
+        	_mission_add_cmd[1] = cmd;       //相机触发距离
+        }else if(cmd.id==MAV_CMD_NAV_WAYPOINT)
+        {
+        	_mission_add_cmd[2] = cmd;  //航点
+        }
     }
 
     // return success
@@ -1797,3 +1919,49 @@ const char *AP_Mission::Mission_Command::type() const {
         return "?";
     }
 }
+
+//重新排列航点
+bool AP_Mission::reset_wp(uint16_t index, AP_Mission::Mission_Command& wpcmd)
+{
+	AP_Mission::Mission_Command temp_cmd;
+	int16_t cmd_all = _cmd_total;
+	_cmd_total += 3;
+	_continue_wp_cmd_total = _cmd_total;
+
+	if(_cmd_total>=num_commands_max())  //新加航点个数总数超出最大航点数
+	{
+		gcs().send_text(MAV_SEVERITY_INFO, "Mission Out Capacity!");
+		return false;
+	}
+
+	if(_mission_add_cmd[0]!=MAV_CMD_DO_CHANGE_SPEED || _mission_add_cmd[1]!=MAV_CMD_DO_SET_CAM_TRIGG_DIST)  //整个任务中没有出现相机触发拍照与速度改变指令
+	{
+		gcs().send_text(MAV_SEVERITY_INFO, "Mission Reset Error!");
+		return false;
+	}
+
+	gcs().send_text(MAV_SEVERITY_INFO, "Start Reset WP!");
+
+	_cmd_total.set_and_save(_cmd_total);
+
+	AP_Notify::flags.wp_continue = true;  //开启指示灯
+	int16_t cc = cmd_all - index;  //循环读写次数
+	int16_t j = 0;
+
+	for(; j<cc; ++j)
+	{
+		read_cmd_from_storage(cmd_all-1-j, temp_cmd);
+		replace_cmd(_cmd_total-1-j, temp_cmd);
+		_pos_last_time_ms = AP_HAL::millis();
+	}
+	replace_cmd(index, wpcmd);                 //航点
+	replace_cmd(index+1, _mission_add_cmd[0]); //速度
+	replace_cmd(index+1, _mission_add_cmd[1]); //相机触发距离
+	_pos_last_time_ms = AP_HAL::millis();
+
+	_continue_wp_cmd_total.set_and_save(_continue_wp_cmd_total);
+
+	return false;
+
+}
+
