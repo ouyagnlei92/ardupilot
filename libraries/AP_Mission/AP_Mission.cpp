@@ -225,39 +225,11 @@ void AP_Mission::truncate(uint16_t index)
 
 /// update - ensures the command queues are loaded with the next command and calls main programs command_init and command_verify functions to progress the mission
 ///     should be called at 10hz or higher
-void AP_Mission::update()
+void AP_Mission::update(Location& currentLoc)
 {
-	//停止自主任务，通知外部调用程序计算当前位置
-	if(!_mission_nav_end && _mission_nav_start && _flags.state==MISSION_STOPPED){
-		_mission_nav_end = true;
-		_mission_nav_start = false;
-		_auto_continue_success = false;
-	}
-
-	if(AP_Notify::flags.wp_continue && AP_HAL::millis()-_pos_last_time_ms>=10000){ //停止灯指示
-		AP_Notify::flags.wp_continue = false;
-	}
-
     // exit immediately if not running or no mission commands
     if (_flags.state != MISSION_RUNNING || _cmd_total == 0) {
         return;
-    }
-
-    //执行航点指令，开始计数记时，并且记录位置
-    if(_mission_nav_start){
-    	float groundSpeed = _ahrs.groundspeed()*100;    //获取当前地速   cm/s
-    	float posdist = (_pos_distance<=10.0?10.0:_pos_distance)*100.0;
-    	if(groundSpeed<=100) _pos_time_ms = posdist/100;
-    	else _pos_time_ms = posdist/(groundSpeed*0.6+_old_ground_speed*0.4);
-    	_old_ground_speed = groundSpeed;
-
-    	if(AP_HAL::millis()-_pos_last_time_ms>=_pos_time_ms){ //记录一个航点位置
-    		current_cmd_index %= 2;
-    		mission_cmd[current_cmd_index].id = MAV_CMD_NAV_WAYPOINT;
-    		mission_cmd[current_cmd_index].content.location = currentLoc;  //记录当前位置
-    		++current_cmd_index;
-    		_pos_last_time_ms = AP_HAL::millis();
-    	}
     }
 
     // check if we have an active nav command
@@ -271,15 +243,8 @@ void AP_Mission::update()
     }else{
         // run the active nav command
         if (_cmd_verify_fn(_nav_cmd)) {    //执行完一个航点调用
-            if(_continue && !_mission_nav_start && _nav_cmd.id==MAV_CMD_NAV_WAYPOINT){ //已经到达航点
-            	_mission_nav_start = true;
-            	_old_ground_speed = _ahrs.groundspeed()*100;     //获取当前地速   cm/s
-            	_pos_last_time_ms = AP_HAL::millis();
-            	gcs().send_text(MAV_SEVERITY_INFO, "Start Record Waypoint");
-            }
-            if(_mission_nav_start && _nav_cmd.id==MAV_CMD_NAV_WAYPOINT) //当前航点指令已经完成
-            {
-            	old_cmd =  _nav_cmd;  //记录当前已经飞过的航点
+            if(_continue && _nav_cmd.id==MAV_CMD_NAV_WAYPOINT){ //已经到达航点
+            	_complete_nav_cmd = _nav_cmd;
             }
             // market _nav_cmd as complete (it will be started on the next iteration)
             _flags.nav_cmd_loaded = false;
@@ -298,18 +263,6 @@ void AP_Mission::update()
     }else{
         // run the active do command
         if (_cmd_verify_fn(_do_cmd)) {
-        	if(_do_cmd.id==MAV_CMD_DO_CHANGE_SPEED){
-        		_mission_add_cmd[0] = _do_cmd;
-        	}else if(_do_cmd.id==MAV_CMD_DO_SET_CAM_TRIGG_DIST){
-        		_mission_add_cmd[1] = _do_cmd;
-        	}else if(_do_cmd.id==MAV_CMD_NAV_TAKEOFF){   //TAKE OFF执行完毕，选择自动续飞
-        		if(_continue_wp_cmd_total==_cmd_total && _continue_wp_index>0 && _continue_wp_cmd_total>1){  //航点没有被外界修改过，则选择断点续飞
-        			if(!_auto_continue_success && set_current_cmd(_continue_wp_index)){
-        				_auto_continue_success = true;
-            			gcs().send_text(MAV_SEVERITY_INFO, "Auto Switch to WP %d", _continue_wp_index);
-        			}
-        		}
-        	}
             // market _nav_cmd as complete (it will be started on the next iteration)
             _flags.do_cmd_loaded = false;
         }
@@ -552,16 +505,6 @@ bool AP_Mission::read_cmd_from_storage(uint16_t index, Mission_Command& cmd) con
 
         // set command's index to it's position in eeprom
         cmd.index = index;
-
-        if(cmd.id==MAV_CMD_DO_CHANGE_SPEED)  //飞机飞行速度
-        {
-        	_mission_add_cmd[0] = cmd;
-        }else if(cmd.id==MAV_CMD_DO_SET_CAM_TRIGG_DIST){
-        	_mission_add_cmd[1] = cmd;       //相机触发距离
-        }else if(cmd.id==MAV_CMD_NAV_WAYPOINT)
-        {
-        	_mission_add_cmd[2] = cmd;  //航点
-        }
     }
 
     // return success
@@ -1868,7 +1811,7 @@ const char *AP_Mission::Mission_Command::type() const {
 }
 
 //重新排列航点
-bool AP_Mission::wp_continue_reset_wp(uint16_t index, AP_Mission::Mission_Command& wpcmd)
+bool AP_Mission::wp_continue_reset_wp(uint16_t index, AP_Mission::Mission_Command* wpcmd)
 {
 	AP_Mission::Mission_Command temp_cmd;
 	int16_t cmd_all = _cmd_total;
@@ -1891,7 +1834,6 @@ bool AP_Mission::wp_continue_reset_wp(uint16_t index, AP_Mission::Mission_Comman
 
 	_cmd_total.set_and_save(_cmd_total);
 
-	AP_Notify::flags.wp_continue = true;  //开启指示灯
 	int16_t cc = cmd_all - index;  //循环读写次数
 	int16_t j = 0;
 
@@ -1901,25 +1843,12 @@ bool AP_Mission::wp_continue_reset_wp(uint16_t index, AP_Mission::Mission_Comman
 		replace_cmd(_cmd_total-1-j, temp_cmd);
 		_pos_last_time_ms = AP_HAL::millis();
 	}
-	replace_cmd(index, wpcmd);                 //航点
-	replace_cmd(index+1, _mission_add_cmd[0]); //速度
-	replace_cmd(index+1, _mission_add_cmd[1]); //相机触发距离
-	_pos_last_time_ms = AP_HAL::millis();
-
-	_continue_wp_cmd_total.set_and_save(_continue_wp_cmd_total);
+	replace_cmd(index, wpcmd[2]);   //航点
+	replace_cmd(index+1, wpcmd[0]); //速度
+	replace_cmd(index+1, wpcmd[1]); //相机触发距离
 
 	return true;
 
-}
-
-void AP_Mission::wp_continue_stop(void){
-	 _mission_nav_end = false;
-	 _mission_nav_start = false;
-	 _continue_wp_cmd_total.set_and_save(0);
-}
-
-void AP_Mission::wp_continue_abort_pos(Location& loc){
-	stop_mission_location = loc;
 }
 
 void AP_Mission::wp_continue_set_cmd_index(int16_t index){

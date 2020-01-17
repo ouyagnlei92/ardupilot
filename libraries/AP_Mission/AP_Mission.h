@@ -370,7 +370,7 @@ public:
 
     /// update - ensures the command queues are loaded with the next command and calls main programs command_init and command_verify functions to progress the mission
     ///     should be called at 10hz or higher
-    void update();
+    void update(Location& currentLoc);
 
     ///
     /// public command methods
@@ -469,6 +469,30 @@ public:
     // available.
     bool jump_to_landing_sequence(void);
 
+    //是否开启断点续航程序
+    bool wp_continue_is_open() const { return _continue>=1?true:false; }
+
+    //获取位置采集间隔
+    float wp_continue_pos_distance() const { return _pos_distance; }
+
+    //断点续航重新整理航点的总数
+    uint16_t wp_continue_cmd_total() const { return _continue_wp_cmd_total; }
+
+    //断点续飞自主切点序号
+    uint16_t wp_continue_nav_cmd_index() const { return _continue_wp_index; }
+
+    //已经执行完的最后航点
+    struct Mission_Command& wp_continue_nav_cmd_complete() const { return _complete_nav_cmd; }
+
+    //已经执行完的最后控制指令
+    struct Mission_Command& wp_continue_do_cmd_complete() const { return _complete_do_cmd; }
+
+    //重新排列航点
+    bool wp_continue_reset_wp(uint16_t index, AP_Mission::Mission_Command& wpcmd);
+
+    //设置断点续航下次继续飞行点序号
+    void wp_continue_set_nav_cmd_index(int16_t index);
+
     // user settable parameters
     static const struct AP_Param::GroupInfo var_info[];
 
@@ -540,6 +564,14 @@ private:
     AP_Int8                 _restart;   // controls mission starting point when entering Auto mode (either restart from beginning of mission or resume from last command run)
     AP_Int16                _options;    // bitmask options for missions, currently for mission clearing on reboot but can be expanded as required
 
+    AP_Int8 _continue;              //断点续飞打开参数
+    AP_Float _pos_distance;         //位置采集间隔
+    AP_Int16 _continue_wp_cmd_total; //新加航点后的航点总数
+    AP_Int16 _continue_wp_index;    //下次自主飞行时记录的航点索引，自动切点用
+
+    struct Mission_Command  _complete_nav_cmd;   //已经飞完的航点序号
+    struct Mission_Command  _complete_do_cmd;    //已经飞完的控制指令航点序号
+
     // pointer to main program functions
     mission_cmd_fn_t        _cmd_start_fn;  // pointer to function which will be called when a new command is started
     mission_cmd_fn_t        _cmd_verify_fn; // pointer to function which will be called repeatedly to ensure a command is progressing
@@ -560,32 +592,5 @@ private:
 
     // last time that mission changed
     uint32_t _last_change_time_ms;
-    AP_Int8 _continue;              //断点续飞打开参数
-    AP_Float _pos_distance;         //位置采集间隔
-    AP_Int16 _continue_wp_cmd_total; //新加航点后的航点总数
-    AP_Int16 _continue_wp_index;    //下次自主飞行时记录的航点索引，自动切点用
-    uint32_t _pos_time_ms;     //位置采集时间间隔
-    AP_Mission::Mission_Command _mission_add_cmd[2];   //新加航点  [0]-speed  [1]-相机触发距离
 
-    bool _mission_nav_end;     //断点续飞航点记录完毕
-    bool _mission_nav_start;   //执行了航点指令  true
-    uint32_t _pos_last_time_ms;     //最后一次采集位置时间
-    float _old_ground_speed;         //上次记录的地速
-    bool _auto_continue_success;  //自动断点完成
-
-public:
-    uint8_t current_cmd_index;
-    AP_Mission::Mission_Command old_cmd; //飞过的航点
-    Location stop_mission_location;         //航点任务停止时的位置
-    AP_Mission::Mission_Command mission_cmd[2];
-
-    bool wp_continue_is_open() const { return _continue>=1?true:false; }     //是否开启断点续航程序
-    bool wp_continue_reset_wp(uint16_t index, AP_Mission::Mission_Command& wpcmd);       //重新排列航点
-    bool wp_continue_is_start(void) const { return _mission_nav_start; }     //断点续航自动程序开始标志
-    bool wp_continue_is_end(void) const { return _mission_nav_end; }         //断点续航自动程序重整航点结束标志
-    void wp_continue_start(void);                                            //断点续航开始
-    void wp_continue_stop(void);                                             //复位断点续航自动程序
-    void wp_continue_abort_pos(Location& loc);                               //设置任务中断位置
-    void wp_continue_set_cmd_index(int16_t index);                           //设置断点续航下次继续飞行点序号
-    int16_t wp_continue_cmd_index(void) const { return _continue_wp_index; }//设置断点续航下次继续飞行点序号
 };

@@ -631,7 +631,7 @@ bool Copter::ModeAuto::get_wp(Location_Class& destination)
 // update mission
 void Copter::ModeAuto::run_autopilot()
 {
-    copter.mission.update();
+    copter.mission.update(copter.current_loc);
 }
 
 /*******************************************************************************
