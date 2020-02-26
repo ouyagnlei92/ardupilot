@@ -303,14 +303,8 @@ public:
         _flags.nav_cmd_loaded = false;
         _flags.do_cmd_loaded = false;
 
-        _mission_nav_start = false;
-        _mission_nav_end = false;
-        _auto_continue_success = false;
-        current_cmd_index = 0;
-        mission_cmd[0] = {};
-        mission_cmd[1] = {};
-        _mission_add_cmd[0] = {};
-        _mission_add_cmd[1] = {};
+       // _mission_add_cmd[0] = {};
+       // _mission_add_cmd[1] = {};
     }
 
     /* Do not allow copies */
@@ -469,29 +463,33 @@ public:
     // available.
     bool jump_to_landing_sequence(void);
 
-    //ÊÇ·ñ¿ªÆô¶ÏµãÐøº½³ÌÐò
+    //ï¿½Ç·ï¿½ï¿½ï¿½ï¿½Ïµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     bool wp_continue_is_open() const { return _continue>=1?true:false; }
 
-    //»ñÈ¡Î»ÖÃ²É¼¯¼ä¸ô
-    float wp_continue_pos_distance() const { return _pos_distance; }
+    //ï¿½ï¿½È¡Î»ï¿½Ã²É¼ï¿½ï¿½ï¿½ï¿½
+    float wp_continue_pos_distance() const { return _pos_distance.get(); }
 
-    //¶ÏµãÐøº½ÖØÐÂÕûÀíº½µãµÄ×ÜÊý
+    //ï¿½Ïµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     uint16_t wp_continue_cmd_total() const { return _continue_wp_cmd_total; }
 
-    //¶ÏµãÐø·É×ÔÖ÷ÇÐµãÐòºÅ
+    //ï¿½Ïµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ðµï¿½ï¿½ï¿½ï¿½
     uint16_t wp_continue_nav_cmd_index() const { return _continue_wp_index; }
 
-    //ÒÑ¾­Ö´ÐÐÍêµÄ×îºóº½µã
-    struct Mission_Command& wp_continue_nav_cmd_complete() const { return _complete_nav_cmd; }
+    //ï¿½Ñ¾ï¿½Ö´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½óº½µï¿½
+    const Mission_Command& wp_continue_nav_cmd_complete() const { return _complete_nav_cmd; }
 
-    //ÒÑ¾­Ö´ÐÐÍêµÄ×îºó¿ØÖÆÖ¸Áî
-    struct Mission_Command& wp_continue_do_cmd_complete() const { return _complete_do_cmd; }
+    //ï¿½Ñ¾ï¿½Ö´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¸ï¿½ï¿½
+    const Mission_Command& wp_continue_do_cmd_complete() const { return _complete_do_cmd; }
 
-    //ÖØÐÂÅÅÁÐº½µã
-    bool wp_continue_reset_wp(uint16_t index, AP_Mission::Mission_Command& wpcmd);
+    //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ðºï¿½ï¿½ï¿½
+    bool wp_continue_reset_wp(uint16_t index, AP_Mission::Mission_Command* wpcmd);
 
-    //ÉèÖÃ¶ÏµãÐøº½ÏÂ´Î¼ÌÐø·ÉÐÐµãÐòºÅ
-    void wp_continue_set_nav_cmd_index(int16_t index);
+    //ï¿½ï¿½ï¿½Ã¶Ïµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â´Î¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ðµï¿½ï¿½ï¿½ï¿½
+    //void wp_continue_set_nav_cmd_index(int16_t index);
+
+    void wp_continue_set_cmd_index(int16_t index);
+
+    void wp_continue_set_continue_total(int16_t to);
 
     // user settable parameters
     static const struct AP_Param::GroupInfo var_info[];
@@ -564,13 +562,15 @@ private:
     AP_Int8                 _restart;   // controls mission starting point when entering Auto mode (either restart from beginning of mission or resume from last command run)
     AP_Int16                _options;    // bitmask options for missions, currently for mission clearing on reboot but can be expanded as required
 
-    AP_Int8 _continue;              //¶ÏµãÐø·É´ò¿ª²ÎÊý
-    AP_Float _pos_distance;         //Î»ÖÃ²É¼¯¼ä¸ô
-    AP_Int16 _continue_wp_cmd_total; //ÐÂ¼Óº½µãºóµÄº½µã×ÜÊý
-    AP_Int16 _continue_wp_index;    //ÏÂ´Î×ÔÖ÷·ÉÐÐÊ±¼ÇÂ¼µÄº½µãË÷Òý£¬×Ô¶¯ÇÐµãÓÃ
+    AP_Int8 _continue;              //ï¿½Ïµï¿½ï¿½ï¿½ï¿½É´ò¿ª²ï¿½ï¿½ï¿½
+    AP_Float _pos_distance;         //Î»ï¿½Ã²É¼ï¿½ï¿½ï¿½ï¿½
+    AP_Int16 _continue_wp_cmd_total; //ï¿½Â¼Óºï¿½ï¿½ï¿½ï¿½Äºï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    AP_Int16 _continue_wp_index;    //ï¿½Â´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½Â¼ï¿½Äºï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô¶ï¿½ï¿½Ðµï¿½ï¿½ï¿½
 
-    struct Mission_Command  _complete_nav_cmd;   //ÒÑ¾­·ÉÍêµÄº½µãÐòºÅ
-    struct Mission_Command  _complete_do_cmd;    //ÒÑ¾­·ÉÍêµÄ¿ØÖÆÖ¸Áîº½µãÐòºÅ
+    Mission_Command  _complete_nav_cmd;   //ï¿½Ñ¾ï¿½ï¿½ï¿½ï¿½ï¿½Äºï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    Mission_Command  _complete_do_cmd;    //ï¿½Ñ¾ï¿½ï¿½ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½ï¿½Ö¸ï¿½îº½ï¿½ï¿½ï¿½ï¿½ï¿½
+
+    //Mission_Command _mission_add_cmd[2];
 
     // pointer to main program functions
     mission_cmd_fn_t        _cmd_start_fn;  // pointer to function which will be called when a new command is started

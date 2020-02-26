@@ -9,7 +9,7 @@ void Copter::run_nav_updates(void)
 
     flightmode->update_navigation();
 
-    //×ÔÖ÷·ÉÐÐº½µã¼ÇÂ¼£¬¶ÏµãÐøº½¹¦ÄÜÐ´ÔÚ¸Ã²¿·Ö
+    //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ðºï¿½ï¿½ï¿½ï¿½Â¼ï¿½ï¿½ï¿½Ïµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð´ï¿½Ú¸Ã²ï¿½ï¿½ï¿½
     wp_continue_fly();
 }
 
@@ -39,7 +39,7 @@ void Copter::wp_continue_fly()
 {
 	static bool wp_continue_start = false;
 	static bool wp_continue_complete = false;
-	static Location break_wp_pos;   //×ÔÖ÷ÈÎÎñÖÐ¶ÏÎ»ÖÃ
+	static Location break_wp_pos;   //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð¶ï¿½Î»ï¿½ï¿½
 	static float old_ground_speed = 0.0;
 	static uint32_t pos_last_time_ms = 0;
 	static uint8_t current_cmd_index = 0;
@@ -47,116 +47,164 @@ void Copter::wp_continue_fly()
 	static AP_Mission::Mission_Command mission_add_cmd[3];
 	static AP_Mission::Mission_Command old_nav_cmd;
 	static bool auto_continue_success = false;
+	static uint16_t pos_count = 0;
+	static bool have_take_off = false;
+	AP_Mission::Mission_Command nav_cmd1 = {};
+	AP_Mission::Mission_Command do_cmd1 = {};
 
 	uint32_t pos_time_ms = 0;
 
-	if(!mission.wp_continue_is_open()) return;   //Ã»ÓÐ´ò¿ª¶ÏµãÐøº½¹¦ÄÜ  ÓÃ»§¿ÉÑ¡Ôñ´ò¿ª¶ÏµãÐø·É¹¦ÄÜ
+	if(!mission.wp_continue_is_open()) return;   //Ã»ï¿½Ð´ò¿ª¶Ïµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½  ï¿½Ã»ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½ò¿ª¶Ïµï¿½ï¿½ï¿½ï¿½É¹ï¿½ï¿½ï¿½
 
-	//×ÔÖ÷·ÉÐÐÄ£Ê½ÏÂÕýÔÚÖ´ÐÐRTL»òÕßLANDÖ¸Áî£¬ÔòÈ¡Ïû¶ÏµãÐøº½·ÉÐÐ¼ÇÂ¼³ÌÐò
+	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä£Ê½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö´ï¿½ï¿½RTLï¿½ï¿½ï¿½ï¿½LANDÖ¸ï¿½î£¬ï¿½ï¿½È¡ï¿½ï¿½ï¿½Ïµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð¼ï¿½Â¼ï¿½ï¿½ï¿½ï¿½
 	if(flightmode==&copter.mode_auto){
 		if(mode_auto.mode()==Auto_RTL || mode_auto.mode()==Auto_Land){
 			wp_continue_start = false;
 			wp_continue_complete = false;
 			auto_continue_success = false;
+			nav_cmd1.id = 0;
+			do_cmd1.id = 0;
+			pos_count = 0;
+			copter.mission.wp_continue_set_cmd_index(0);
+			return;
 		}
 	}
 
-	//×ÔÖ÷ÈÎÎñ±»ÖÐ¶Ï£¬¼ÇÂ¼ÖÐ¶ÏÎ»ÖÃ
-	if(!wp_continue_complete && wp_continue_start && mission.state()==MISSION_STOPPED){
+	nav_cmd1 = copter.mission.wp_continue_nav_cmd_complete();
+	do_cmd1 = copter.mission.wp_continue_do_cmd_complete();
+
+	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð¶Ï£ï¿½ï¿½ï¿½Â¼ï¿½Ð¶ï¿½Î»ï¿½ï¿½
+	if(!wp_continue_complete && wp_continue_start && mission.state()==AP_Mission::MISSION_STOPPED){
 		break_wp_pos = copter.current_loc;
 		wp_continue_complete = true;
 		gcs().send_text(MAV_SEVERITY_INFO, "Break Auto! Record Pos!");
 	}
 
-	if(mission.state()==MISSION_RUNNING){  //×ÔÖ÷ÈÎÎñÕýÔÚ½øÐÐ
+	if(mission.state()==AP_Mission::MISSION_RUNNING){  //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú½ï¿½ï¿½ï¿½
 
-		//ÅÐ¶ÏÊÇ·ñ¿ªÊ¼½øÈë¶Ïµã¼ÇÂ¼
-		if(!wp_continue_start){
-			AP_Mission::Mission_Command nav_cmd1 = mission.wp_continue_nav_cmd_complete();
-			if(nav_cmd1.id==MAV_CMD_NAV_WAYPOINT){
+		//ï¿½Ð¶ï¿½ï¿½Ç·ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½Ïµï¿½ï¿½Â¼
+		if(motors->armed() && !wp_continue_start){
+			if(have_take_off && nav_cmd1.id==MAV_CMD_NAV_WAYPOINT){
 				wp_continue_start = true;
-				old_ground_speed = ahrs.groundspeed()*100;     //»ñÈ¡µ±Ç°µØËÙ   cm/s
+				nav_cmd1.id = 0;
+				do_cmd1.id = 0;
+				pos_count = 0;
+				mission_cmd[0].id = 0;
+				mission_cmd[1].id = 0;
+				old_ground_speed = ahrs.groundspeed()*100;     //ï¿½ï¿½È¡ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½   cm/s
 				pos_last_time_ms = AP_HAL::millis();
 				gcs().send_text(MAV_SEVERITY_INFO, "Start Record Waypoint");
+			}else if(nav_cmd1.id==MAV_CMD_NAV_TAKEOFF){   //TAKE OFFÖ´ï¿½ï¿½ï¿½ï¿½Ï£ï¿½Ñ¡ï¿½ï¿½ï¿½Ô¶ï¿½ï¿½ï¿½ï¿½ï¿½
+			    have_take_off = true;
+				if(copter.mission.wp_continue_cmd_total()==copter.mission.num_commands() && copter.mission.wp_continue_nav_cmd_index()>0 && copter.mission.wp_continue_cmd_total()>1){  //ï¿½ï¿½ï¿½ï¿½Ã»ï¿½Ð±ï¿½ï¿½ï¿½ï¿½ï¿½Þ¸Ä¹ï¿½ï¿½ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½Ïµï¿½ï¿½ï¿½ï¿½ï¿½
+					if(!auto_continue_success && copter.mission.set_current_cmd(copter.mission.wp_continue_nav_cmd_index())){
+						auto_continue_success = true;
+						gcs().send_text(MAV_SEVERITY_INFO, "Auto Switch to WP#%d", copter.mission.wp_continue_nav_cmd_index());
+					}
+				}
+			} 
+
+			if(do_cmd1.id==MAV_CMD_DO_CHANGE_SPEED && mission_add_cmd[0].index!=do_cmd1.index){
+				mission_add_cmd[0] = do_cmd1;
+				gcs().send_text(MAV_SEVERITY_INFO, "have speed");
+			}else if(do_cmd1.content.cam_trigg_dist.meters>0.5 && do_cmd1.id==MAV_CMD_DO_SET_CAM_TRIGG_DIST && mission_add_cmd[1].index!=do_cmd1.index){
+				mission_add_cmd[1] = do_cmd1;
+				gcs().send_text(MAV_SEVERITY_INFO, "have camera trigg dist %3.1fm", do_cmd1.content.cam_trigg_dist.meters);
 			}
 		}
 
-		//Ö´ÐÐº½µãÖ¸Áî£¬¿ªÊ¼¼ÆÊý¼ÇÊ±£¬²¢ÇÒ¼ÇÂ¼Î»ÖÃ
+		//Ö´ï¿½Ðºï¿½ï¿½ï¿½Ö¸ï¿½î£¬ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½Ò¼ï¿½Â¼Î»ï¿½ï¿½
 		if(wp_continue_start){
-			float groundSpeed = ahrs.groundspeed()*100;    //»ñÈ¡µ±Ç°µØËÙ   cm/s
-			float dist = wp_continue_pos_distance();              //ÓÃ»§Éè¶¨µÄ¶ÏµãÐø·ÉÍùÇ°Ñ¡µã¾àÀë
+			float groundSpeed = ahrs.groundspeed()*100;    //ï¿½ï¿½È¡ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½   cm/s
+			float dist = copter.mission.wp_continue_pos_distance();              //ï¿½Ã»ï¿½ï¿½è¶¨ï¿½Ä¶Ïµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç°Ñ¡ï¿½ï¿½ï¿½ï¿½ï¿½
 			dist = dist<=10.0 ? 10.0 : dist;
 			dist = dist*100.0;
 			if(groundSpeed<=100) pos_time_ms = dist/100;
 			else pos_time_ms = dist / (groundSpeed*0.6+old_ground_speed*0.4);
 			old_ground_speed = groundSpeed;
 
-			if(AP_HAL::millis()-pos_last_time_ms>=pos_time_ms){ //¼ÇÂ¼Ò»¸öº½µãÎ»ÖÃ
-				current_cmd_index %= 2;
-				mission_cmd[current_cmd_index].id = MAV_CMD_NAV_WAYPOINT;
-				mission_cmd[current_cmd_index].content.location = copter.current_loc;  //¼ÇÂ¼µ±Ç°Î»ÖÃ
-				++current_cmd_index;
-				pos_last_time_ms = AP_HAL::millis();
+			if(AP_HAL::millis()-pos_last_time_ms>=pos_time_ms){ //ï¿½ï¿½Â¼Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î»ï¿½ï¿½
+			    if(nav_cmd1.id==MAV_CMD_NAV_WAYPOINT){
+					//current wp distance with current pos
+					const Vector3f currentpos = pv_location_to_vector(copter.current_loc); 
+					Vector3f currentwp = pv_location_to_vector(nav_cmd1.content.location);
+					float curr_posdis = get_horizontal_distance_cm(currentwp, currentpos);
+					if(curr_posdis<=copter.mission.wp_continue_pos_distance()*100/2.0){
+						pos_count = 0;
+						current_cmd_index = 0;
+					}else{
+						current_cmd_index %= 2;
+						mission_cmd[current_cmd_index].id = MAV_CMD_NAV_WAYPOINT;
+						mission_cmd[current_cmd_index].content.location = copter.current_loc;  //ï¿½ï¿½Â¼ï¿½ï¿½Ç°Î»ï¿½ï¿½
+						++current_cmd_index;
+						++pos_count;
+					}						
+					pos_last_time_ms = AP_HAL::millis();
+				}				
 			}
 
-			AP_Mission::Mission_Command nav_cmd1 = copter.mission.wp_continue_nav_cmd_complete();
-			AP_Mission::Mission_Command do_cmd1 = copter.mission.wp_continue_do_cmd_complete();
 			if(old_nav_cmd.index!= nav_cmd1.index && nav_cmd1.id==MAV_CMD_NAV_WAYPOINT){
 				old_nav_cmd = nav_cmd1;
-			}
-
-			if(do_cmd1.id==MAV_CMD_DO_CHANGE_SPEED){
-				if(do_cmd1.index!=mission_add_cmd[0].index) mission_add_cmd[0] = do_cmd1;
-			}else if(do_cmd1.id==MAV_CMD_DO_SET_CAM_TRIGG_DIST){
-				if(do_cmd1.index!=mission_add_cmd[1].index)  mission_add_cmd[1] = do_cmd1;
-			}else if(do_cmd1.id==MAV_CMD_NAV_TAKEOFF){   //TAKE OFFÖ´ÐÐÍê±Ï£¬Ñ¡Ôñ×Ô¶¯Ðø·É
-				if(copter.mission.wp_continue_cmd_total()==copter.mission.num_commands() && copter.mission.wp_continue_nav_cmd_index()>0 && copter.mission.wp_continue_cmd_total()>1){  //º½µãÃ»ÓÐ±»Íâ½çÐÞ¸Ä¹ý£¬ÔòÑ¡Ôñ¶ÏµãÐø·É
-					if(!auto_continue_success && set_current_cmd(copter.mission.wp_continue_nav_cmd_index())){
+			}else if(nav_cmd1.id==MAV_CMD_NAV_TAKEOFF){   //TAKE OFFÖ´ï¿½ï¿½ï¿½ï¿½Ï£ï¿½Ñ¡ï¿½ï¿½ï¿½Ô¶ï¿½ï¿½ï¿½ï¿½ï¿½
+				if(copter.mission.wp_continue_cmd_total()==copter.mission.num_commands() && copter.mission.wp_continue_nav_cmd_index()>0 && copter.mission.wp_continue_cmd_total()>1){  //ï¿½ï¿½ï¿½ï¿½Ã»ï¿½Ð±ï¿½ï¿½ï¿½ï¿½ï¿½Þ¸Ä¹ï¿½ï¿½ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½Ïµï¿½ï¿½ï¿½ï¿½ï¿½
+					if(!auto_continue_success && copter.mission.set_current_cmd(copter.mission.wp_continue_nav_cmd_index())){
 						auto_continue_success = true;
-						gcs().send_text(MAV_SEVERITY_INFO, "Auto Switch to WP %d", copter.mission.wp_continue_nav_cmd_index());
+						gcs().send_text(MAV_SEVERITY_INFO, "Auto Switch to WP#%d", copter.mission.wp_continue_nav_cmd_index());
 					}
 				}
+			}
+
+			if(do_cmd1.id==MAV_CMD_DO_CHANGE_SPEED && mission_add_cmd[0].index!=do_cmd1.index){
+				mission_add_cmd[0] = do_cmd1;
+				gcs().send_text(MAV_SEVERITY_INFO, "have speed");
+			}else if(do_cmd1.content.cam_trigg_dist.meters>0.5 && do_cmd1.id==MAV_CMD_DO_SET_CAM_TRIGG_DIST && mission_add_cmd[1].index!=do_cmd1.index){
+				mission_add_cmd[1] = do_cmd1;
+				gcs().send_text(MAV_SEVERITY_INFO, "have camera trigg dist %3.1fm", do_cmd1.content.cam_trigg_dist.meters);
 			}
 		}
 	  }
 
-	//×ÅÂäÍê³É²¢ÇÒÓÐ¿ªÆô¹ý¶ÏµãÐøº½,ÖØÐÂÅÅÁÐº½µã,ÔÚ¼ÓËøµÄÊ±ºò½øÐÐ
-   if(!motors->armed() && wp_continue_complete && ap.land_complete && copter.mission.state()!=MISSION_COMPLETE){
+	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É²ï¿½ï¿½ï¿½ï¿½Ð¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ïµï¿½ï¿½ï¿½ï¿½ï¿½,ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ðºï¿½ï¿½ï¿½,ï¿½Ú¼ï¿½ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½
+   if(!motors->armed() && wp_continue_complete && ap.land_complete && copter.mission.state()!=AP_Mission::MISSION_COMPLETE){
 
-			//Ñ¡ÔñµÚÒ»¸ö¼ÇÂ¼µÄµã
-			if(mission_cmd[current_cmd_index].id!=MAV_CMD_NAV_WAYPOINT){
-				current_cmd_index = (current_cmd_index==0?1:0);
+		if(pos_count==0 && mission_cmd[0].id==0 && mission_cmd[1].id==0){
+			copter.mission.wp_continue_set_cmd_index(0);	
+			copter.mission.wp_continue_set_continue_total(0);
+			gcs().send_text(MAV_SEVERITY_INFO, "No Continue WP!");		
+		}else if(pos_count==0 && mission_cmd[0].id==MAV_CMD_NAV_WAYPOINT && mission_cmd[1].id==MAV_CMD_NAV_WAYPOINT){
+			copter.mission.wp_continue_set_cmd_index(old_nav_cmd.index);
+			copter.mission.wp_continue_set_continue_total(copter.mission.num_commands());
+			gcs().send_text(MAV_SEVERITY_INFO, "Save Continue WP#%d", old_nav_cmd.index);
+		}else if(pos_count>2&& mission_cmd[0].id==MAV_CMD_NAV_WAYPOINT && mission_cmd[1].id==MAV_CMD_NAV_WAYPOINT){
+			copter.mission.wp_continue_set_cmd_index(old_nav_cmd.index+1);
+			current_cmd_index = (current_cmd_index==0?1:0);
+			mission_cmd[current_cmd_index].id = MAV_CMD_NAV_WAYPOINT;
+			mission_cmd[current_cmd_index].index = copter.mission.wp_continue_nav_cmd_index();
+			mission_cmd[current_cmd_index].p1 = old_nav_cmd.p1;
+			mission_add_cmd[2] = mission_cmd[current_cmd_index];
+			mission_add_cmd[2].content.location.alt = old_nav_cmd.content.location.alt;
+			if(copter.mission.wp_continue_reset_wp(copter.mission.wp_continue_nav_cmd_index(), &mission_add_cmd[0])){
+				gcs().send_text(MAV_SEVERITY_INFO, "Reset WP Success, wp#%d", old_nav_cmd.index+1);
 			}
+		}
 
-			if(mission_cmd[current_cmd_index].id==MAV_CMD_NAV_WAYPOINT){
+		wp_continue_start = false;
+		wp_continue_complete = false;
+		auto_continue_success = false;
+		have_take_off = false;
+		nav_cmd1.id = 0;
+		do_cmd1.id = 0;
+	}
 
-				//ÇóµÃÐè²åÈëµÄº½µãºÅ
-				const Vector3f wpo = pv_location_to_vector(old_nav_cmd.content.location); //×î½ü·É¹ýµÄÒ»¸öº½µã
-				const Vector3f stopwp = pv_location_to_vector(break_wp_pos); //Í£Ö¹×ÔÖ÷·ÉÐÐÊ±µÄÎ»ÖÃ
-				Vector3f insertwp;
-
-				insertwp = pv_location_to_vector(mission_cmd[current_cmd_index].content.location);  //µÈ´ý²åÈëµÄº½µã
-
-				float wpo_curr = get_horizontal_distance_cm(stopwp, wpo);
-				float insertwp_curr = get_horizontal_distance_cm(stopwp, insertwp);
-
-				if(wpo_curr-insertwp_curr>=0.001){ //ÍË³ö×ÔÖ÷Ä£Ê½Î»ÖÃÓëÇ°Ò»º½µãµÄ¾àÀë´óÓÚ¼ÇÂ¼º½µãµÄ¾àÀë£¬Ôò½«²åÈëº½µãµ½Ö®Ç°º½µãÖ®ºó
-					copter.mission.wp_continue_set_nav_cmd_index(old_nav_cmd.index+1);
-				}else if(insertwp_curr-wpo_curr>=0.001){ //ÍË³ö×ÔÖ÷Ä£Ê½Î»ÖÃÓëÇ°Ò»º½µãµÄ¾àÀëÐ¡ÓÚ¼ÇÂ¼º½µãµÄ¾àÀë£¬Ôò½«²åÈëº½µãµ½Ö®Ç°º½µãÖ®Ç°
-					copter.mission.wp_continue_set_nav_cmd_index(old_nav_cmd.index);
-				}
-
-				mission_cmd[current_cmd_index].id = MAV_CMD_NAV_WAYPOINT;
-				mission_cmd[current_cmd_index].index = copter.mission.wp_continue_nav_cmd_index();
-				mission_cmd[current_cmd_index].p1 = old_nav_cmd.p1;
-
-			    //¿ªÊ¼ÅÅÐòº½µã,´ËÊ±½âËøÎÞÐ§
-				if(copter.mission.wp_continue_reset_wp(copter.mission.wp_continue_nav_cmd_index(), mission_cmd[current_cmd_index])){
-					gcs().send_text(MAV_SEVERITY_INFO, "Reset WP Success!");
-					copter.mission.wp_continue_stop();
-					wp_continue_start = false;
-					wp_continue_complete = false;
-				}
-			}
+	if(copter.mission.state()==AP_Mission::MISSION_COMPLETE){
+		wp_continue_start = false;
+		wp_continue_complete = false;
+		auto_continue_success = false;
+		auto_continue_success = false;
+		nav_cmd1.id = 0;
+		do_cmd1.id = 0;
+		pos_count = 0;
+		have_take_off = false;
+		copter.mission.wp_continue_set_cmd_index(0);
 	}
 }

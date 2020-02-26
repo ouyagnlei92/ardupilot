@@ -563,7 +563,7 @@ void AP_GPS::detect_instance(uint8_t instance)
      	new_gps = new AP_GPS_JOYTON(*this, state[instance], _port[instance]);
      	//send joyton gps config
      	int16_t space = _port[instance]->txspace();
-     	if (space > sizeof(JOYTON_GPS_CONFIG)-1) space = sizeof(JOYTON_GPS_CONFIG)-1;
+     	if(space > (int16_t)(sizeof(JOYTON_GPS_CONFIG)-1)) space = (int16_t)(sizeof(JOYTON_GPS_CONFIG)-1);
      	uint8_t* config = (uint8_t*)JOYTON_GPS_CONFIG;
      	while (space > 0) {
 				_port[instance]->write(*config);
