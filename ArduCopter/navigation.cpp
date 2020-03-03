@@ -51,6 +51,7 @@ void Copter::wp_continue_fly()
 	static bool have_take_off = false;
 	AP_Mission::Mission_Command nav_cmd1 = {};
 	AP_Mission::Mission_Command do_cmd1 = {};
+	static uint32_t led_time_ms = 0;
 
 	uint32_t pos_time_ms = 0;
 
@@ -184,6 +185,8 @@ void Copter::wp_continue_fly()
 			mission_add_cmd[2] = mission_cmd[current_cmd_index];
 			mission_add_cmd[2].content.location.alt = old_nav_cmd.content.location.alt;
 			if(copter.mission.wp_continue_reset_wp(copter.mission.wp_continue_nav_cmd_index(), &mission_add_cmd[0])){
+				AP_Notify::flags.wp_continue = true;
+				led_time_ms = AP_HAL::millis();
 				gcs().send_text(MAV_SEVERITY_INFO, "Reset WP Success, wp#%d", old_nav_cmd.index+1);
 			}
 		}
@@ -206,5 +209,9 @@ void Copter::wp_continue_fly()
 		pos_count = 0;
 		have_take_off = false;
 		copter.mission.wp_continue_set_cmd_index(0);
+	}
+
+	if(AP_Notify::flags.wp_continue && AP_HAL::millis()-led_time_ms>=10000){
+		AP_Notify::flags.wp_continue = false;
 	}
 }

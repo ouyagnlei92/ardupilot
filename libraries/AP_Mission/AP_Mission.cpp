@@ -917,10 +917,12 @@ MAV_MISSION_RESULT AP_Mission::mavlink_int_to_mission_cmd(const mavlink_mission_
         case MAV_FRAME_MISSION:
         case MAV_FRAME_GLOBAL:
             cmd.content.location.flags.relative_alt = 0;
+            gcs().send_text(MAV_SEVERITY_INFO, "relative_alt = 0");
             break;
 
         case MAV_FRAME_GLOBAL_RELATIVE_ALT:
             cmd.content.location.flags.relative_alt = 1;
+            gcs().send_text(MAV_SEVERITY_INFO, "relative_alt = 1");
             break;
 
 #if AP_TERRAIN_AVAILABLE
@@ -1836,7 +1838,7 @@ bool AP_Mission::wp_continue_reset_wp(uint16_t index, AP_Mission::Mission_Comman
 		gcs().send_text(MAV_SEVERITY_INFO, "Mission Out Capacity!Max=%d",num_commands_max());
 		return false;
 	}
-
+    
 	gcs().send_text(MAV_SEVERITY_INFO, "Start Reset WP!");
 
 	_cmd_total.set_and_save(_cmd_total);
