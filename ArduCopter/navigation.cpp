@@ -95,7 +95,7 @@ void Copter::wp_continue_fly()
 				old_ground_speed = ahrs.groundspeed()*100;     //��ȡ��ǰ����   cm/s
 				pos_last_time_ms = AP_HAL::millis();
 				gcs().send_text(MAV_SEVERITY_INFO, "Start Record Waypoint");
-			}else if(nav_cmd1.id==MAV_CMD_NAV_TAKEOFF){   //TAKE OFFִ����ϣ�ѡ���Զ�����
+			}else if(nav_cmd1.id==MAV_CMD_NAV_TAKEOFF || copter.mission.get_current_nav_cmd().id==MAV_CMD_NAV_TAKEOFF){   //TAKE OFFִ����ϣ�ѡ���Զ�����
 			    have_take_off = true;
 				if(copter.mission.wp_continue_cmd_total()==copter.mission.num_commands() && copter.mission.wp_continue_nav_cmd_index()>0 && copter.mission.wp_continue_cmd_total()>1){  //����û�б�����޸Ĺ�����ѡ��ϵ�����
 					if(!auto_continue_success && copter.mission.set_current_cmd(copter.mission.wp_continue_nav_cmd_index())){
@@ -169,8 +169,8 @@ void Copter::wp_continue_fly()
    if(!motors->armed() && wp_continue_complete && ap.land_complete && copter.mission.state()!=AP_Mission::MISSION_COMPLETE){
 
 		if(pos_count==0 && mission_cmd[0].id==0 && mission_cmd[1].id==0){
-			copter.mission.wp_continue_set_cmd_index(0);	
-			copter.mission.wp_continue_set_continue_total(0);
+			//copter.mission.wp_continue_set_cmd_index(0);	
+			//copter.mission.wp_continue_set_continue_total(0);
 			gcs().send_text(MAV_SEVERITY_INFO, "No Continue WP!");		
 		}else if(pos_count==0 && mission_cmd[0].id==MAV_CMD_NAV_WAYPOINT && mission_cmd[1].id==MAV_CMD_NAV_WAYPOINT){
 			copter.mission.wp_continue_set_cmd_index(old_nav_cmd.index);

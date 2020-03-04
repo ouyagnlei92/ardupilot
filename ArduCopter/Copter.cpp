@@ -37,7 +37,7 @@ Copter::Copter(void)
     flightmode(&mode_stabilize)
 {
     // init sensor error logging flags
-    //ÖÇÄÜµç³Ø·µº½¶¨Òå
+    //ï¿½ï¿½ï¿½Üµï¿½Ø·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	_mv_count = 0;
 	_mv_success = false;
 	_fly_status = Copter::DISARMING;
@@ -51,35 +51,59 @@ Copter::Copter(void)
 	init();
 }
 
-// 100msµ÷ÓÃÒ»´Î
+// 100msï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½
 void Copter::batterySmartRTLUpdate(void){
 
-	if(ap.initialised && !_system_init){   //È·¶¨ÏµÍ³ÊÇ·ñ³õÊ¼»¯
+	if(ap.initialised && !_system_init){   //È·ï¿½ï¿½ÏµÍ³ï¿½Ç·ï¿½ï¿½Ê¼ï¿½ï¿½
 		_system_init = true;
 		if(g.bat_auto_rtl) gcs().send_text(MAV_SEVERITY_WARNING, "Batt SmartRTL Type: %d", _battery_type);
-                else return;
+        else return;
 		_battery_type = g.bat_type;
 	}
 
-       if(g.bat_auto_rtl==0) return;
+    if(g.bat_auto_rtl==0) return;
 
-	if(!position_ok()) return;   //µ±Ç°Ä£Ê½ÎªRTL »òÕß Î»ÖÃ¶¨Î»²»Âú×ã
+	if(flightmode==&mode_rtl || _open_rtl || mode_auto.mode()==Auto_RTL || mode_auto.mode()==Auto_Land) return;
 
-	if(!flightmode->requires_GPS()) return;     //µ±Ç°·ÉÐÐÄ£Ê½²»ÐèÒªGPS
+	if(!position_ok()) return;   //ï¿½ï¿½Ç°Ä£Ê½ÎªRTL ï¿½ï¿½ï¿½ï¿½ Î»ï¿½Ã¶ï¿½Î»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
-	if(_battery_type==0){  //0-Lipoµç³Ø
+	if(!flightmode->requires_GPS()) return;     //ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½Ä£Ê½ï¿½ï¿½ï¿½ï¿½ÒªGPS
+
+	if(_battery_type==0){  //0-Lipoï¿½ï¿½ï¿½ 
 		LiPoBatteryAutoRTL();
-	}else if(_battery_type==1){  //1-ÖÇÄÜµç³Ø
+	}else if(_battery_type==1){  //1-ï¿½ï¿½ï¿½Üµï¿½ï¿½
 		smartBatteryAutoRTL();
+	}
+	
+	if(_mv_success){
+		//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+		float climb_rate1 = inertial_nav.get_velocity_z(); //ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½Ù¶ï¿½ cm/s
+		float groundSpeed = ahrs.groundspeed()*100;    //ï¿½ï¿½È¡ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½   cm/s
+
+		_up_flag = climb_rate1>=0 ? true:false;				     //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½  trueÎªï¿½ï¿½ï¿½ï¿½
+
+
+		if(fabs(climb_rate1)>=50 && groundSpeed<=50){    //ï¿½É»ï¿½ï¿½ï¿½Ö±ï¿½Æ¶ï¿½ï¿½ï¿½ï¿½ï¿½Ë®Æ½ï¿½Æ¶ï¿½
+			climbUseMahCal();
+		}else if(fabs(climb_rate1)<50 && groundSpeed>=50){   //ï¿½É»ï¿½Ö»Ë®Æ½ï¿½Æ¶ï¿½
+			horUserMahCal();
+		}else if(fabs(climb_rate1)>=50 && groundSpeed>=50) { //ï¿½É»ï¿½ï¿½ï¿½Ë®Æ½ï¿½Æ¶ï¿½ï¿½Ö´ï¿½Ö±ï¿½Æ¶ï¿½
+			horClimbUseMahCal();
+		}else if(fabs(climb_rate1)<50 && groundSpeed<50){    //ï¿½ï¿½Í£×´Ì¬
+			stopUseMahCal();
+		}
+
+		//ï¿½ï¿½ï¿½ï¿½ï¿½Ô¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+		lowPowerRTL();
 	}
 
 	++_log_record_time;
-	if(_log_record_time>=5){  //500ms±£´æÒ»´Îlog
+	if(_log_record_time>=10){  //1000msï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½log
 		_log_record_time = 0;
 		writeLog();
 	}
 
-	if(_set_error && AP_HAL::millis()-_error_time>5000){   //µç³Ø²ÎÊýÉèÖÃ´íÎó£¬5ÃëÌáÐÑÒ»´Î
+	if(_set_error && AP_HAL::millis()-_error_time>5000){   //ï¿½ï¿½Ø²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ã´ï¿½ï¿½ï¿½5ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½
 		_error_time = AP_HAL::millis();
 		gcs().send_text(MAV_SEVERITY_WARNING, "Batt SmartRTL Set Error!Type:%d, Cell:%d", _battery_type, g.bat_cell);
 	}
@@ -100,52 +124,51 @@ void Copter::init(void){
 	_up_flag = 0;
 }
 
-void Copter::climbUseMahCal(void){   //ÅÀÉý¼ì²â
+void Copter::climbUseMahCal(void){   //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
-	if(!_climb_start){   //Ö»¼ÆËãÅÀÉý¸ß¶ÈºÄµçÁ¿
+	if(!_climb_start){   //Ö»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ß¶ÈºÄµï¿½ï¿½ï¿½
 		if(!_climbing){
 			_climbing = true;
 			_old_climb_time = AP_HAL::millis();
 		}
-		if(_climbing && (AP_HAL::millis()-_old_climb_time)>=500){  //³ÖÐø500msÅÀÉý
-			_climb_start = true;  //ÅÀÉý¿ªÊ¼
-			_old_use_mah = battery.consumed_mah();  //»ñÈ¡ÒÑ¾­ÏûºÄµÄÄÜÁ¿
+		if(_climbing && (AP_HAL::millis()-_old_climb_time)>=500){  //ï¿½ï¿½ï¿½ï¿½500msï¿½ï¿½ï¿½ï¿½
+			_climb_start = true;  //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¼
+			_old_use_mah = battery.consumed_mah();  //ï¿½ï¿½È¡ï¿½Ñ¾ï¿½ï¿½ï¿½ï¿½Äµï¿½ï¿½ï¿½ï¿½ï¿½
 			_fly_status = Copter::CLIMB;
 			_old_pos_ms = AP_HAL::millis();
 
-			//Çå³þÆäËû±êÖ¾
+			//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¾
 			_hormove_start = false;
 			_horMoving = false;
 			_stopping = false;
 			_stop_start = false;
 			_horclimbe_start = false;
 			_horclimbing = false;
-			gcs().send_text(MAV_SEVERITY_WARNING, "Start Climb! Used %.1fmah", _old_use_mah);
 		}
 	}
 
-	if(_climb_start && AP_HAL::millis()-_old_pos_ms>=1000){
+	if(_climb_start && AP_HAL::millis()-_old_pos_ms>=500){
 		float cu =  battery.consumed_mah();
-    	if(!_up_flag){ //²»ÊÇÅÀÉý
+    	if(!_up_flag){ //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     		_verUseMah -= cu-_old_use_mah;
-    	}else if(_up_flag){ //ÅÀÉýÖÐ£¬ÅÀÉýÏûºÄµÄ×ÜµçÁ¿
-    		_verUseMah += cu-_old_use_mah;    //¸üÐÂÅÀÉýÊ¹ÓÃµÄµçÁ¿
+    	}else if(_up_flag){ //ï¿½ï¿½ï¿½ï¿½ï¿½Ð£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Äµï¿½ï¿½Üµï¿½ï¿½ï¿½
+    		_verUseMah += cu-_old_use_mah;    //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¹ï¿½ÃµÄµï¿½ï¿½ï¿½
     	}
 		_old_use_mah = cu;
 		_old_pos_ms = AP_HAL::millis();
 	}
 }
 
-void Copter::horUserMahCal(void){    //Ë®Æ½·ÉÐÐ¼ì²â
+void Copter::horUserMahCal(void){    //Ë®Æ½ï¿½ï¿½ï¿½Ð¼ï¿½ï¿½
 	if(!_hormove_start){
 		if(!_horMoving){
 			_horMoving = true;
 			_old_hormove_time = AP_HAL::millis();
 		}
-		if(_horMoving && (AP_HAL::millis()-_old_hormove_time)>=500){  //³ÖÐø500msÅÀÉý
-			_hormove_start = true;  //ÅÀÉý¿ªÊ¼
-			_old_use_mah = battery.consumed_mah();  //»ñÈ¡µ±Ç°Ê¹ÓÃÈÝÁ¿
-			_old_pos = inertial_nav.get_position();   //»ñÈ¡¿ªÊ¼Î»ÖÃ
+		if(_horMoving && (AP_HAL::millis()-_old_hormove_time)>=500){  //ï¿½ï¿½ï¿½ï¿½500msï¿½ï¿½ï¿½ï¿½
+			_hormove_start = true;  //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¼
+			_old_use_mah = battery.consumed_mah();  //ï¿½ï¿½È¡ï¿½ï¿½Ç°Ê¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+			_old_pos = inertial_nav.get_position();   //ï¿½ï¿½È¡ï¿½ï¿½Ê¼Î»ï¿½ï¿½
 			_old_pos_ms = AP_HAL::millis();
 			_fly_status = Copter::HOR_MOVING;
 
@@ -155,25 +178,26 @@ void Copter::horUserMahCal(void){    //Ë®Æ½·ÉÐÐ¼ì²â
 			_stop_start = false;
 			_horclimbe_start = false;
 		    _horclimbing = false;
-		    gcs().send_text(MAV_SEVERITY_WARNING, "Hor Moveing! Used %.1fmah", _old_use_mah);
 		}
 	}
 
 	if(_hormove_start){
-		if(AP_HAL::millis()-_old_pos_ms>=1000 && position_ok() && control_mode!=RTL){   //1S¼ÆËãÒ»´ÎÆ½¾ùÖµ
+		if(AP_HAL::millis()-_old_pos_ms>=500 && position_ok() && control_mode!=RTL){   //1Sï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½Æ½ï¿½ï¿½Öµ
     		Vector3f  curr_pos;
 			float distance = 0.0;
 
 			curr_pos = inertial_nav.get_position();
 			_old_pos_ms = AP_HAL::millis();
-			distance = get_horizontal_distance_cm(_old_pos, curr_pos); //·ÉÐÐÎ»ÒÆ
+			distance = get_horizontal_distance_cm(_old_pos, curr_pos); //ï¿½ï¿½ï¿½ï¿½Î»ï¿½ï¿½
 			_old_pos = curr_pos;
 
-    		float curr_mah = battery.consumed_mah(); // µ±Ç°ÏûºÄµçÁ¿
+			if(distance<=0.0001) return; 
+
+    		float curr_mah = battery.consumed_mah(); // ï¿½ï¿½Ç°ï¿½ï¿½ï¿½Äµï¿½ï¿½ï¿½
     		float mah_speed = (curr_mah-_old_use_mah)/distance;     // mah/cm
     		_old_use_mah = curr_mah;
 
-    		// ²ÉÓÃ»¬¶¯Æ½¾ùËã·¨ÇóºÄµçËÙ¶È mah/cm
+    		// ï¿½ï¿½ï¿½Ã»ï¿½ï¿½ï¿½Æ½ï¿½ï¿½ï¿½ã·¨ï¿½ï¿½Äµï¿½ï¿½Ù¶ï¿½ mah/cm
 			if(_hor_count==10) _hor_count = 0;
 			_hor_mah_speed[_hor_count] = mah_speed;
 			++_hor_count;
@@ -181,7 +205,7 @@ void Copter::horUserMahCal(void){    //Ë®Æ½·ÉÐÐ¼ì²â
 			float sum = 0.0;
 			for( ; i<10; ++i)
 			{
-				if(_hor_mah_speed[i]>0.001){
+				if(_hor_mah_speed[i]>0.00001){
 					sum += _hor_mah_speed[i];
 				}else break;
 			}
@@ -191,49 +215,50 @@ void Copter::horUserMahCal(void){    //Ë®Æ½·ÉÐÐ¼ì²â
 	}
 }
 
-void Copter::horClimbUseMahCal(void){   //ÅÀÉý»òÕßË®Æ½·ÉÐÐ¼ì²â
-	if(!_horclimbe_start){   //Ö»¼ÆËãÅÀÉý¸ß¶ÈºÄµçÁ¿
+void Copter::horClimbUseMahCal(void){   //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ë®Æ½ï¿½ï¿½ï¿½Ð¼ï¿½ï¿½
+	if(!_horclimbe_start){   //Ö»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ß¶ÈºÄµï¿½ï¿½ï¿½
 		if(!_horclimbing){
 			_horclimbing = true;
 			_old_horclimb_time = AP_HAL::millis();
 		}
-		if(_horclimbing && (AP_HAL::millis()-_old_horclimb_time)>=500){  //³ÖÐø200msÅÀÉý
-			_horclimbe_start = true;  //ÅÀÉý¿ªÊ¼
-			_old_use_mah = battery.consumed_mah();  //»ñÈ¡µ±Ç°ÈÝÁ¿
-			_old_pos = inertial_nav.get_position();   //»ñÈ¡¿ªÊ¼Î»ÖÃ
+		if(_horclimbing && (AP_HAL::millis()-_old_horclimb_time)>=500){  //ï¿½ï¿½ï¿½ï¿½200msï¿½ï¿½ï¿½ï¿½
+			_horclimbe_start = true;  //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¼
+			_old_use_mah = battery.consumed_mah();  //ï¿½ï¿½È¡ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½
+			_old_pos = inertial_nav.get_position();   //ï¿½ï¿½È¡ï¿½ï¿½Ê¼Î»ï¿½ï¿½
 			_old_alt = barometer.get_altitude()*100;
 			_old_pos_ms = AP_HAL::millis();
 			_fly_status = Copter::HOR_CLIMB;
 
-			//Çå³þÆäËû±êÖ¾
+			//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¾
 			_hormove_start = false;
 			_horMoving = false;
 			_stopping = false;
 			_stop_start = false;
 			_climb_start = false;
 			_climbing = false;
-			gcs().send_text(MAV_SEVERITY_WARNING, "Hor/Ver moving! Used %.1fmah", _old_use_mah);
 		}
 	}
 
 	if(_horclimbe_start){
-    	if(AP_HAL::millis()-_old_pos_ms>=1000 && position_ok() && control_mode!=RTL){   //1S¼ÆËãÒ»´ÎÆ½¾ùÖµ
+    	if(AP_HAL::millis()-_old_pos_ms>=500 && position_ok() && control_mode!=RTL){   //1Sï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½Æ½ï¿½ï¿½Öµ
 			Vector3f  curr_pos;
 			float distance = 0.0;
 
 			curr_pos = inertial_nav.get_position();
 			float curr_alt = barometer.get_altitude()*100;
 			_old_pos_ms = AP_HAL::millis();
-			distance = get_horizontal_distance_cm(_old_pos, curr_pos); // ·ÉÐÐÎ»ÒÆ
+			distance = get_horizontal_distance_cm(_old_pos, curr_pos); // ï¿½ï¿½ï¿½ï¿½Î»ï¿½ï¿½
 			_old_pos = curr_pos;
 
-			float curr_mah = battery.consumed_mah(); // µ±Ç°ÏûºÄµçÁ¿
+			float curr_mah = battery.consumed_mah(); // ï¿½ï¿½Ç°ï¿½ï¿½ï¿½Äµï¿½ï¿½ï¿½
 			float diffalt = curr_alt-_old_alt;
-			float mah_speed = (curr_mah-_old_use_mah)/(distance+fabs(diffalt));     //mah/cm
+			float ccc = distance+fabs(diffalt);
+			if(ccc<=0.0001) return;
+			float mah_speed = (curr_mah-_old_use_mah)/ccc;     //mah/cm
 			_old_use_mah = curr_mah;
 			_old_alt = curr_alt;
 
-			// ²ÉÓÃ»¬¶¯Æ½¾ùËã·¨ÇóºÄµçËÙ¶È mah/cm
+			// ï¿½ï¿½ï¿½Ã»ï¿½ï¿½ï¿½Æ½ï¿½ï¿½ï¿½ã·¨ï¿½ï¿½Äµï¿½ï¿½Ù¶ï¿½ mah/cm
 			if(_hor_count==10) _hor_count = 0;
 			_hor_mah_speed[_hor_count] = mah_speed;
 			++_hor_count;
@@ -241,7 +266,7 @@ void Copter::horClimbUseMahCal(void){   //ÅÀÉý»òÕßË®Æ½·ÉÐÐ¼ì²â
 			float sum = 0.0;
 			for( ; i<10; ++i)
 			{
-				if(_hor_mah_speed[i]>0.001){
+				if(_hor_mah_speed[i]>0.00001){
 					sum += _hor_mah_speed[i];
 				}else break;
 			}
@@ -249,24 +274,22 @@ void Copter::horClimbUseMahCal(void){   //ÅÀÉý»òÕßË®Æ½·ÉÐÐ¼ì²â
 			else _hor_mah_speed_avr = sum/1;
 			_old_pos_ms = AP_HAL::millis();
 
-			if(diffalt>0.0001)  //Ïà¶Ô¸ß¶È´óÓÚ0£¬ÒâÎ¶×ÅÅÀÉý
-				_verUseMah += fabs(diffalt)*_hor_mah_speed_avr*0.6;   //¸ß¶ÈÏûºÄµþ¼Ó
+			if(diffalt>0.0001)  //ï¿½ï¿½Ô¸ß¶È´ï¿½ï¿½ï¿½0ï¿½ï¿½ï¿½ï¿½Î¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+				_verUseMah += fabs(diffalt)*_hor_mah_speed_avr;   //ï¿½ß¶ï¿½ï¿½ï¿½ï¿½Äµï¿½ï¿½ï¿½
 			else
-				_verUseMah -= fabs(diffalt)*_hor_mah_speed_avr*0.6;
-
-			_hor_mah_speed_avr *= 0.4;
+				_verUseMah -= fabs(diffalt)*_hor_mah_speed_avr;
 		}
 	}
 }
 
-void Copter::stopUseMahCal(void){   //ÐüÍ£¼ì²â
+void Copter::stopUseMahCal(void){   //ï¿½ï¿½Í£ï¿½ï¿½ï¿½
 	if(!_stop_start){
 		if(!_stopping){
 			_stopping = true;
 			_old_stop_time = AP_HAL::millis();
 		}
 		if(_stopping && (AP_HAL::millis()-_old_stop_time)>=500){
-			_stop_start = true;  //ÐüÍ£×´Ì¬
+			_stop_start = true;  //ï¿½ï¿½Í£×´Ì¬
 			_fly_status = Copter::STOP;
 
 			_hormove_start = false;
@@ -276,66 +299,53 @@ void Copter::stopUseMahCal(void){   //ÐüÍ£¼ì²â
 			_horclimbe_start = false;
 			_horclimbing = false;
 
-			gcs().send_text(MAV_SEVERITY_WARNING, "Stop Move! Used %.1fmah", battery.consumed_mah());
-
 		}
 	}
 }
 
 void Copter::lowPowerRTL(void){
-	_to_home_distance = home_distance(); // µ±Ç°Î»ÖÃÀë»Ø¼ÒµãÎ»ÖÃ¾àÀë
+	_to_home_distance = home_distance(); // ï¿½ï¿½Ç°Î»ï¿½ï¿½ï¿½ï¿½Ø¼Òµï¿½Î»ï¿½Ã¾ï¿½ï¿½ï¿½
 
-	_to_home_mah = _to_home_distance*_hor_mah_speed_avr + _verUseMah + _verUseMah*0.10;      // ¼ÆËãÒÔµ±Ç°×´Ì¬µÄºÄµçÁ¿·µ»Øµ½»Ø¼ÒµãÐèÒªµÄµçÁ¿
+	if(_verUseMah<0) _verUseMah = fabs(_hor_mah_speed_avr*barometer.get_altitude()*100);
+
+	_to_home_mah = _to_home_distance*_hor_mah_speed_avr + _verUseMah + _verUseMah*0.10;      // ï¿½ï¿½ï¿½ï¿½ï¿½Ôµï¿½Ç°×´Ì¬ï¿½ÄºÄµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Øµï¿½ï¿½Ø¼Òµï¿½ï¿½ï¿½Òªï¿½Äµï¿½ï¿½ï¿½
 
 	if(mode_auto.mode()==Auto_RTL || mode_auto.mode()==Auto_Land || control_mode==RTL ) return;
 
-	// ÅÐ¶ÏÈÝÁ¿ÊÇ·ñÄÜ·µ»Ø£¬±£ÁôµçÁ¿10%£¬ ÅÀÉýºÍÏÂ½µµçÁ¿£¬ ÏÂ½µµçÁ¿ÉÔÎ¢´óÓÚÅÀÉýµçÁ¿£¬¶àÈ¡10%
+	// ï¿½Ð¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½Ü·ï¿½ï¿½Ø£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½10%ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Â½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î¢ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¡10%
 	if( !_open_rtl && (_to_home_mah>=(_pre_arm_mah-battery.pack_capacity_mah()*g.bat_auto_rtl_keep_cap-battery.consumed_mah())) )	{
 		_open_rtl = true;
 		set_mode_RTL_or_land_with_pause(MODE_REASON_BATTERY_FAILSAFE);
-		gcs().send_text(MAV_SEVERITY_INFO, "BATTERY FAILSAFE RTL! Used %.1fmah", battery.consumed_mah());
+		AP_Notify::flags.failsafe_battery = true;
+		gcs().send_text(MAV_SEVERITY_INFO, "RTL! Used %.1fmah", battery.consumed_mah());
+		writeLog();
+
+		init();
 		return;
 	}
 }
 
 
-/*    ´øÓÐÖÇÄÜµç³ØµÄ·µº½
- * ·ÖËÄÖÖÖÖÇé¿ö:  1¡¢Ö»ÅÀ¸ß»ò½µÂä£¬²»Ë®Æ½ÒÆ¶¯    2¡¢Ö»Ë®Æ½ÒÆ¶¯£¬²»ÅÀ¸ß     3¡¢¼ÈË®Æ½ÒÆ¶¯ÓÖÅÀ¸ß     4¡¢ÐüÍ£
+/*    ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Üµï¿½ØµÄ·ï¿½ï¿½ï¿½
+ * ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½:  1ï¿½ï¿½Ö»ï¿½ï¿½ï¿½ß»ï¿½ï¿½ä£¬ï¿½ï¿½Ë®Æ½ï¿½Æ¶ï¿½    2ï¿½ï¿½Ö»Ë®Æ½ï¿½Æ¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½     3ï¿½ï¿½ï¿½ï¿½Ë®Æ½ï¿½Æ¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½     4ï¿½ï¿½ï¿½ï¿½Í£
  */
 void Copter::smartBatteryAutoRTL(void){
 
-	//¼ì²âµç³Ø¼ì²âÆ÷ÊÇ·ñ´æÔÚ£¬×Ô¶¯·µº½¿ª¹ØÊÇ·ñ¿ªÆô
+	//ï¿½ï¿½ï¿½ï¿½Ø¼ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½Ú£ï¿½ï¿½Ô¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½
 	if(!battery.has_current()) return;
 
-	//¼ì²âÊÇ·ñ´æÔÚÖÇÄÜµç³Ø¼à¿Ø
+	//ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Üµï¿½Ø¼ï¿½ï¿½
 	if(battery.get_type()!=AP_BattMonitor_Params::BattMonitor_TYPE_MAXELL) return;
 
-	//²é¿´½âËø×´Ì¬£¬½âËø£¬ÔòÔËÐÐµç³Ø¼à¿Ø³ÌÐò£¬×Ô¶¯·µº½Ìõ¼þ¼ì²â´¦Àí
-	if(arming.is_armed()){
+	//ï¿½é¿´ï¿½ï¿½ï¿½ï¿½×´Ì¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ðµï¿½Ø¼ï¿½Ø³ï¿½ï¿½ï¿½ï¿½Ô¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½â´¦ï¿½ï¿½
+	if(motors->armed()){
 		if(!_armed){
 			init();
-			_pre_arm_mah = battery.remaining_mah();   //»ñÈ¡½âËøÊ±ºòµÄÊ£ðNÈÝÁ¿
+			_pre_arm_mah = battery.remaining_mah();   //ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½Ê£ï¿½Nï¿½ï¿½ï¿½ï¿½
 			_armed = true;
+			_mv_success = true;
 			gcs().send_text(MAV_SEVERITY_WARNING, "Armed! Smart Battery Remaining %.1fmah, type:%d", _pre_arm_mah, _battery_type);
 		}
-		//¼ì²âÅÀÉý
-		float climb_rate = inertial_nav.get_velocity_z(); //»ñÈ¡ÅÀÉýËÙ¶È cm/s
-		float groundSpeed = ahrs.groundspeed()*100;    //»ñÈ¡µ±Ç°µØËÙ   cm/s
-
-	    _up_flag = climb_rate>=0 ? true:false;				     //ÅÀÉý·½Ïò  trueÎªÏòÉÏ
-
-	    if(fabs(climb_rate)>=30 && groundSpeed<=30){    //·É»úÖ»´¹Ö±ÒÆ¶¯£¬ÎÞË®Æ½ÒÆ¶¯
-	    	climbUseMahCal();
-	    }else if(fabs(climb_rate)<30 && groundSpeed>=30){   //·É»úÖ»Ë®Æ½ÒÆ¶¯
-	    	horUserMahCal();
-	    }else if(fabs(climb_rate)>=30 && groundSpeed>=30) { //·É»ú¼ÈË®Æ½ÒÆ¶¯ÓÖ´¹Ö±ÒÆ¶¯
-	    	horClimbUseMahCal();
-	    }else if(fabs(climb_rate)<30 && groundSpeed<30){    //ÐüÍ£×´Ì¬
-	    	stopUseMahCal();
-	    }
-
-		//¼ÆËã×Ô¶¯·µº½Ìõ¼þ
-	    lowPowerRTL();
 	}else {
 		if(_armed){
 			_armed = false;
@@ -347,28 +357,29 @@ void Copter::smartBatteryAutoRTL(void){
 
 }
 
-/*   18650¼ÆËã×Ô¶¯·µº½
- * ·ÖËÄÖÖÖÖÇé¿ö:  1¡¢Ö»ÅÀ¸ß»ò½µÂä£¬²»Ë®Æ½ÒÆ¶¯    2¡¢Ö»Ë®Æ½ÒÆ¶¯£¬²»ÅÀ¸ß     3¡¢¼ÈË®Æ½ÒÆ¶¯ÓÖÅÀ¸ß     4¡¢ÐüÍ£
+/*   18650ï¿½ï¿½ï¿½ï¿½ï¿½Ô¶ï¿½ï¿½ï¿½ï¿½ï¿½
+ * ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½:  1ï¿½ï¿½Ö»ï¿½ï¿½ï¿½ß»ï¿½ï¿½ä£¬ï¿½ï¿½Ë®Æ½ï¿½Æ¶ï¿½    2ï¿½ï¿½Ö»Ë®Æ½ï¿½Æ¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½     3ï¿½ï¿½ï¿½ï¿½Ë®Æ½ï¿½Æ¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½     4ï¿½ï¿½ï¿½ï¿½Í£
  */
 void Copter::LiPoBatteryAutoRTL(void){
 
-	//¼ì²âµç³Ø¼ì²âÆ÷ÊÇ·ñ´æÔÚ£¬×Ô¶¯·µº½¿ª¹ØÊÇ·ñ¿ªÆô
+	//ï¿½ï¿½ï¿½ï¿½Ø¼ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½Ú£ï¿½ï¿½Ô¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½
 	if(!battery.has_current()) return;
 
-	//¼ì²âÊÇ·ñ´æÔÚÖÇÄÜµç³Ø¼à¿Ø
+	//ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Üµï¿½Ø¼ï¿½ï¿½
 	if(_battery_type!=0) return;
 
-	//²é¿´½âËø×´Ì¬£¬½âËø£¬ÔòÔËÐÐµç³Ø¼à¿Ø³ÌÐò£¬×Ô¶¯·µº½Ìõ¼þ¼ì²â´¦Àí
-	if(arming.is_armed()){
-		if(!_mv_success) // ¼ì²âÊÇ·ñÍê³É
+	//ï¿½é¿´ï¿½ï¿½ï¿½ï¿½×´Ì¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ðµï¿½Ø¼ï¿½Ø³ï¿½ï¿½ï¿½ï¿½Ô¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½â´¦ï¿½ï¿½
+	if(motors->armed()){
+
+		if(!_mv_success) // ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½ï¿½
 		{
 			_mv[_mv_count] = (unsigned short)((battery.voltage()*1000.0)/(g.bat_cell));
-			if(_mv[_mv_count]>4600) {   //µç³ØµçÑ¹³¬³ö·¶Î§,ÉèÖÃ´íÎó
+			if(_mv[_mv_count]>4600) {   //ï¿½ï¿½Øµï¿½Ñ¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î§,ï¿½ï¿½ï¿½Ã´ï¿½ï¿½ï¿½
 				_set_error = true;
 				return;
 			}
 			++_mv_count;
-			if(5==_mv_count) //²ÉÑùÎå´ÎÍê³É
+			if(5==_mv_count) //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 			{
 				_mv_success = true;
 				_armed = true;
@@ -380,8 +391,9 @@ void Copter::LiPoBatteryAutoRTL(void){
 					sum += _mv[i];
 				}
 				avr = (sum/5.0);
+				gcs().send_text(MAV_SEVERITY_INFO, "avr vol = %.1f", avr);
 
-				// ¼ÆËãµ±Ç°µçÑ¹´¦ÓÚÈÝÁ¿·¶Î§£¬ ²¢ÏßÐÔ½üËÆÇóµçÁ¿
+				// ï¿½ï¿½ï¿½ãµ±Ç°ï¿½ï¿½Ñ¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î§ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ô½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 				unsigned char index1=0, index2=0;
 				for( i=0; i<sizeof(vol)/sizeof(unsigned short); ++i)
 				{
@@ -393,9 +405,10 @@ void Copter::LiPoBatteryAutoRTL(void){
 						break;
 					}
 				}
+				gcs().send_text(MAV_SEVERITY_INFO, "2 = %d, 1 = %d", index2, index1);
 				if(0==index2 && 0==index1)
 				{
-						//Ã»ÓÐµç
+						//Ã»ï¿½Ðµï¿½
 					_pre_arm_mah = 0;
 					gcs().send_text(MAV_SEVERITY_INFO, "No Power");
 				}else if((sizeof(vol)/sizeof(unsigned short)-1)==index1)
@@ -404,33 +417,13 @@ void Copter::LiPoBatteryAutoRTL(void){
 					gcs().send_text(MAV_SEVERITY_INFO, "Power Full");
 				}else
 				{
-					_pre_arm_mah = (((vol_mah_pre[index2]-vol_mah_pre[index1])/(vol[index2]-vol[index1]))*(avr-vol[index1]))*battery.pack_capacity_mah(); // ¼ÆËãÉÏµçÊ±µÄµçÁ¿
+					_pre_arm_mah = ( ((vol_mah_pre[index2]-vol_mah_pre[index1])/(vol[index2]-vol[index1]))*(avr-vol[index1]) + vol_mah_pre[index1] )*battery.pack_capacity_mah(); // ï¿½ï¿½ï¿½ï¿½ï¿½Ïµï¿½Ê±ï¿½Äµï¿½ï¿½ï¿½
 					gcs().send_text(MAV_SEVERITY_WARNING, "Armed! Smart Battery Remaining %.1fmah, type:%d", _pre_arm_mah, _battery_type);
 				}
-				_old_mah = battery.consumed_mah();  //½âËøÖ®Ç°ÏûºÄµÄµçÁ¿
+				_old_mah = battery.consumed_mah();  //ï¿½ï¿½ï¿½ï¿½Ö®Ç°ï¿½ï¿½ï¿½ÄµÄµï¿½ï¿½ï¿½
 				init();
 			}
 		}
-
-		//¼ì²âÅÀÉý
-		float climb_rate = inertial_nav.get_velocity_z(); //»ñÈ¡ÅÀÉýËÙ¶È cm/s
-		float groundSpeed = ahrs.groundspeed()*100;    //»ñÈ¡µ±Ç°µØËÙ   cm/s
-
-	    _up_flag = climb_rate>=0 ? true:false;				     //ÅÀÉý·½Ïò  trueÎªÏòÉÏ
-
-
-	    if(fabs(climb_rate)>=25 && groundSpeed<=25){    //·É»ú´¹Ö±ÒÆ¶¯£¬ÎÞË®Æ½ÒÆ¶¯
-	    	climbUseMahCal();
-	    }else if(fabs(climb_rate)<25 && groundSpeed>=25){   //·É»úÖ»Ë®Æ½ÒÆ¶¯
-	    	horUserMahCal();
-	    }else if(fabs(climb_rate)>=25 && groundSpeed>=25) { //·É»ú¼ÈË®Æ½ÒÆ¶¯ÓÖ´¹Ö±ÒÆ¶¯
-	    	horClimbUseMahCal();
-	    }else if(fabs(climb_rate)<25 && groundSpeed<25){    //ÐüÍ£×´Ì¬
-	    	stopUseMahCal();
-	    }
-
-		//¼ÆËã×Ô¶¯·µº½Ìõ¼þ
-	    lowPowerRTL();
 	}else {
 		if(_armed){
 			_mv_count = 0;
@@ -443,7 +436,7 @@ void Copter::LiPoBatteryAutoRTL(void){
 }
 
 
-//¼ÇÂ¼log
+//ï¿½ï¿½Â¼log
 void Copter::writeLog(void){
 
 	if(_set_error) return;
@@ -452,9 +445,9 @@ void Copter::writeLog(void){
 		LOG_PACKET_HEADER_INIT(LOG_BAT_SMART_RTL),
 		time_us	:	AP_HAL::micros64(),
 		vol : battery.voltage(),
-		currentmah : battery.remaining_mah(),
+		currentmah : battery.consumed_mah(),
 		vertmah : _verUseMah,
-		hormahAvr : _hor_mah_speed_avr,
+		hormahAvr : _hor_mah_speed_avr*100,  /* m/mah */
 		returnToHomeMah : _to_home_mah,
 		homeDistance : _to_home_distance,
 		currentAlt : barometer.get_altitude(),

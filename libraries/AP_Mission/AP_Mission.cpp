@@ -917,12 +917,10 @@ MAV_MISSION_RESULT AP_Mission::mavlink_int_to_mission_cmd(const mavlink_mission_
         case MAV_FRAME_MISSION:
         case MAV_FRAME_GLOBAL:
             cmd.content.location.flags.relative_alt = 0;
-            gcs().send_text(MAV_SEVERITY_INFO, "relative_alt = 0");
             break;
 
         case MAV_FRAME_GLOBAL_RELATIVE_ALT:
             cmd.content.location.flags.relative_alt = 1;
-            gcs().send_text(MAV_SEVERITY_INFO, "relative_alt = 1");
             break;
 
 #if AP_TERRAIN_AVAILABLE
