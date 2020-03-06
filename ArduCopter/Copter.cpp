@@ -65,14 +65,28 @@ void Copter::batterySmartRTLUpdate(void){
 
 	if(flightmode==&mode_rtl || _open_rtl || mode_auto.mode()==Auto_RTL || mode_auto.mode()==Auto_Land) return;
 
+	if(g.bat_cell!=0){
+		if(_battery_type==0){  //0-Lipo��� 
+			LiPoBatteryAutoRTL();
+		}else if(_battery_type==1){  //1-���ܵ��
+			smartBatteryAutoRTL();
+		}
+	}else _set_error = true;
+
 	if(!position_ok()) return;   //��ǰģʽΪRTL ���� λ�ö�λ������
 
 	if(!flightmode->requires_GPS()) return;     //��ǰ����ģʽ����ҪGPS
 
-	if(_battery_type==0){  //0-Lipo��� 
-		LiPoBatteryAutoRTL();
-	}else if(_battery_type==1){  //1-���ܵ��
-		smartBatteryAutoRTL();
+	++_log_record_time;
+	if(_log_record_time>=10){  //1000ms����һ��log
+		_log_record_time = 0;
+		writeLog();
+	}
+
+	if(_set_error && AP_HAL::millis()-_error_time>5000){   //��ز������ô���5������һ��
+		_error_time = AP_HAL::millis();
+		gcs().send_text(MAV_SEVERITY_WARNING, "Batt SmartRTL Set Error!Type:%d, Cell:%d", _battery_type, g.bat_cell);
+		return;
 	}
 	
 	if(_mv_success){
@@ -95,17 +109,6 @@ void Copter::batterySmartRTLUpdate(void){
 
 		//�����Զ���������
 		lowPowerRTL();
-	}
-
-	++_log_record_time;
-	if(_log_record_time>=10){  //1000ms����һ��log
-		_log_record_time = 0;
-		writeLog();
-	}
-
-	if(_set_error && AP_HAL::millis()-_error_time>5000){   //��ز������ô���5������һ��
-		_error_time = AP_HAL::millis();
-		gcs().send_text(MAV_SEVERITY_WARNING, "Batt SmartRTL Set Error!Type:%d, Cell:%d", _battery_type, g.bat_cell);
 	}
 }
 
@@ -306,7 +309,7 @@ void Copter::stopUseMahCal(void){   //��ͣ���
 void Copter::lowPowerRTL(void){
 	_to_home_distance = home_distance(); // ��ǰλ����ؼҵ�λ�þ���
 
-	if(_verUseMah<0) _verUseMah = fabs(_hor_mah_speed_avr*barometer.get_altitude()*100);
+	if(_verUseMah<0.001) _verUseMah = fabs(_hor_mah_speed_avr*barometer.get_altitude()*100);
 
 	_to_home_mah = _to_home_distance*_hor_mah_speed_avr + _verUseMah + _verUseMah*0.10;      // �����Ե�ǰ״̬�ĺĵ������ص��ؼҵ���Ҫ�ĵ���
 
