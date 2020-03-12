@@ -970,7 +970,7 @@ private:
     void userhook_auxSwitch2(uint8_t ch_flag);
     void userhook_auxSwitch3(uint8_t ch_flag);
 
-    void wp_continue_fly();  //¶ÏµãÐøº½·ÉÐÐÈÎÎñ
+    void wp_continue_fly();  //ï¿½Ïµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
 #include "mode.h"
 
@@ -1043,7 +1043,7 @@ private:
     Mode *mode_from_mode_num(const uint8_t mode);
     void exit_mode(Mode *&old_flightmode, Mode *&new_flightmode);
 
-    //ÖÇÄÜµç³ØÖÇÄÜ·µº½¶¨Òå
+    //ï¿½ï¿½ï¿½Üµï¿½ï¿½ï¿½ï¿½ï¿½Ü·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     typedef enum FLY_STATUS{
     		DISARMING,
     		STOP,
@@ -1054,44 +1054,44 @@ private:
 
 	uint8_t _battery_type;
 
-	float _old_mah;        		 //¼ÇÂ¼ÉÏÒ»´Î¼ÇÂ¼µÄºÄµçÁ¿
-	float _pre_arm_mah;    		 //½âËøÖ®Ç°ÏûºÄµÄµçÁ¿
-	float _mah_speed_avr;  		 //Æ½¾ùÏûºÄËÙ¶È  mah/cm
+	float _old_mah;        		 //ï¿½ï¿½Â¼ï¿½ï¿½Ò»ï¿½Î¼ï¿½Â¼ï¿½ÄºÄµï¿½ï¿½ï¿½
+	float _pre_arm_mah;    		 //ï¿½ï¿½ï¿½ï¿½Ö®Ç°ï¿½ï¿½ï¿½ÄµÄµï¿½ï¿½ï¿½
+	float _mah_speed_avr;  		 //Æ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ù¶ï¿½  mah/cm
 
 	const unsigned short vol[13] = {2500, 3500, 3680, 3700, 3730, 3770, 3790, 3820, 3870, 3930, 4000, 4060, 4200};
 	const float vol_mah_pre[13] =  {0,    0.05,  0.1,  0.15, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.0};
 										  /* 0%   5%   10%  15%  20%  30%  40%  50%  60%  70%  80%  90%  100%*/
 
-	unsigned short _mv[5];      //ÉÏµç²ÉÑùÎå´ÎµçÑ¹
-	uint8_t _mv_count; //ÉÏµç²ÉÑùÎå´ÎµçÑ¹´ÎÊý
-	bool _mv_success;  //²ÉÑùÍê³É
+	unsigned short _mv[5];      //ï¿½Ïµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Îµï¿½Ñ¹
+	uint8_t _mv_count; //ï¿½Ïµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Îµï¿½Ñ¹ï¿½ï¿½ï¿½ï¿½
+	bool _mv_success;  //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
-	bool _climbing;   //ÅÀÉýÖÐ
-	bool _climb_start;   //ÅÀÉý¿ªÊ¼
-	bool _up_flag;    //ÅÀÉý·½Ïò      true: up;  false: down
-	float _old_use_mah;   //ÅÀÉý¿ªÊ¼ÏûºÄµÄµçÁ¿
+	bool _climbing;   //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+	bool _climb_start;   //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¼
+	bool _up_flag;    //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½      true: up;  false: down
+	float _old_use_mah;   //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ÄµÄµï¿½ï¿½ï¿½
 
-	bool _stopping;    //ÐüÍ£ÖÐ
-	bool _stop_start; //ÐüÍ£¿ªÊ¼
-	uint32_t _old_stop_time;  //ÐüÍ£¿ªÊ¼Ê±¼ä
+	bool _stopping;    //ï¿½ï¿½Í£ï¿½ï¿½
+	bool _stop_start; //ï¿½ï¿½Í£ï¿½ï¿½Ê¼
+	uint32_t _old_stop_time;  //ï¿½ï¿½Í£ï¿½ï¿½Ê¼Ê±ï¿½ï¿½
 
-	bool _horMoving;    //Ë®Æ½ÒÆ¶¯ÖÐ
-	bool _hormove_start; //Ë®Æ½ÒÆ¶¯¿ªÊ¼
-	uint32_t _old_hormove_time;  //Ë®Æ½ÒÆ¶¯¿ªÊ¼Ê±¼ä
+	bool _horMoving;    //Ë®Æ½ï¿½Æ¶ï¿½ï¿½ï¿½
+	bool _hormove_start; //Ë®Æ½ï¿½Æ¶ï¿½ï¿½ï¿½Ê¼
+	uint32_t _old_hormove_time;  //Ë®Æ½ï¿½Æ¶ï¿½ï¿½ï¿½Ê¼Ê±ï¿½ï¿½
 
-	bool _horclimbing;    //Ë®Æ½ÒÆ¶¯ÖÐ
-	bool _horclimbe_start; //Ë®Æ½ÒÆ¶¯¿ªÊ¼
-	uint32_t _old_horclimb_time;  //Ë®Æ½ÒÆ¶¯¿ªÊ¼Ê±¼ä
+	bool _horclimbing;    //Ë®Æ½ï¿½Æ¶ï¿½ï¿½ï¿½
+	bool _horclimbe_start; //Ë®Æ½ï¿½Æ¶ï¿½ï¿½ï¿½Ê¼
+	uint32_t _old_horclimb_time;  //Ë®Æ½ï¿½Æ¶ï¿½ï¿½ï¿½Ê¼Ê±ï¿½ï¿½
 	float _old_alt;
 
-	float _verUseMah; //´¹Ö±·½ÏòÊ¹ÓÃµÄºÄµçÁ¿
+	float _verUseMah; //ï¿½ï¿½Ö±ï¿½ï¿½ï¿½ï¿½Ê¹ï¿½ÃµÄºÄµï¿½ï¿½ï¿½
 	float _to_home_mah;
 	float _to_home_distance;
-	uint32_t _old_climb_time;   //¿ªÊ¼ÅÀÉýÊ±¼ä
+	uint32_t _old_climb_time;   //ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½
 
 	uint8_t _hor_count;
 	float _hor_mah_speed[10];
-	float _hor_mah_speed_avr;  //Ë®Æ½·½ÏòÆ½¾ùºÄµçËÙ¶È   mah/cm
+	float _hor_mah_speed_avr;  //Ë®Æ½ï¿½ï¿½ï¿½ï¿½Æ½ï¿½ï¿½ï¿½Äµï¿½ï¿½Ù¶ï¿½   mah/cm
 
 	Vector3f _old_pos;
 	uint32_t _old_pos_ms;
@@ -1102,7 +1102,7 @@ private:
 
 	bool _open_rtl;
 	bool _set_error;
-	uint32_t _error_time;  //ÐüÍ£¿ªÊ¼Ê±¼ä
+	uint32_t _error_time;  //ï¿½ï¿½Í£ï¿½ï¿½Ê¼Ê±ï¿½ï¿½
 	bool _armed;
 	bool _system_init;
 
@@ -1117,9 +1117,13 @@ private:
 	void stopUseMahCal(void);
 	void lowPowerRTL(void);
 
+    void cacl_hor_mahspd(void);
+
+    void cacl_hor_ver_mahspd(void);
+
 	void writeLog(void);
 
-	//Ä£Ê½ÇÐ»»ÌáÐÑ
+	//Ä£Ê½ï¿½Ð»ï¿½ï¿½ï¿½ï¿½ï¿½
 	void switchModeMessage(control_mode_t mode, mode_reason_t reason);
 
 public:

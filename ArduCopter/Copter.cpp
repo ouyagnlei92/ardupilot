@@ -78,7 +78,7 @@ void Copter::batterySmartRTLUpdate(void){
 	if(!flightmode->requires_GPS()) return;     //��ǰ����ģʽ����ҪGPS
 
 	++_log_record_time;
-	if(_log_record_time>=10){  //1000ms����һ��log
+	if(_log_record_time>=5){  //1000ms����һ��log
 		_log_record_time = 0;
 		writeLog();
 	}
@@ -186,34 +186,19 @@ void Copter::horUserMahCal(void){    //ˮƽ���м��
 
 	if(_hormove_start){
 		if(AP_HAL::millis()-_old_pos_ms>=500 && position_ok() && control_mode!=RTL){   //1S����һ��ƽ��ֵ
-    		Vector3f  curr_pos;
-			float distance = 0.0;
-
-			curr_pos = inertial_nav.get_position();
-			_old_pos_ms = AP_HAL::millis();
-			distance = get_horizontal_distance_cm(_old_pos, curr_pos); //����λ��
-			_old_pos = curr_pos;
-
-			if(distance<=0.0001) return; 
-
-    		float curr_mah = battery.consumed_mah(); // ��ǰ���ĵ���
-    		float mah_speed = (curr_mah-_old_use_mah)/distance;     // mah/cm
-    		_old_use_mah = curr_mah;
-
-    		// ���û���ƽ���㷨��ĵ��ٶ� mah/cm
-			if(_hor_count==10) _hor_count = 0;
-			_hor_mah_speed[_hor_count] = mah_speed;
-			++_hor_count;
-			uint8_t i = 0;
-			float sum = 0.0;
-			for( ; i<10; ++i)
-			{
-				if(_hor_mah_speed[i]>0.00001){
-					sum += _hor_mah_speed[i];
-				}else break;
+    		float speed1 = copter.wp_nav->get_speed_xy()*0.5;
+			float groundSpeed = ahrs.groundspeed()*100;
+			 
+			if(_hor_mah_speed_avr>=0.00001 && groundSpeed-speed1>=0.0001){
+				cacl_hor_mahspd();
+			}else if(_hor_mah_speed_avr<0.00001){
+				cacl_hor_mahspd();
+				_hor_mah_speed_avr *= 0.65;
+			}else{
+				_old_use_mah = battery.consumed_mah();
+				_old_pos = inertial_nav.get_position();
+				_old_pos_ms = AP_HAL::millis();
 			}
-			if(i!=0) _hor_mah_speed_avr = sum / i;
-			else _hor_mah_speed_avr = sum/1;
 		}
 	}
 }
@@ -244,43 +229,20 @@ void Copter::horClimbUseMahCal(void){   //��������ˮƽ����
 
 	if(_horclimbe_start){
     	if(AP_HAL::millis()-_old_pos_ms>=500 && position_ok() && control_mode!=RTL){   //1S����һ��ƽ��ֵ
-			Vector3f  curr_pos;
-			float distance = 0.0;
-
-			curr_pos = inertial_nav.get_position();
-			float curr_alt = barometer.get_altitude()*100;
-			_old_pos_ms = AP_HAL::millis();
-			distance = get_horizontal_distance_cm(_old_pos, curr_pos); // ����λ��
-			_old_pos = curr_pos;
-
-			float curr_mah = battery.consumed_mah(); // ��ǰ���ĵ���
-			float diffalt = curr_alt-_old_alt;
-			float ccc = distance+fabs(diffalt);
-			if(ccc<=0.0001) return;
-			float mah_speed = (curr_mah-_old_use_mah)/ccc;     //mah/cm
-			_old_use_mah = curr_mah;
-			_old_alt = curr_alt;
-
-			// ���û���ƽ���㷨��ĵ��ٶ� mah/cm
-			if(_hor_count==10) _hor_count = 0;
-			_hor_mah_speed[_hor_count] = mah_speed;
-			++_hor_count;
-			uint8_t i = 0;
-			float sum = 0.0;
-			for( ; i<10; ++i)
-			{
-				if(_hor_mah_speed[i]>0.00001){
-					sum += _hor_mah_speed[i];
-				}else break;
+			float speed1 = copter.wp_nav->get_speed_xy()*0.5;
+			float groundSpeed = ahrs.groundspeed()*100;
+			 
+			if(_hor_mah_speed_avr>=0.00001 && groundSpeed-speed1>=0.0001){
+				cacl_hor_ver_mahspd();
+			}else if(_hor_mah_speed_avr<0.00001){
+				cacl_hor_ver_mahspd();
+				_hor_mah_speed_avr *= 0.65;
+			}else{
+				_old_use_mah = battery.consumed_mah();
+				_old_pos = inertial_nav.get_position();
+				_old_alt = barometer.get_altitude()*100;
+				_old_pos_ms = AP_HAL::millis();
 			}
-			if(i!=0) _hor_mah_speed_avr = sum / i;
-			else _hor_mah_speed_avr = sum/1;
-			_old_pos_ms = AP_HAL::millis();
-
-			if(diffalt>0.0001)  //��Ը߶ȴ���0����ζ������
-				_verUseMah += fabs(diffalt)*_hor_mah_speed_avr;   //�߶����ĵ���
-			else
-				_verUseMah -= fabs(diffalt)*_hor_mah_speed_avr;
 		}
 	}
 }
@@ -326,6 +288,77 @@ void Copter::lowPowerRTL(void){
 		init();
 		return;
 	}
+}
+
+void Copter::cacl_hor_mahspd(void){
+	Vector3f  curr_pos;
+	float distance = 0.0;
+
+	curr_pos = inertial_nav.get_position();
+	_old_pos_ms = AP_HAL::millis();
+	distance = get_horizontal_distance_cm(_old_pos, curr_pos); //����λ��
+	_old_pos = curr_pos;
+
+	if(distance<=0.0001) return; 
+
+	float curr_mah = battery.consumed_mah(); // ��ǰ���ĵ���
+	float mah_speed = (curr_mah-_old_use_mah)/distance;     // mah/cm
+	_old_use_mah = curr_mah;
+
+	// ���û���ƽ���㷨��ĵ��ٶ� mah/cm
+	if(_hor_count==10) _hor_count = 0;
+	_hor_mah_speed[_hor_count] = mah_speed;
+	++_hor_count;
+	uint8_t i = 0;
+	float sum = 0.0;
+	for( ; i<10; ++i)
+	{
+		if(_hor_mah_speed[i]>0.00001){
+			sum += _hor_mah_speed[i];
+		}else break;
+	}
+	if(i!=0) _hor_mah_speed_avr = sum / i;
+	else _hor_mah_speed_avr = sum/1;
+}
+
+void Copter::cacl_hor_ver_mahspd(void){
+	Vector3f  curr_pos;
+	float distance = 0.0;
+
+	curr_pos = inertial_nav.get_position();
+	float curr_alt = barometer.get_altitude()*100;
+	_old_pos_ms = AP_HAL::millis();
+	distance = get_horizontal_distance_cm(_old_pos, curr_pos); // ����λ��
+	_old_pos = curr_pos;
+
+	float curr_mah = battery.consumed_mah(); // ��ǰ���ĵ���
+	float diffalt = curr_alt-_old_alt;
+	float ccc = distance+fabs(diffalt);
+	if(ccc<=0.0001) return;
+	float mah_speed = (curr_mah-_old_use_mah)/ccc;     //mah/cm
+	_old_use_mah = curr_mah;
+	_old_alt = curr_alt;
+
+	// ���û���ƽ���㷨��ĵ��ٶ� mah/cm
+	if(_hor_count==10) _hor_count = 0;
+	_hor_mah_speed[_hor_count] = mah_speed;
+	++_hor_count;
+	uint8_t i = 0;
+	float sum = 0.0;
+	for( ; i<10; ++i)
+	{
+		if(_hor_mah_speed[i]>0.00001){
+			sum += _hor_mah_speed[i];
+		}else break;
+	}
+	if(i!=0) _hor_mah_speed_avr = sum / i;
+	else _hor_mah_speed_avr = sum/1;
+	_old_pos_ms = AP_HAL::millis();
+
+	if(diffalt>0.0001)  //��Ը߶ȴ���0����ζ������
+		_verUseMah += fabs(diffalt)*_hor_mah_speed_avr;   //�߶����ĵ���
+	else
+		_verUseMah -= fabs(diffalt)*_hor_mah_speed_avr;
 }
 
 
@@ -394,6 +427,7 @@ void Copter::LiPoBatteryAutoRTL(void){
 					sum += _mv[i];
 				}
 				avr = (sum/5.0);
+				avr += 50;   //bu chang ya jiang 50mV
 				gcs().send_text(MAV_SEVERITY_INFO, "avr vol = %.1f", avr);
 
 				// ���㵱ǰ��ѹ����������Χ�� �����Խ��������
