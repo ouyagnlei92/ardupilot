@@ -427,7 +427,7 @@ void Copter::LiPoBatteryAutoRTL(void){
 					sum += _mv[i];
 				}
 				avr = (sum/5.0);
-				avr += 50;   //bu chang ya jiang 50mV
+				avr += 5;   //bu chang ya jiang 5mV
 				gcs().send_text(MAV_SEVERITY_INFO, "avr vol = %.1f", avr);
 
 				// ���㵱ǰ��ѹ����������Χ�� �����Խ��������
