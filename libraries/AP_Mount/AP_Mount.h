@@ -167,6 +167,12 @@ protected:
         AP_Int8         _roll_rc_in;        // pilot provides roll input on this channel
         AP_Int8         _tilt_rc_in;        // pilot provides tilt input on this channel
         AP_Int8         _pan_rc_in;         // pilot provides pan input on this channel
+        AP_Int8         _zoom_rc_in;        // camera zoom
+        AP_Int8         _color_rc_in;       // camera color switch
+        AP_Int8         _take_photo_rc_in;  // camera take photo
+        AP_Int8         _record_rc_in;      // camera record
+        AP_Int8         _auto_reset_rc_in;  //auto reset
+        AP_Int8         _auto_pic_rc_in;    //picture switch
 
         // Mount's physical limits
         AP_Int16        _roll_angle_min;    // min roll in 0.01 degree units

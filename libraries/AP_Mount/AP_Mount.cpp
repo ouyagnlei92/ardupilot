@@ -391,6 +391,13 @@ const AP_Param::GroupInfo AP_Mount::var_info[] = {
     AP_GROUPINFO("2_TYPE",           42, AP_Mount, state[1]._type, 0),
 #endif // AP_MOUNT_MAX_INSTANCES > 1
 
+    AP_GROUPINFO("_RC_IN_ZM",   43, AP_Mount, state[0]._zoom_rc_in,       0),         //Zoom up/down
+    AP_GROUPINFO("_RC_IN_CLR",  44, AP_Mount, state[0]._color_rc_in,      0),         //switch color
+    AP_GROUPINFO("_RC_IN_TKPH", 45, AP_Mount, state[0]._take_photo_rc_in, 0),         //take photo
+    AP_GROUPINFO("_RC_IN_RCD",  46, AP_Mount, state[0]._record_rc_in,     0),         //record
+    AP_GROUPINFO("_RC_IN_ARST", 47, AP_Mount, state[0]._auto_reset_rc_in, 0),         //auto reset
+    AP_GROUPINFO("_RC_IN_PIC",  48, AP_Mount, state[0]._auto_pic_rc_in,   0),         //Picture switch
+
     AP_GROUPEND
 };
 
