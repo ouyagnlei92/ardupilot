@@ -471,7 +471,7 @@ void AP_Mount::init(const AP_SerialManager& serial_manager)
             _backends[instance] = new AP_Mount_SToRM32_serial(*this, state[instance], instance);
             _num_instances++;
         } else if (mount_type == Mount_Type_PinLing) {
-            _backends[instance] = new AP_Mount_SToRM32_serial(*this, state[instance], instance);
+            _backends[instance] = new AP_Mount_PinLing(*this, state[instance], instance);
             _num_instances++;
         }
 

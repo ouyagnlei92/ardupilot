@@ -1,6 +1,4 @@
-/*
-  SToRM32 mount using serial protocol backend class
- */
+
 #pragma once
 
 #include <AP_HAL/AP_HAL.h>
@@ -13,7 +11,7 @@
 #include <RC_Channel/RC_Channel.h>
 #include "AP_Mount_Backend.h"
 
-#define AP_Mount_PinLing_RESEND_MS   1000    // resend angle targets to gimbal once per second
+#define AP_Mount_PinLing_RESEND_MS   1500    // resend angle targets to gimbal once per second
 
 class AP_Mount_PinLing : public AP_Mount_Backend
 {
@@ -51,16 +49,16 @@ private:
 
     const uint8_t READ_DATA[5] = { 0x3e, 0X3D, 0x00, 0x3D, 0x00 };
 
-    const uint8_t RECORD_START[48] = { 0x7e,0x7e,0x44,0x00,0x00,0x7c,0x01,0x00,0x00,0x00,\
+    const uint8_t RECORD_START[48] = { 0x7e,0x7e,0x44,0x00,0x00,0x7c,0x05,0x00,0x00,0x00,\
                                        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,\
                                        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,\
                                        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,\
-                                       0x00,0x00,0x00,0x00,0xbd};
-    const uint8_t RECORD_STOP[48] =  { 0x7e,0x7e,0x44,0x00,0x00,0x7c,0x00,0x00,0x00,0x00,\
+                                       0x00,0x00,0x00,0x00,0xc1};
+    const uint8_t RECORD_STOP[48] =  { 0x7e,0x7e,0x44,0x00,0x00,0x7c,0x04,0x00,0x00,0x00,\
                                        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,\
                                        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,\
                                        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,\
-                                       0x00,0x00,0x00,0x00,0xbc};
+                                       0x00,0x00,0x00,0x00,0xc0};
     const uint8_t TAKE_PHOTO[48] =  { 0x7e,0x7e,0x44,0x00,0x00,0x7c,0x02,0x00,0x00,0x00,\
                                        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,\
                                        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,\
@@ -90,13 +88,33 @@ private:
         MODE_ANGLE,     //angle mode IMU
         MODE_RC,        //pwm mode 
         MODE_REL_MOTOR_ANGLE,  //angle mode motor
-        MODE_AUTO_RETURN, //AUTO return reset
+        MODE_AUTO_RETURN,      //AUTO return reset
     }CONTROL_MODE;
 
     typedef enum Flag {
         FLAG_OFF = 0,
         FLAG_OK = 1,
     }FLAG;
+
+    typedef enum _parse_angle_flag{
+        PARSE_ANGLE_NONE = 0,
+        PARSE_ANGLE_HEADER,
+        PARSE_ANGLE_ID,
+        PARSE_ANGLE_DATA_LEN,
+        PARSE_ANGLE_CRC,
+        PARSE_DATA_CRC,
+        PARSE_DATA_OK,
+    }PARSE_ANGLE_FLAG;
+
+    typedef enum _parse_zoom_flag{
+        PARSE_ZOOM_NONE = 0,
+        PARSE_ZOOM_HEADER,
+        PARSE_ZOOM_ID,
+        PARSE_ZOOM_DATA,
+        PARSE_ZOOM_CRC,
+        PARSE_ZOOM_OK,
+    }PARSE_ZOOM_FLAG;
+
 
     typedef struct _camera_flag{
         uint8_t zoom_up_falg : 1;
@@ -110,31 +128,51 @@ private:
         uint8_t picture_switch_flag : 1;   
     }CameraFlag;
 
-    union PinLingLongCmd{
+    typedef union PACKED PinLingLongCmd{
         uint8_t data[20];
-        struct LongCmd{
-            uint8_t headers[4];   /* header 4 byte */
+        struct PACKED LongCmd{
+            uint8_t headers[4];   // header 4 byte
             CONTROL_MODE roll_mode;
             CONTROL_MODE pitch_mode;
             CONTROL_MODE yaw_mode;
             int16_t roll_speed;
             int16_t rool_angle;
             int16_t pitch_speed;
-            union PitchControl{
+            union PACKED PitchControl{
                 int16_t pitch_angle;
                 int8_t pitch_pwm[2];
             }pitchControl;               
             int16_t yaw_speed;
-            union YawControl{
+            union PACKED YawControl{
                 int16_t yaw_angle;
                 int8_t yaw_pwm[2];
             }yawControl;            
             uint8_t crc;
         }longCmd;
-    };
+    }PinLingLongCmd;
 
-    union PinLingLongCmd pin_ling_long_cmd;  
+    typedef struct PACKED mount_data{
+        union PACKED roll_ang{
+            uint8_t data[4];
+            int32_t roll_angle;
+        }roll_angle;
+        union PACKED pitch_ang{
+            uint8_t data[4];
+            int32_t pitch_angle;
+        }pitch_angle;
+        union PACKED yaw_ang{
+            uint8_t data[4];
+            int32_t yaw_angle;
+        }yaw_angle;
+        uint8_t zoompqrs[4];
+    }MountData;
+
+    MountData mount_data;
+
+    PinLingLongCmd pin_ling_long_cmd;  
+
     CameraFlag camera_flag;
+
     int16_t old_color_rc_in;       // camera color switch
     int16_t old_take_photo_rc_in;  // camera take photo
     int16_t old_pic_rc_in;
@@ -142,6 +180,16 @@ private:
     uint8_t current_color_index;
     uint32_t camera_last_send;
     uint32_t request_read_time;
+
+    //parse flag
+    PARSE_ANGLE_FLAG parse_flag;
+    uint8_t parse_data_index;
+    uint32_t parse_data_crc;
+
+    PARSE_ZOOM_FLAG parse_zoom_flag;
+    uint8_t parse_zoom_index;
+    uint32_t parse_zoom_src_data;
+    uint32_t zoom;
 
     bool read_rc(void);
 
@@ -153,8 +201,14 @@ private:
     // send read data request
     void get_angles();
 
+    // parse angle
+    bool parse_angle(uint8_t data);
+
+    // parse zoom
+    bool parse_zoom(uint8_t data);
+
     // read_incoming
-    void read_incoming();
+    void read_incoming(void);
 
     bool can_send(bool with_control, uint8_t len);
 
@@ -166,4 +220,5 @@ private:
 
     // keep the last _current_angle values
     Vector3l _current_angle;
+
 };

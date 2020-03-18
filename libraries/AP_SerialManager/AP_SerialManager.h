@@ -73,6 +73,10 @@
 #define AP_SERIALMANAGER_SBUS1_BUFSIZE_RX     16
 #define AP_SERIALMANAGER_SBUS1_BUFSIZE_TX     32
 
+#define AP_SERIALMANAGER_PinLing_BAUD           115200
+#define AP_SERIALMANAGER_PinLing_BUFSIZE_RX     128
+#define AP_SERIALMANAGER_PinLing_BUFSIZE_TX     256
+
 class AP_SerialManager {
 public:
     AP_SerialManager();
