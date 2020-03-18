@@ -125,7 +125,9 @@ private:
         uint8_t record_flag : 1;
         uint8_t record_end_flag : 1;
         uint8_t auto_reset_flag : 1;  
-        uint8_t picture_switch_flag : 1;   
+        uint8_t picture_switch_flag : 1; 
+        uint8_t auto_trance : 1;  
+        uint8_t recording : 1;
     }CameraFlag;
 
     typedef union PACKED PinLingLongCmd{
@@ -173,9 +175,10 @@ private:
 
     CameraFlag camera_flag;
 
-    int16_t old_color_rc_in;       // camera color switch
+    int16_t old_record_rc_in;       // camera color switch
     int16_t old_take_photo_rc_in;  // camera take photo
-    int16_t old_pic_rc_in;
+    int16_t old_tra_rc_in;
+    int16_t old_auto_reset_rc_in;
     uint8_t current_pic_index;
     uint8_t current_color_index;
     uint32_t camera_last_send;
@@ -206,6 +209,8 @@ private:
 
     // parse zoom
     bool parse_zoom(uint8_t data);
+
+    bool need_send_angle();
 
     // read_incoming
     void read_incoming(void);
