@@ -943,6 +943,7 @@ void GCS_MAVLINK_Copter::handleMessage(mavlink_message_t* msg)
                     0,0);
             }
             copter.camera_mount.control(packet.param1, packet.param2, packet.param3, (MAV_MOUNT_MODE) packet.param7);
+            copter.camera_mount.set_param(packet.param4, packet.param5, packet.param6);
             result = MAV_RESULT_ACCEPTED;
 #endif
             break;

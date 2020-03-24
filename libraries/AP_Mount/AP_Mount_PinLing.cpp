@@ -33,6 +33,8 @@ void AP_Mount_PinLing::init(const AP_SerialManager& serial_manager)
         parse_data_crc = 0; 
         parse_zoom_flag = PARSE_ZOOM_NONE;
         parse_zoom_index = 0;
+        current_color_index = 0;
+        current_pic_index = 0;
         zoom = 1;
     }    
 }
@@ -85,8 +87,8 @@ void AP_Mount_PinLing::update()
         // RC radio manual angle control, but with stabilization from the AHRS
         case MAV_MOUNT_MODE_RC_TARGETING:
             // update targets using pilot's rc inputs
-            update_targets_from_rc();
-            resend_now = true;
+            //update_targets_from_rc();
+            //resend_now = true;
             break;
 
         // point mount to a GPS point given by the mission planner
@@ -102,6 +104,9 @@ void AP_Mount_PinLing::update()
             break;
     }
 
+    update_targets_from_rc();
+    resend_now = true;
+
     // resend target angles at least once per second
     resend_now = resend_now || ((AP_HAL::millis() - _last_send) > AP_Mount_PinLing_RESEND_MS);
 
@@ -110,10 +115,41 @@ void AP_Mount_PinLing::update()
     }
     if (can_send(resend_now, 20)) {
         if (resend_now) {
-            if(need_send_angle()){
-                send_target_angles(ToDeg(_angle_ef_target_rad.y), ToDeg(_angle_ef_target_rad.x), ToDeg(_angle_ef_target_rad.z)); 
-                get_angles();               
+        #define rc_ch(i) RC_Channels::rc_channel(i-1)
+
+            uint8_t tilt_rc_in = _state._tilt_rc_in;
+            uint8_t pan_rc_in = _state._pan_rc_in;
+            
+            int16_t pin = rc_ch(tilt_rc_in)->get_radio_in();
+            int16_t yin = rc_ch(pan_rc_in)->get_radio_in();
+
+            if(AP_HAL::millis()-send_angle_control_time>120 && _state._rc_mode==0){
+                send_target_rc();
+                send_angle_control_time = AP_HAL::millis();  
+                get_angles(); 
+
+                if(_angle_update==0){
+                    _angle_ef_target_rad.y = ToRad(_current_angle.y/100.0);
+                    _angle_ef_target_rad.x = 0;
+                    _angle_ef_target_rad.z = ToRad(_current_angle.z/100.0);
+                }
             }
+
+            if( pin<(rc_ch(tilt_rc_in)->get_radio_trim()-rc_ch(tilt_rc_in)->get_dead_zone()) || \
+                pin>(rc_ch(tilt_rc_in)->get_radio_trim()+rc_ch(tilt_rc_in)->get_dead_zone()) || \
+                yin<(rc_ch(pan_rc_in)->get_radio_trim()-rc_ch(pan_rc_in)->get_dead_zone()) || \
+                yin>(rc_ch(pan_rc_in)->get_radio_trim()+rc_ch(pan_rc_in)->get_dead_zone()) ){
+                    if(AP_HAL::millis()-send_angle_control_time>180 && _state._rc_mode==1 && need_send_angle()){
+                        send_target_angles(ToDeg(_angle_ef_target_rad.y), ToDeg(_angle_ef_target_rad.x), ToDeg(_angle_ef_target_rad.z)); 
+                        send_angle_control_time = AP_HAL::millis();   
+                        get_angles(); 
+                    }
+                }else if( 0!=_angle_update && need_send_angle() ){
+                    send_target_angles(ToDeg(_angle_ef_target_rad.y), ToDeg(_angle_ef_target_rad.x), ToDeg(_angle_ef_target_rad.z)); 
+                    --_angle_update;
+                    get_angles(); 
+                    send_angle_control_time = AP_HAL::millis();  
+                }
         }
     }
 }
@@ -123,15 +159,15 @@ void AP_Mount_PinLing::set_mount_camera(void){
 
     uint8_t i = 0;
 
-    if(camera_flag.zoom_up_falg==1 || camera_flag.zoom_down_flag==1){
+    if(AP_HAL::millis()-read_zoom_time>=2000 && (camera_flag.zoom_up_falg==1 || camera_flag.zoom_down_flag==1)){
         //send read zoom
         for (i = 0;  i != sizeof(ZOOM_GET) ; i++) {
             _port->write(ZOOM_GET[i]);                
         }
-        gcs().send_text(MAV_SEVERITY_INFO, "send read zoom", sizeof(ZOOM_GET));
+        read_zoom_time = AP_HAL::millis();
     }
 
-    if(AP_HAL::millis()-request_read_time>=3000){
+    if(AP_HAL::millis()-request_read_time>=4000){
         if(camera_flag.zoom_stop_flag==0 && camera_flag.zoom_down_flag==0 && camera_flag.zoom_stop_flag==0){
             //send read zoom
             for (i = 0;  i != sizeof(ZOOM_GET) ; i++) {
@@ -144,13 +180,14 @@ void AP_Mount_PinLing::set_mount_camera(void){
             _port->write(READ_DATA[i]);                
         }
 
+        //gcs().send_text(MAV_SEVERITY_INFO, "deg:%.1f %.1f %.1f",  ToDeg(_angle_ef_target_rad.y), ToDeg(_angle_ef_target_rad.x), ToDeg(_angle_ef_target_rad.z));
+
         request_read_time = AP_HAL::millis();
     }
 
     //auto reset
     if(camera_flag.auto_reset_flag){
         if(can_send(true, sizeof(AUTO_RESET))) {
-            gcs().send_text(MAV_SEVERITY_INFO, "mount auto reset");
             for (i = 0;  i != sizeof(AUTO_RESET) ; i++) {
                 _port->write(AUTO_RESET[i]);                
             }
@@ -161,7 +198,6 @@ void AP_Mount_PinLing::set_mount_camera(void){
     if(AP_HAL::millis()-camera_last_send>=1000){
             //zoom up and down
         if(camera_flag.zoom_up_falg){
-            gcs().send_text(MAV_SEVERITY_INFO, "mount zoom up"); 
             if(can_send(true, sizeof(ZOOM_UP))){
                 for (i = 0;  i != sizeof(ZOOM_UP) ; i++) {
                     _port->write(ZOOM_UP[i]);                                  
@@ -170,7 +206,6 @@ void AP_Mount_PinLing::set_mount_camera(void){
         }
 
         if(camera_flag.zoom_down_flag){
-             gcs().send_text(MAV_SEVERITY_INFO, "mount zoom down");
             if(can_send(true, sizeof(ZOOM_DOWN))){
                 for (i = 0;  i != sizeof(ZOOM_DOWN) ; i++) {
                     _port->write(ZOOM_DOWN[i]);                                   
@@ -182,8 +217,7 @@ void AP_Mount_PinLing::set_mount_camera(void){
             camera_flag.zoom_up_falg = 0;
             camera_flag.zoom_down_flag = 0;
 
-            if(can_send(true, sizeof(ZOOM_STOP))){ 
-                gcs().send_text(MAV_SEVERITY_INFO, "mount zoom stop");                 
+            if(can_send(true, sizeof(ZOOM_STOP))){                
                 for (i = 0;  i != sizeof(ZOOM_STOP) ; i++) {
                     _port->write(ZOOM_STOP[i]);                             
                 }
@@ -194,7 +228,6 @@ void AP_Mount_PinLing::set_mount_camera(void){
         //take photo and record
         if(camera_flag.take_photo_flag){
             if(can_send(true, sizeof(TAKE_PHOTO))){
-                gcs().send_text(MAV_SEVERITY_INFO, "mount take photo");
                 for (i = 0;  i != sizeof(TAKE_PHOTO) ; i++) {
                     _port->write(TAKE_PHOTO[i]);                                  
                 }
@@ -203,8 +236,7 @@ void AP_Mount_PinLing::set_mount_camera(void){
         }
 
         if(camera_flag.record_flag){
-            if(can_send(true, sizeof(RECORD_START))){
-                gcs().send_text(MAV_SEVERITY_INFO, "mount record start"); 
+            if(can_send(true, sizeof(RECORD_START))){ 
                 for (i = 0;  i != sizeof(RECORD_START) ; i++) {
                     _port->write(RECORD_START[i]);                             
                 }
@@ -215,7 +247,6 @@ void AP_Mount_PinLing::set_mount_camera(void){
 
         if(camera_flag.record_end_flag){
             if(can_send(true, sizeof(RECORD_STOP))){
-                gcs().send_text(MAV_SEVERITY_INFO, "mount record end");
                 for (i = 0;  i != sizeof(RECORD_STOP) ; i++) {
                     _port->write(RECORD_STOP[i]);                              
                 }
@@ -226,22 +257,36 @@ void AP_Mount_PinLing::set_mount_camera(void){
 
         //switch picture and color
         if(camera_flag.color_switch_falg){
-            if(can_send(true, 48)){
-                gcs().send_text(MAV_SEVERITY_INFO, "mount color switch"); 
-                for (i = 0;  i != 48 ; i++) {
-                    _port->write(COLOR_SWITCH[current_color_index++%2][i]);                                 
-                }
-                camera_flag.color_switch_falg = 0;                  
-            }
+            set_color_pic(0);
         }
 
         if(camera_flag.picture_switch_flag){
-            if(can_send(true, 48)){
-                gcs().send_text(MAV_SEVERITY_INFO, "mount pictrue switch");
-                for (i = 0;  i != 48 ; i++) {
-                    _port->write(PIC_PIC[current_pic_index++%2][i]);                                 
+            set_color_pic(1);
+        }
+
+        if(camera_flag.auto_trace){
+            camera_flag.auto_trace = 0;
+            if(camera_flag.auto_tracing){
+                if(can_send(true, sizeof(TRACK_OPEN))) {
+                    for (i = 0;  i != sizeof(TRACK_OPEN) ; i++) {
+                        _port->write(TRACK_OPEN[i]);                
+                    }         
                 }
-                camera_flag.picture_switch_flag = 0;                   
+            }else{
+                if(can_send(true, sizeof(TRACK_CLOSE))) {
+                    for (i = 0;  i != sizeof(TRACK_CLOSE) ; i++) {
+                        _port->write(TRACK_CLOSE[i]);                
+                    }        
+                }
+            }
+        }
+
+        if(camera_flag.look_down_flag){
+            if(can_send(true, sizeof(LOOK_DOWN))) {
+                for (i = 0;  i != sizeof(LOOK_DOWN) ; i++) {
+                    _port->write(LOOK_DOWN[i]);  
+                    camera_flag.look_down_flag = 0;              
+                }        
             }
         }
 
@@ -288,7 +333,6 @@ bool AP_Mount_PinLing::read_rc(void){
         dz_min = rc_ch(take_photo_rc_in)->get_radio_min() + rc_ch(take_photo_rc_in)->get_dead_zone();
         if(rc_in>dz_min && rc_in-old_take_photo_rc_in>=350){
             camera_flag.take_photo_flag = 1;
-            gcs().send_text(MAV_SEVERITY_INFO, "TakePH=%d", rc_in);
         }
         old_take_photo_rc_in = rc_in;
     }
@@ -300,7 +344,6 @@ bool AP_Mount_PinLing::read_rc(void){
         if(rc_in>dz_min && rc_in-old_record_rc_in>=350){
             if(camera_flag.recording) camera_flag.record_end_flag = 1; 
             else camera_flag.record_flag = 1;
-            gcs().send_text(MAV_SEVERITY_INFO, "record=%d, %d", rc_in, camera_flag.recording);
         }
         old_record_rc_in = rc_in;  
     }
@@ -311,7 +354,6 @@ bool AP_Mount_PinLing::read_rc(void){
         dz_min = rc_ch(auto_reset_rc_in)->get_radio_min() + rc_ch(auto_reset_rc_in)->get_dead_zone();
         if(rc_in>dz_min && rc_in-old_auto_reset_rc_in>=350){
             camera_flag.auto_reset_flag = 1;
-            gcs().send_text(MAV_SEVERITY_INFO, "autoreset=%d", rc_in);
         }
         old_auto_reset_rc_in = rc_in;
     }
@@ -323,22 +365,24 @@ bool AP_Mount_PinLing::read_rc(void){
         dz_min = rc_ch(color_rc_in)->get_radio_trim() - rc_ch(color_rc_in)->get_dead_zone();
         dz_max = rc_ch(color_rc_in)->get_radio_trim() + rc_ch(color_rc_in)->get_dead_zone();
         if(rc_in>=dz_min && rc_in<=dz_max){
-
-        }else if(rc_in<dz_min){
+            camera_flag.color_rc_in_trim_flag = 1;
+        }else if(rc_in<dz_min && camera_flag.color_rc_in_trim_flag){
             camera_flag.color_switch_falg = 1;
-            gcs().send_text(MAV_SEVERITY_INFO, "Color=%d", rc_in);
-        }else if(rc_in>dz_max){
+            camera_flag.color_rc_in_trim_flag = 0;
+        }else if(rc_in>dz_max && camera_flag.color_rc_in_trim_flag){
             camera_flag.picture_switch_flag = 1;
-            gcs().send_text(MAV_SEVERITY_INFO, "switchPIC=%d", rc_in);
+             camera_flag.color_rc_in_trim_flag = 0;
         }    
     }
 
     //auto trance
     if (auto_tra_rc_in && (rc_ch(auto_tra_rc_in) != nullptr) && (rc_ch(auto_tra_rc_in)->get_radio_in()>0)){
         rc_in = rc_ch(auto_tra_rc_in)->get_radio_in();        
-        if(auto_tra_rc_in-850>=0 && fabs(rc_in-old_tra_rc_in)-350>=0){
-            camera_flag.auto_trance = 1;
-            gcs().send_text(MAV_SEVERITY_INFO, "auto gen zong=%d", rc_in);
+        dz_min = rc_ch(auto_tra_rc_in)->get_radio_min() + rc_ch(auto_tra_rc_in)->get_dead_zone();
+        if(rc_in-dz_min>=0 && rc_in-old_tra_rc_in-350>=0){
+            camera_flag.auto_trace = 1;
+            if(camera_flag.auto_tracing) camera_flag.auto_tracing = 0;
+            else camera_flag.auto_tracing = 1;
         }
         old_tra_rc_in = rc_in;
     }
@@ -380,6 +424,72 @@ bool AP_Mount_PinLing::can_send(bool with_control, uint8_t len) {
     return (_port->txspace() >= required_tx);
 }
 
+void AP_Mount_PinLing::send_target_rc(void){
+    // exit immediately if not initialised
+    if (!_initialised) {
+        return;
+    }
+
+    if ((size_t)_port->txspace() < 20) {
+        return;
+    }
+
+    //header
+    pin_ling_long_cmd.longCmd.headers[0] = 0xFF;
+    pin_ling_long_cmd.longCmd.headers[1] = 0x01;
+    pin_ling_long_cmd.longCmd.headers[2] = 0x0F;
+    pin_ling_long_cmd.longCmd.headers[3] = 0x10; 
+
+    //mode
+    pin_ling_long_cmd.longCmd.roll_mode = AP_Mount_PinLing::CONTROL_MODE::MODE_NONE;
+    pin_ling_long_cmd.longCmd.pitch_mode = AP_Mount_PinLing::CONTROL_MODE::MODE_RC;
+    pin_ling_long_cmd.longCmd.yaw_mode = AP_Mount_PinLing::CONTROL_MODE::MODE_RC;
+
+#define rc_ch(i) RC_Channels::rc_channel(i-1)
+    uint8_t tilt_rc_in = _state._tilt_rc_in;
+    uint8_t pan_rc_in = _state._pan_rc_in;
+    int16_t rcin = 0;
+    int16_t dz_min;
+    int16_t dz_max;
+  
+    if (tilt_rc_in && (rc_ch(tilt_rc_in) != nullptr) && (rc_ch(tilt_rc_in)->get_radio_in() > 0)){
+
+        rcin = rc_ch(tilt_rc_in)->get_radio_in();
+        dz_min = rc_ch(tilt_rc_in)->get_radio_trim() - rc_ch(tilt_rc_in)->get_dead_zone();
+        dz_max = rc_ch(tilt_rc_in)->get_radio_trim() + rc_ch(tilt_rc_in)->get_dead_zone();
+
+        if(rcin<dz_min || rcin>dz_max){
+            rcin = rcin>=1800 ? 1800 : rcin;
+            pin_ling_long_cmd.longCmd.pitchControl.pitch_angle = -static_cast<int16_t>(rcin-rc_ch(tilt_rc_in)->get_radio_trim());
+        }else {
+            pin_ling_long_cmd.longCmd.pitchControl.pitch_angle = 0;
+        }
+    }
+    if (pan_rc_in && (rc_ch(pan_rc_in) != nullptr) && (rc_ch(pan_rc_in)->get_radio_in() > 0)){
+        rcin = rc_ch(pan_rc_in)->get_radio_in();
+        dz_min = rc_ch(pan_rc_in)->get_radio_trim() - rc_ch(pan_rc_in)->get_dead_zone();
+        dz_max = rc_ch(pan_rc_in)->get_radio_trim() + rc_ch(pan_rc_in)->get_dead_zone();
+
+        if(rcin<dz_min || rcin>dz_max){
+            rcin = rcin>=1800 ? 1800 : rcin;
+            pin_ling_long_cmd.longCmd.yawControl.yaw_angle = static_cast<int16_t>(rcin-rc_ch(pan_rc_in)->get_radio_trim());
+        }else {
+            pin_ling_long_cmd.longCmd.yawControl.yaw_angle = 0;
+        }
+    }
+
+    pin_ling_long_cmd.longCmd.crc = 0;
+
+    for(uint8_t j=4; j<20-1; ++j){
+        pin_ling_long_cmd.longCmd.crc += pin_ling_long_cmd.data[j];
+    }
+
+    for (uint8_t i = 0;  i < 20 ; i++) {
+        _port->write(pin_ling_long_cmd.data[i]);
+    }
+    // store time of send
+    _last_send = AP_HAL::millis();
+}
 
 // send_target_angles
 void AP_Mount_PinLing::send_target_angles(float pitch_deg, float roll_deg, float yaw_deg)
@@ -406,14 +516,14 @@ void AP_Mount_PinLing::send_target_angles(float pitch_deg, float roll_deg, float
 
     // reverse pitch and yaw control
     pitch_deg = -pitch_deg;
-    yaw_deg = -yaw_deg;
+    yaw_deg = yaw_deg;
 
     pin_ling_long_cmd.longCmd.pitchControl.pitch_angle = static_cast<int16_t>(pitch_deg / ANGLE_CONTROL_UNIT);
     pin_ling_long_cmd.longCmd.yawControl.yaw_angle = static_cast<int16_t>(yaw_deg / ANGLE_CONTROL_UNIT);
 
     pin_ling_long_cmd.longCmd.crc = 0;
 
-    for(uint8_t j=4; j<20-1-4; ++j){
+    for(uint8_t j=4; j<20-1; ++j){
         pin_ling_long_cmd.longCmd.crc += pin_ling_long_cmd.data[j];
     }
 
@@ -479,14 +589,14 @@ bool AP_Mount_PinLing::parse_angle(uint8_t data){
         }else if(parse_data_index>=23 && parse_data_index<=26){
             mount_data.pitch_angle.data[parse_data_index-23] = data;
         }else if(parse_data_index>=41 && parse_data_index<=44){
-            mount_data.pitch_angle.data[parse_data_index-41] = data;
+            mount_data.yaw_angle.data[parse_data_index-41] = data;
         }
         if(parse_data_index==0x36){
             parse_flag = PARSE_DATA_CRC;
         }
     }else if(parse_flag==PARSE_DATA_CRC){
-        if((parse_data_crc&0x0ff)==0x4E){
-                parse_flag = PARSE_DATA_OK;                
+        if((parse_data_crc&0x0ff)==data){
+                parse_flag = PARSE_DATA_OK;             
         }else{
                 parse_flag = PARSE_ANGLE_NONE;
         }
@@ -496,11 +606,11 @@ bool AP_Mount_PinLing::parse_angle(uint8_t data){
 
     if(parse_flag==PARSE_DATA_OK){
         //set angle
-        _current_angle.y = (-mount_data.pitch_angle.pitch_angle * ANGLE_CONTROL_UNIT)*100;
-        _current_angle.x = (-mount_data.roll_angle.roll_angle * ANGLE_CONTROL_UNIT)*100;
-        _current_angle.z = (-mount_data.yaw_angle.yaw_angle * ANGLE_CONTROL_UNIT)*100;
+        _current_angle.y = static_cast<int32_t>((-mount_data.pitch_angle.pitch_angle * ANGLE_CONTROL_UNIT)*100);
+        _current_angle.x = static_cast<int32_t>((mount_data.roll_angle.roll_angle * ANGLE_CONTROL_UNIT)*100);
+        _current_angle.z = static_cast<int32_t>((mount_data.yaw_angle.yaw_angle * ANGLE_CONTROL_UNIT)*100);
         parse_flag = PARSE_ANGLE_NONE;
-        gcs().send_text(MAV_SEVERITY_INFO, "have angle");
+        //gcs().send_text(MAV_SEVERITY_INFO, "angle:%d %d %d",  _current_angle.y, _current_angle.z);
         return true;
     }else return false;
 }
@@ -523,7 +633,7 @@ bool AP_Mount_PinLing::parse_zoom(uint8_t data){
         //get zoom
         zoom = parse_zoom_src_data;
         parse_zoom_flag=PARSE_ZOOM_NONE;
-        gcs().send_text(MAV_SEVERITY_INFO, "have zoom %d", zoom);
+        //gcs().send_text(MAV_SEVERITY_INFO, "have zoom %d", zoom);
         return true;
     }else {
         parse_zoom_flag=PARSE_ZOOM_NONE;
@@ -534,8 +644,66 @@ bool AP_Mount_PinLing::parse_zoom(uint8_t data){
 
 bool AP_Mount_PinLing::need_send_angle(){
 
-    if( fabsf(ToDeg(_angle_ef_target_rad.y)-_current_angle.y/100)<=0.25 && 
-        fabsf(ToDeg(_angle_ef_target_rad.z)-_current_angle.z/100)<=0.25)
+    if( fabsf(ToDeg(_angle_ef_target_rad.y)-_current_angle.y/100.0)<=0.5 && 
+        fabsf(ToDeg(_angle_ef_target_rad.z)-_current_angle.z/100.0)<=0.5)
         return false;
     return true;
+}
+
+void AP_Mount_PinLing::set_color_pic(uint8_t type){  //type 0-color  1-picture
+    uint8_t i = 0;
+    uint32_t crc = 0;
+
+    if(0==type){
+        ++camera_flag.color;
+        camera_flag.color %= 6;
+    }else if(1==type){
+        ++camera_flag.pic_pic;
+        camera_flag.pic_pic %= 4;
+    }        
+
+    if(can_send(true, 48)){
+        for (i = 0;  i<6 ; i++) {
+            _port->write(PIC_COLOR_HEADER[i]);      
+            crc += PIC_COLOR_HEADER[i];                        
+        } 
+        if(camera_flag.color==1 || camera_flag.color==0){
+            _port->write(static_cast<uint8_t>(0x00)); 
+        }else {
+            _port->write(camera_flag.color-1); 
+            crc += (camera_flag.color-1);
+        }
+        for( i=0; i<40; ++i ){
+            if(8==i && camera_flag.color==1){
+                _port->write(camera_flag.color);
+                crc += camera_flag.color;
+                continue;
+            } 
+            if(7==i){
+                _port->write(camera_flag.pic_pic);
+                crc += camera_flag.pic_pic;
+                continue;
+            }
+            _port->write(static_cast<uint8_t>(0x00));
+        } 
+        _port->write(static_cast<uint8_t>(crc&0x0ff));  
+
+        if(0==type)
+            camera_flag.color_switch_falg = 0;     
+        else if(1==type)
+            camera_flag.picture_switch_flag = 0;          
+    }
+}
+
+void AP_Mount_PinLing::set_param(float p1, float p2, float p3){
+    _param[0] = static_cast<int32_t>(p1);
+    _param[1] = static_cast<int32_t>(p2);
+    _param[2] = static_cast<int32_t>(p3);
+
+    if(_param[0]==1){
+        camera_flag.look_down_flag = 1;
+        _angle_ef_target_rad.y = ToRad(90.0);
+        _angle_ef_target_rad.x = 0;
+        _angle_ef_target_rad.z = 0;
+    }
 }

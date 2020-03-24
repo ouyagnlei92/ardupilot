@@ -12,6 +12,8 @@ void AP_Mount_Backend::set_angle_targets(float roll, float tilt, float pan)
 
     // set the mode to mavlink targeting
     _frontend.set_mode(_instance, MAV_MOUNT_MODE_MAVLINK_TARGETING);
+
+    _angle_update = 3;
 }
 
 // set_roi_target - sets target location that mount should attempt to point towards
@@ -88,22 +90,31 @@ void AP_Mount_Backend::update_targets_from_rc()
     uint8_t roll_rc_in = _state._roll_rc_in;
     uint8_t tilt_rc_in = _state._tilt_rc_in;
     uint8_t pan_rc_in = _state._pan_rc_in;
+    int16_t pin = rc_ch(tilt_rc_in)->get_radio_in();
+    int16_t yin = rc_ch(pan_rc_in)->get_radio_in();
 
     // if joystick_speed is defined then pilot input defines a rate of change of the angle
     if (_frontend._joystick_speed) {
-        // allow pilot speed position input to come directly from an RC_Channel
-        if (roll_rc_in && (rc_ch(roll_rc_in) != nullptr) && (rc_ch(roll_rc_in)->get_radio_in() > 0)) {
-            _angle_ef_target_rad.x += rc_ch(roll_rc_in)->norm_input_dz() * 0.0001f * _frontend._joystick_speed;
-            _angle_ef_target_rad.x = constrain_float(_angle_ef_target_rad.x, radians(_state._roll_angle_min*0.01f), radians(_state._roll_angle_max*0.01f));
-        }
-        if (tilt_rc_in && (rc_ch(tilt_rc_in) != nullptr) && (rc_ch(tilt_rc_in)->get_radio_in() > 0)) {
-            _angle_ef_target_rad.y += rc_ch(tilt_rc_in)->norm_input_dz() * 0.0001f * _frontend._joystick_speed;
-            _angle_ef_target_rad.y = constrain_float(_angle_ef_target_rad.y, radians(_state._tilt_angle_min*0.01f), radians(_state._tilt_angle_max*0.01f));
-        }
-        if (pan_rc_in && (rc_ch(pan_rc_in) != nullptr) && (rc_ch(pan_rc_in)->get_radio_in() > 0)) {
-            _angle_ef_target_rad.z += rc_ch(pan_rc_in)->norm_input_dz() * 0.0001f * _frontend._joystick_speed;
-            _angle_ef_target_rad.z = constrain_float(_angle_ef_target_rad.z, radians(_state._pan_angle_min*0.01f), radians(_state._pan_angle_max*0.01f));
-        }
+       
+        if( pin<(rc_ch(tilt_rc_in)->get_radio_trim()-rc_ch(tilt_rc_in)->get_dead_zone()) || \
+            pin>(rc_ch(tilt_rc_in)->get_radio_trim()+rc_ch(tilt_rc_in)->get_dead_zone()) || \
+            yin<(rc_ch(pan_rc_in)->get_radio_trim()-rc_ch(pan_rc_in)->get_dead_zone()) || \
+            yin>(rc_ch(pan_rc_in)->get_radio_trim()+rc_ch(pan_rc_in)->get_dead_zone()) ){
+                // allow pilot speed position input to come directly from an RC_Channel
+                if (roll_rc_in && (rc_ch(roll_rc_in) != nullptr) && (rc_ch(roll_rc_in)->get_radio_in() > 0)) {
+                    _angle_ef_target_rad.x += rc_ch(roll_rc_in)->norm_input_dz() * 0.0001f * _frontend._joystick_speed;
+                    _angle_ef_target_rad.x = constrain_float(_angle_ef_target_rad.x, radians(_state._roll_angle_min*0.01f), radians(_state._roll_angle_max*0.01f));
+                }
+                if (tilt_rc_in && (rc_ch(tilt_rc_in) != nullptr) && (rc_ch(tilt_rc_in)->get_radio_in() > 0)) {
+                    _angle_ef_target_rad.y += rc_ch(tilt_rc_in)->norm_input_dz() * 0.0001f * _frontend._joystick_speed;
+                    _angle_ef_target_rad.y = constrain_float(_angle_ef_target_rad.y, radians(_state._tilt_angle_min*0.01f), radians(_state._tilt_angle_max*0.01f));
+                }
+                if (pan_rc_in && (rc_ch(pan_rc_in) != nullptr) && (rc_ch(pan_rc_in)->get_radio_in() > 0)) {
+                    _angle_ef_target_rad.z += rc_ch(pan_rc_in)->norm_input_dz() * 0.0001f * _frontend._joystick_speed;
+                    _angle_ef_target_rad.z = constrain_float(_angle_ef_target_rad.z, radians(_state._pan_angle_min*0.01f), radians(_state._pan_angle_max*0.01f));
+                }
+                if(_state._rc_mode==1) _angle_update = 5;
+            }
     } else {
         // allow pilot position input to come directly from an RC_Channel
         if (roll_rc_in && (rc_ch(roll_rc_in) != nullptr) && (rc_ch(roll_rc_in)->get_radio_in() > 0)) {

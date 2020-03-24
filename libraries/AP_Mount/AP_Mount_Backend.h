@@ -29,7 +29,8 @@ public:
     AP_Mount_Backend(AP_Mount &frontend, AP_Mount::mount_state& state, uint8_t instance) :
         _frontend(frontend),
         _state(state),
-        _instance(instance)
+        _instance(instance),
+        _angle_update(0)
     {}
 
     // Virtual destructor
@@ -77,6 +78,9 @@ public:
     // send a GIMBAL_REPORT message to the GCS
     virtual void send_gimbal_report(mavlink_channel_t chan) {}
 
+    // set param
+    virtual void set_param(float p1, float p2, float p3) {}
+
 protected:
 
     // update_targets_from_rc - updates angle targets (i.e. _angle_ef_target_rad) using input from receiver
@@ -96,4 +100,6 @@ protected:
     AP_Mount::mount_state &_state;    // references to the parameters and state for this backend
     uint8_t     _instance;  // this instance's number
     Vector3f    _angle_ef_target_rad;   // desired earth-frame roll, tilt and vehicle-relative pan angles in radians
+    int32_t    _param[3];   //command param4-param7
+    uint8_t    _angle_update;
 };

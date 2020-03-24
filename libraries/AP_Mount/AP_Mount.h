@@ -138,6 +138,8 @@ public:
     // status_msg - called to allow mounts to send their status to GCS using the MOUNT_STATUS message
     void status_msg(mavlink_channel_t chan);
 
+    void set_param(float p1, float p2, float p3);
+
     // parameter var table
     static const struct AP_Param::GroupInfo        var_info[];
 
@@ -173,6 +175,8 @@ protected:
         AP_Int8         _record_rc_in;      // camera record
         AP_Int8         _auto_reset_rc_in;  // auto reset
         AP_Int8         _auto_tra_rc_in;    // auto gen zong
+
+        AP_Int8         _rc_mode;           // rc mode 0-rc  1-angle
 
         // Mount's physical limits
         AP_Int16        _roll_angle_min;    // min roll in 0.01 degree units
