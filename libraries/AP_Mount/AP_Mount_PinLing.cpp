@@ -8,6 +8,8 @@
 
 extern const AP_HAL::HAL& hal;
 
+#define rc_ch(i) RC_Channels::rc_channel(i-1)
+
 AP_Mount_PinLing::AP_Mount_PinLing(AP_Mount &frontend, AP_Mount::mount_state &state, uint8_t instance) :
     AP_Mount_Backend(frontend, state, instance),
     _port(nullptr),
@@ -33,9 +35,14 @@ void AP_Mount_PinLing::init(const AP_SerialManager& serial_manager)
         parse_data_crc = 0; 
         parse_zoom_flag = PARSE_ZOOM_NONE;
         parse_zoom_index = 0;
-        current_color_index = 0;
-        current_pic_index = 0;
+        old_record_rc_in = rc_ch(_state._record_rc_in)->get_radio_min();       // camera color switch
+        old_take_photo_rc_in = rc_ch(_state._take_photo_rc_in)->get_radio_min();  // camera take photo
+        old_tra_rc_in = rc_ch(_state._auto_tra_rc_in)->get_radio_min();
+        old_auto_reset_rc_in = rc_ch(_state._auto_reset_rc_in)->get_radio_min();
+        old_look_down_rc_in = rc_ch(_state._auto_look_down_in)->get_radio_min();
         zoom = 1;
+        camera_flag.color = 1;
+        camera_flag.color_switch_falg = 1;
     }    
 }
 
@@ -115,41 +122,39 @@ void AP_Mount_PinLing::update()
     }
     if (can_send(resend_now, 20)) {
         if (resend_now) {
-        #define rc_ch(i) RC_Channels::rc_channel(i-1)
-
             uint8_t tilt_rc_in = _state._tilt_rc_in;
             uint8_t pan_rc_in = _state._pan_rc_in;
             
             int16_t pin = rc_ch(tilt_rc_in)->get_radio_in();
             int16_t yin = rc_ch(pan_rc_in)->get_radio_in();
 
-            if(AP_HAL::millis()-send_angle_control_time>120 && _state._rc_mode==0){
-                send_target_rc();
-                send_angle_control_time = AP_HAL::millis();  
+            if(0==_angle_update && AP_HAL::millis()-send_angle_control_time>120 && _state._rc_mode==0){
+                send_target_rc();  
                 get_angles(); 
 
-                if(_angle_update==0){
-                    _angle_ef_target_rad.y = ToRad(_current_angle.y/100.0);
-                    _angle_ef_target_rad.x = 0;
-                    _angle_ef_target_rad.z = ToRad(_current_angle.z/100.0);
-                }
+                //_angle_ef_target_rad.y = ToRad(_current_angle.y/100.0);
+                //_angle_ef_target_rad.x = 0;
+                //_angle_ef_target_rad.z = ToRad(_current_angle.z/100.0);
+                send_angle_control_time = AP_HAL::millis();
+                 _last_send = AP_HAL::millis();
             }
 
-            if( pin<(rc_ch(tilt_rc_in)->get_radio_trim()-rc_ch(tilt_rc_in)->get_dead_zone()) || \
-                pin>(rc_ch(tilt_rc_in)->get_radio_trim()+rc_ch(tilt_rc_in)->get_dead_zone()) || \
-                yin<(rc_ch(pan_rc_in)->get_radio_trim()-rc_ch(pan_rc_in)->get_dead_zone()) || \
-                yin>(rc_ch(pan_rc_in)->get_radio_trim()+rc_ch(pan_rc_in)->get_dead_zone()) ){
-                    if(AP_HAL::millis()-send_angle_control_time>180 && _state._rc_mode==1 && need_send_angle()){
+            if(AP_HAL::millis()-send_angle_control_time>180){
+                if(_angle_update==0 && (pin<(rc_ch(tilt_rc_in)->get_radio_trim()-rc_ch(tilt_rc_in)->get_dead_zone()) || \
+                    pin>(rc_ch(tilt_rc_in)->get_radio_trim()+rc_ch(tilt_rc_in)->get_dead_zone()) || \
+                    yin<(rc_ch(pan_rc_in)->get_radio_trim()-rc_ch(pan_rc_in)->get_dead_zone()) || \
+                    yin>(rc_ch(pan_rc_in)->get_radio_trim()+rc_ch(pan_rc_in)->get_dead_zone()))){
+                        if(_state._rc_mode==1 && need_send_angle()){
+                            send_target_angles(ToDeg(_angle_ef_target_rad.y), ToDeg(_angle_ef_target_rad.x), ToDeg(_angle_ef_target_rad.z));                             
+                        }
+                    }else if( 0!=_angle_update ){
                         send_target_angles(ToDeg(_angle_ef_target_rad.y), ToDeg(_angle_ef_target_rad.x), ToDeg(_angle_ef_target_rad.z)); 
-                        send_angle_control_time = AP_HAL::millis();   
-                        get_angles(); 
+                        --_angle_update;                        
                     }
-                }else if( 0!=_angle_update && need_send_angle() ){
-                    send_target_angles(ToDeg(_angle_ef_target_rad.y), ToDeg(_angle_ef_target_rad.x), ToDeg(_angle_ef_target_rad.z)); 
-                    --_angle_update;
+                    _last_send = AP_HAL::millis();
+                    send_angle_control_time = AP_HAL::millis();   
                     get_angles(); 
-                    send_angle_control_time = AP_HAL::millis();  
-                }
+            }
         }
     }
 }
@@ -297,13 +302,13 @@ void AP_Mount_PinLing::set_mount_camera(void){
 
 bool AP_Mount_PinLing::read_rc(void){
     
-#define rc_ch(i) RC_Channels::rc_channel(i-1)
     uint8_t zoom_rc_in       = _state._zoom_rc_in;        // camera zoom
     uint8_t color_rc_in      = _state._color_rc_in;       // camera color switch
     uint8_t take_photo_rc_in = _state._take_photo_rc_in;  // camera take photo
     uint8_t record_rc_in     = _state._record_rc_in;      // camera record   
     uint8_t auto_reset_rc_in = _state._auto_reset_rc_in;  // auto reset
     uint8_t auto_tra_rc_in   = _state._auto_tra_rc_in;    // auto reset
+    uint8_t look_down_rc     = _state._auto_look_down_in; // look down 90deg
 
     int16_t dz_min;
     int16_t dz_max;
@@ -387,6 +392,16 @@ bool AP_Mount_PinLing::read_rc(void){
         old_tra_rc_in = rc_in;
     }
 
+    //auto look down 90deg
+    if (look_down_rc && (rc_ch(look_down_rc) != nullptr) && (rc_ch(look_down_rc)->get_radio_in() > 0)){
+        rc_in = rc_ch(look_down_rc)->get_radio_in();        
+        dz_min = rc_ch(look_down_rc)->get_radio_min() + rc_ch(look_down_rc)->get_dead_zone();
+        if(rc_in>dz_min && rc_in-old_look_down_rc_in>=350){
+            camera_flag.look_down_flag = 1;
+        }
+        old_look_down_rc_in = rc_in;
+    }
+
     return true;
 }
 
@@ -445,7 +460,6 @@ void AP_Mount_PinLing::send_target_rc(void){
     pin_ling_long_cmd.longCmd.pitch_mode = AP_Mount_PinLing::CONTROL_MODE::MODE_RC;
     pin_ling_long_cmd.longCmd.yaw_mode = AP_Mount_PinLing::CONTROL_MODE::MODE_RC;
 
-#define rc_ch(i) RC_Channels::rc_channel(i-1)
     uint8_t tilt_rc_in = _state._tilt_rc_in;
     uint8_t pan_rc_in = _state._pan_rc_in;
     int16_t rcin = 0;
@@ -674,6 +688,34 @@ void AP_Mount_PinLing::set_color_pic(uint8_t type){  //type 0-color  1-picture
             crc += (camera_flag.color-1);
         }
         for( i=0; i<40; ++i ){
+            if(2==camera_flag.color){
+                if(3==i){
+                    _port->write(0x48);
+                    crc += 0x48;
+                    continue;
+                }
+                if(4==i){
+                    _port->write(0x43);
+                    crc += 0x43;
+                    continue;
+                }
+                if(5==i){
+                    _port->write(1);
+                    crc += 1;
+                    continue;
+                }
+                if(10==i){
+                    _port->write(1);
+                    crc += 1;
+                    continue;
+                }
+                if(11==i){
+                    _port->write(1);
+                    crc += 1;
+                    continue;
+                }
+            }
+
             if(8==i && camera_flag.color==1){
                 _port->write(camera_flag.color);
                 crc += camera_flag.color;
@@ -688,10 +730,11 @@ void AP_Mount_PinLing::set_color_pic(uint8_t type){  //type 0-color  1-picture
         } 
         _port->write(static_cast<uint8_t>(crc&0x0ff));  
 
-        if(0==type)
-            camera_flag.color_switch_falg = 0;     
-        else if(1==type)
-            camera_flag.picture_switch_flag = 0;          
+        if(0==type){
+            camera_flag.color_switch_falg = 0;  
+        }else if(1==type){
+            camera_flag.picture_switch_flag = 0; 
+        }         
     }
 }
 
@@ -702,7 +745,7 @@ void AP_Mount_PinLing::set_param(float p1, float p2, float p3){
 
     if(_param[0]==1){
         camera_flag.look_down_flag = 1;
-        _angle_ef_target_rad.y = ToRad(90.0);
+        _angle_ef_target_rad.y = -ToRad(90.0);
         _angle_ef_target_rad.x = 0;
         _angle_ef_target_rad.z = 0;
     }

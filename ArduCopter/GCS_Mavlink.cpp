@@ -936,14 +936,18 @@ void GCS_MAVLINK_Copter::handleMessage(mavlink_message_t* msg)
 
         case MAV_CMD_DO_MOUNT_CONTROL:
 #if MOUNT == ENABLED
-            if(!copter.camera_mount.has_pan_control()) {
-                copter.flightmode->auto_yaw.set_fixed_yaw(
-                    (float)packet.param3 / 100.0f,
-                    0.0f,
-                    0,0);
+            if(is_zero(packet.param4) && is_zero(packet.param5) && is_zero(packet.param6)){
+                if(!copter.camera_mount.has_pan_control()) {
+                    copter.flightmode->auto_yaw.set_fixed_yaw(
+                        (float)packet.param3 / 100.0f,
+                        0.0f,
+                        0,0);
+                }
+                copter.camera_mount.control(packet.param1, packet.param2, packet.param3, (MAV_MOUNT_MODE) packet.param7);
+            }else{
+                copter.camera_mount.set_param(packet.param4, packet.param5, packet.param6);
             }
-            copter.camera_mount.control(packet.param1, packet.param2, packet.param3, (MAV_MOUNT_MODE) packet.param7);
-            copter.camera_mount.set_param(packet.param4, packet.param5, packet.param6);
+            
             result = MAV_RESULT_ACCEPTED;
 #endif
             break;

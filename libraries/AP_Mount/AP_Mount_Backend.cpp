@@ -13,7 +13,7 @@ void AP_Mount_Backend::set_angle_targets(float roll, float tilt, float pan)
     // set the mode to mavlink targeting
     _frontend.set_mode(_instance, MAV_MOUNT_MODE_MAVLINK_TARGETING);
 
-    _angle_update = 3;
+    _angle_update = 60;
 }
 
 // set_roi_target - sets target location that mount should attempt to point towards

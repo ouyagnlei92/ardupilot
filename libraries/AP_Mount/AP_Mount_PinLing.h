@@ -186,8 +186,7 @@ private:
     int16_t old_take_photo_rc_in;  // camera take photo
     int16_t old_tra_rc_in;
     int16_t old_auto_reset_rc_in;
-    uint8_t current_pic_index;
-    uint8_t current_color_index;
+    int16_t old_look_down_rc_in;
     uint32_t camera_last_send;
     uint32_t request_read_time;
     uint32_t read_zoom_time;

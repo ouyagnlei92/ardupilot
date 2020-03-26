@@ -397,7 +397,9 @@ const AP_Param::GroupInfo AP_Mount::var_info[] = {
     AP_GROUPINFO("_RC_IN_RCD",  46, AP_Mount, state[0]._record_rc_in,     0),         //record
     AP_GROUPINFO("_RC_IN_ARST", 47, AP_Mount, state[0]._auto_reset_rc_in, 0),         //auto reset
     AP_GROUPINFO("_RC_IN_TRA",  48, AP_Mount, state[0]._auto_tra_rc_in,   0),         //auto trace
-    AP_GROUPINFO("_RC_MODE",  49, AP_Mount, state[0]._rc_mode,   0),                  //rc mode 0-rc  1-angle
+    AP_GROUPINFO("_RC_IN_TRA",  49, AP_Mount, state[0]._auto_tra_rc_in,   0),         //auto trace
+    AP_GROUPINFO("_RC_IN_LKD",  50, AP_Mount, state[0]._auto_look_down_in,   0),      //auto trace
+    AP_GROUPINFO("_RC_MODE",  51, AP_Mount, state[0]._rc_mode,   0),                  //rc mode 0-rc  1-angle
 
     AP_GROUPEND
 };
