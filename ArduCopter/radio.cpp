@@ -80,7 +80,7 @@ void Copter::init_rc_out()
 #endif
 
     // check if we should enter esc calibration mode
-    esc_calibration_startup_check();
+    //esc_calibration_startup_check();
 }
 
 
