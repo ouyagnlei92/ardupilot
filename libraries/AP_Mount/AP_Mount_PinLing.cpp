@@ -35,11 +35,11 @@ void AP_Mount_PinLing::init(const AP_SerialManager& serial_manager)
         parse_data_crc = 0; 
         parse_zoom_flag = PARSE_ZOOM_NONE;
         parse_zoom_index = 0;
-        old_record_rc_in = rc_ch(_state._record_rc_in)->get_radio_min();       // camera color switch
-        old_take_photo_rc_in = rc_ch(_state._take_photo_rc_in)->get_radio_min();  // camera take photo
-        old_tra_rc_in = rc_ch(_state._auto_tra_rc_in)->get_radio_min();
-        old_auto_reset_rc_in = rc_ch(_state._auto_reset_rc_in)->get_radio_min();
-        old_look_down_rc_in = rc_ch(_state._auto_look_down_in)->get_radio_min();
+        old_record_rc_in = 0;       // camera color switch
+        old_take_photo_rc_in = 0;  // camera take photo
+        old_tra_rc_in = 0;
+        old_auto_reset_rc_in = 0;
+        old_look_down_rc_in = 0;
         zoom = 1;
         camera_flag.color = 1;
         camera_flag.color_switch_falg = 1;
@@ -336,7 +336,7 @@ bool AP_Mount_PinLing::read_rc(void){
     if (take_photo_rc_in && (rc_ch(take_photo_rc_in) != nullptr) && (rc_ch(take_photo_rc_in)->get_radio_in()>0)){
         rc_in = rc_ch(take_photo_rc_in)->get_radio_in();        
         dz_min = rc_ch(take_photo_rc_in)->get_radio_min() + rc_ch(take_photo_rc_in)->get_dead_zone();
-        if(rc_in>dz_min && rc_in-old_take_photo_rc_in>=350){
+        if(rc_in>dz_min && rc_in-old_take_photo_rc_in>=350 && old_take_photo_rc_in>=800){
             camera_flag.take_photo_flag = 1;
         }
         old_take_photo_rc_in = rc_in;
@@ -346,7 +346,7 @@ bool AP_Mount_PinLing::read_rc(void){
     if (record_rc_in && (rc_ch(record_rc_in) != nullptr) && (rc_ch(record_rc_in)->get_radio_in() > 0)){
         rc_in = rc_ch(record_rc_in)->get_radio_in();        
         dz_min = rc_ch(record_rc_in)->get_radio_min() + rc_ch(record_rc_in)->get_dead_zone();
-        if(rc_in>dz_min && rc_in-old_record_rc_in>=350){
+        if(rc_in>dz_min && rc_in-old_record_rc_in>=350 && old_record_rc_in>=800){
             if(camera_flag.recording) camera_flag.record_end_flag = 1; 
             else camera_flag.record_flag = 1;
         }
@@ -357,7 +357,7 @@ bool AP_Mount_PinLing::read_rc(void){
     if (auto_reset_rc_in && (rc_ch(auto_reset_rc_in) != nullptr) && (rc_ch(auto_reset_rc_in)->get_radio_in() > 0)){
         rc_in = rc_ch(auto_reset_rc_in)->get_radio_in();        
         dz_min = rc_ch(auto_reset_rc_in)->get_radio_min() + rc_ch(auto_reset_rc_in)->get_dead_zone();
-        if(rc_in>dz_min && rc_in-old_auto_reset_rc_in>=350){
+        if(rc_in>dz_min && rc_in-old_auto_reset_rc_in>=350 && old_auto_reset_rc_in>=800){
             camera_flag.auto_reset_flag = 1;
         }
         old_auto_reset_rc_in = rc_in;
@@ -384,7 +384,7 @@ bool AP_Mount_PinLing::read_rc(void){
     if (auto_tra_rc_in && (rc_ch(auto_tra_rc_in) != nullptr) && (rc_ch(auto_tra_rc_in)->get_radio_in()>0)){
         rc_in = rc_ch(auto_tra_rc_in)->get_radio_in();        
         dz_min = rc_ch(auto_tra_rc_in)->get_radio_min() + rc_ch(auto_tra_rc_in)->get_dead_zone();
-        if(rc_in-dz_min>=0 && rc_in-old_tra_rc_in-350>=0){
+        if(rc_in-dz_min>=0 && rc_in-old_tra_rc_in-350>=0 && old_tra_rc_in>=800){
             camera_flag.auto_trace = 1;
             if(camera_flag.auto_tracing) camera_flag.auto_tracing = 0;
             else camera_flag.auto_tracing = 1;
@@ -396,7 +396,7 @@ bool AP_Mount_PinLing::read_rc(void){
     if (look_down_rc && (rc_ch(look_down_rc) != nullptr) && (rc_ch(look_down_rc)->get_radio_in() > 0)){
         rc_in = rc_ch(look_down_rc)->get_radio_in();        
         dz_min = rc_ch(look_down_rc)->get_radio_min() + rc_ch(look_down_rc)->get_dead_zone();
-        if(rc_in>dz_min && rc_in-old_look_down_rc_in>=350){
+        if(rc_in>dz_min && rc_in-old_look_down_rc_in>=350 && old_look_down_rc_in>=800){
             camera_flag.look_down_flag = 1;
         }
         old_look_down_rc_in = rc_in;
@@ -667,6 +667,7 @@ bool AP_Mount_PinLing::need_send_angle(){
 void AP_Mount_PinLing::set_color_pic(uint8_t type){  //type 0-color  1-picture
     uint8_t i = 0;
     uint32_t crc = 0;
+    uint8_t tm = 0;
 
     if(0==type){
         ++camera_flag.color;
@@ -688,45 +689,37 @@ void AP_Mount_PinLing::set_color_pic(uint8_t type){  //type 0-color  1-picture
             crc += (camera_flag.color-1);
         }
         for( i=0; i<40; ++i ){
-            if(2==camera_flag.color){
-                if(3==i){
-                    _port->write(0x48);
-                    crc += 0x48;
-                    continue;
-                }
-                if(4==i){
-                    _port->write(0x43);
-                    crc += 0x43;
-                    continue;
-                }
-                if(5==i){
-                    _port->write(1);
-                    crc += 1;
-                    continue;
-                }
-                if(10==i){
-                    _port->write(1);
-                    crc += 1;
-                    continue;
-                }
-                if(11==i){
-                    _port->write(1);
-                    crc += 1;
-                    continue;
-                }
+            tm = 0;
+            switch(i){
+                case 3:
+                    tm = 0x48;
+                    break;
+                case 4:
+                    tm = 0x43;
+                    break;
+                case 5:
+                    if(2==camera_flag.color) tm = 1;
+                    else tm = 0;
+                    break;
+                case 7:
+                    tm = camera_flag.pic_pic;
+                    break;
+                case 8:
+                    if(1==camera_flag.color) tm = camera_flag.color;
+                    else tm = 0;
+                    break;
+                case 10:
+                    tm = 1;
+                    break;
+                case 11:
+                    tm = 1;
+                    break;
+                default:
+                    tm = 0;
+                    break;
             }
-
-            if(8==i && camera_flag.color==1){
-                _port->write(camera_flag.color);
-                crc += camera_flag.color;
-                continue;
-            } 
-            if(7==i){
-                _port->write(camera_flag.pic_pic);
-                crc += camera_flag.pic_pic;
-                continue;
-            }
-            _port->write(static_cast<uint8_t>(0x00));
+            crc += tm;
+            _port->write(static_cast<uint8_t>(tm));
         } 
         _port->write(static_cast<uint8_t>(crc&0x0ff));  
 
