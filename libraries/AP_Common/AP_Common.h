@@ -38,6 +38,9 @@
 // sometimes we need to prevent inlining to prevent large stack usage
 #define NOINLINE __attribute__((noinline))
 
+// used to ignore results for functions marked as warn unused
+#define IGNORE_RETURN(x) do {if (x) {}} while(0)
+
 #define FMT_PRINTF(a,b) __attribute__((format(printf, a, b)))
 #define FMT_SCANF(a,b) __attribute__((format(scanf, a, b)))
 
@@ -133,3 +136,5 @@ template<typename s, size_t t> struct assert_storage_size {
   False otherwise.
 */
 bool is_bounded_int32(int32_t value, int32_t lower_bound, int32_t upper_bound);
+
+bool hex_to_uint8(uint8_t a, uint8_t &res);  // return the uint8 value of an ascii hex character

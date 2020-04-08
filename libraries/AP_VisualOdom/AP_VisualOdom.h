@@ -17,7 +17,6 @@
 #include <AP_Common/AP_Common.h>
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Param/AP_Param.h>
-#include <AP_Math/AP_Math.h>
 #include <GCS_MAVLink/GCS.h>
 
 class AP_VisualOdom_Backend;
@@ -50,7 +49,6 @@ public:
         float confidence;           // confidence expressed as a value from 0 (no confidence) to 100 (very confident)
         uint32_t last_sensor_update_ms;    // system time (in milliseconds) of last update from sensor
         uint32_t last_processed_sensor_update_ms; // timestamp of last sensor update that was processed
-
     };
 
     // detect and initialise any sensors
@@ -70,7 +68,7 @@ public:
     const Vector3f &get_pos_offset(void) const { return _pos_offset; }
 
     // consume data from MAVLink messages
-    void handle_msg(mavlink_message_t *msg);
+    void handle_msg(const mavlink_message_t &msg);
 
     static const struct AP_Param::GroupInfo var_info[];
 

@@ -16,12 +16,14 @@
   handle vehicle <-> GCS communications for terrain library
  */
 
+#include "AP_Terrain.h"
+
+#include <AP_AHRS/AP_AHRS.h>
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Common/AP_Common.h>
 #include <AP_Math/AP_Math.h>
 #include <GCS_MAVLink/GCS_MAVLink.h>
 #include <GCS_MAVLink/GCS.h>
-#include "AP_Terrain.h"
 
 #if AP_TERRAIN_AVAILABLE
 
@@ -147,7 +149,7 @@ void AP_Terrain::send_request(mavlink_channel_t chan)
 /*
   count bits in a uint64_t
 */
-uint8_t AP_Terrain::bitcount64(uint64_t b)
+uint8_t AP_Terrain::bitcount64(uint64_t b) const
 {
     return __builtin_popcount((unsigned)(b&0xFFFFFFFF)) + __builtin_popcount((unsigned)(b>>32));
 }
@@ -155,7 +157,7 @@ uint8_t AP_Terrain::bitcount64(uint64_t b)
 /*
   get some statistics for TERRAIN_REPORT
 */
-void AP_Terrain::get_statistics(uint16_t &pending, uint16_t &loaded)
+void AP_Terrain::get_statistics(uint16_t &pending, uint16_t &loaded) const
 {
     pending = 0;
     loaded = 0;
@@ -186,11 +188,11 @@ void AP_Terrain::get_statistics(uint16_t &pending, uint16_t &loaded)
 /* 
    handle terrain messages from GCS
  */
-void AP_Terrain::handle_data(mavlink_channel_t chan, mavlink_message_t *msg)
+void AP_Terrain::handle_data(mavlink_channel_t chan, const mavlink_message_t &msg)
 {
-    if (msg->msgid == MAVLINK_MSG_ID_TERRAIN_DATA) {
+    if (msg.msgid == MAVLINK_MSG_ID_TERRAIN_DATA) {
         handle_terrain_data(msg);
-    } else if (msg->msgid == MAVLINK_MSG_ID_TERRAIN_CHECK) {
+    } else if (msg.msgid == MAVLINK_MSG_ID_TERRAIN_CHECK) {
         handle_terrain_check(chan, msg);
     }
 }
@@ -241,10 +243,10 @@ void AP_Terrain::send_terrain_report(mavlink_channel_t chan, const Location &loc
 /* 
    handle TERRAIN_CHECK messages from GCS
  */
-void AP_Terrain::handle_terrain_check(mavlink_channel_t chan, mavlink_message_t *msg)
+void AP_Terrain::handle_terrain_check(mavlink_channel_t chan, const mavlink_message_t &msg)
 {
     mavlink_terrain_check_t packet;
-    mavlink_msg_terrain_check_decode(msg, &packet);
+    mavlink_msg_terrain_check_decode(&msg, &packet);
     Location loc;
     loc.lat = packet.lat;
     loc.lng = packet.lon;
@@ -254,10 +256,10 @@ void AP_Terrain::handle_terrain_check(mavlink_channel_t chan, mavlink_message_t 
 /* 
    handle TERRAIN_DATA messages from GCS
  */
-void AP_Terrain::handle_terrain_data(mavlink_message_t *msg)
+void AP_Terrain::handle_terrain_data(const mavlink_message_t &msg)
 {
     mavlink_terrain_data_t packet;
-    mavlink_msg_terrain_data_decode(msg, &packet);
+    mavlink_msg_terrain_data_decode(&msg, &packet);
 
     uint16_t i;
     for (i=0; i<cache_size; i++) {

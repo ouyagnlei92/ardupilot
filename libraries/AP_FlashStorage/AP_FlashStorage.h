@@ -1,5 +1,5 @@
 /*
-   Please contribute your ideas! See http://dev.ardupilot.org for details
+   Please contribute your ideas! See https://dev.ardupilot.org for details
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -39,6 +39,16 @@
 
 #include <AP_HAL/AP_HAL.h>
 
+#if defined(STM32F1) || defined(STM32F3)
+/*
+  the STM32F1 and STM32F3 can't change individual bits from 1 to 0
+  unless all bits in the 16 bit word are 1
+ */
+#define AP_FLASHSTORAGE_MULTI_WRITE 0
+#else
+#define AP_FLASHSTORAGE_MULTI_WRITE 1
+#endif
+
 /*
   The StorageManager holds the layout of non-volatile storeage
  */
@@ -72,6 +82,11 @@ public:
     // initialise storage, filling mem_buffer with current contents
     bool init(void);
 
+    // erase sectors and re-initialise
+    bool erase(void) {
+        return erase_all();
+    }
+    
     // re-initialise storage, using current mem_buffer
     bool re_initialise(void);
     
@@ -99,19 +114,34 @@ private:
     bool write_error;
 
     // 24 bit signature
+#if AP_FLASHSTORAGE_MULTI_WRITE
     static const uint32_t signature = 0x51685B;
+#else
+    static const uint32_t signature = 0x51;
+#endif
 
     // 8 bit sector states
     enum SectorState {
+#if AP_FLASHSTORAGE_MULTI_WRITE
         SECTOR_STATE_AVAILABLE = 0xFF,
         SECTOR_STATE_IN_USE    = 0xFE,
         SECTOR_STATE_FULL      = 0xFC
+#else
+        SECTOR_STATE_AVAILABLE = 0xFFFFFFFF,
+        SECTOR_STATE_IN_USE    = 0xFFFFFFF1,
+        SECTOR_STATE_FULL      = 0xFFF2FFF1,
+#endif
     };
 
     // header in first word of each sector
     struct sector_header {
+#if AP_FLASHSTORAGE_MULTI_WRITE
         uint32_t state:8;
         uint32_t signature:24;
+#else
+        uint32_t state:32;
+        uint32_t signature:16;
+#endif
     };
 
 
@@ -135,7 +165,7 @@ private:
     bool load_sector(uint8_t sector);
 
     // erase a sector and write header
-    bool erase_sector(uint8_t sector);
+    bool erase_sector(uint8_t sector, bool mark_available);
 
     // erase all sectors and reset
     bool erase_all();

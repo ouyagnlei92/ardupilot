@@ -33,7 +33,8 @@ define STM32_PLLQ_VALUE 9
 APJ_BOARD_ID 120
 
 # with 2M flash we can afford to optimize for speed
-env OPTIMIZE -O3
+env OPTIMIZE -O2
+
 # on some boards you will need to also set the various PLL values. See
 # the defaults in common/mcuconf.h, and use the define mechanism
 # explained later in this file to override values suitable for your
@@ -110,7 +111,7 @@ I2C_ORDER I2C2 I2C1
 # 6) SERIAL5: extra UART (usually RTOS debug console)
 
 # order of UARTs (and USB)
-UART_ORDER OTG1 UART4 USART2 USART3 UART8 UART7
+UART_ORDER OTG1 UART4 USART2 USART3 UART8 UART7 OTG2
 
 # if the board has an IOMCU connected via a UART then this defines the
 # UART to talk to that MCU. Leave it out for boards with no IOMCU
@@ -411,7 +412,7 @@ IMU Invensense SPI:icm20602_ext ROTATION_ROLL_180_YAW_270
 IMU Invensensev2 SPI:icm20948_ext ROTATION_PITCH_180
 IMU Invensensev2 SPI:icm20948 ROTATION_YAW_270
 
-define HAL_DEFAULT_INS_FAST_SAMPLE 1
+define HAL_DEFAULT_INS_FAST_SAMPLE 5
 
 # two baros
 BARO MS56XX SPI:ms5611_ext
@@ -457,13 +458,6 @@ define HAL_HAVE_IMU_HEATER 1
 # enable FAT filesystem support (needs a microSD defined via SDIO)
 define HAL_OS_FATFS_IO 1
 
-# enable RTSCTS support. You should define this if you have any UARTs
-with RTS/CTS pins
-define AP_FEATURE_RTSCTS 1
-
-# enable SBUS_OUT on IOMCU (if you have an IOMCU)
-define AP_FEATURE_SBUS_OUT 1
-
 # now setup the default battery pins driver analog pins and default
 # scaling for the power brick
 define HAL_BATT_VOLT_PIN 2
@@ -496,4 +490,4 @@ define STORAGE_FLASH_PAGE 1
 # we can automatically update the IOMCU firmware on boot. The format
 # is "ROMFS ROMFS-filename source-filename". Paths are relative to the
 # ardupilot root
-ROMFS io_firmware.bin Tools/IO_Firmware/fmuv2_IO.bin
+ROMFS io_firmware.bin Tools/IO_Firmware/iofirmware_highpolh.bin

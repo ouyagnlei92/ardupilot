@@ -8,7 +8,7 @@
 float Plane::get_speed_scaler(void)
 {
     float aspeed, speed_scaler;
-    if (ahrs.airspeed_estimate(&aspeed)) {
+    if (ahrs.airspeed_estimate(aspeed)) {
         if (aspeed > auto_state.highest_airspeed) {
             auto_state.highest_airspeed = aspeed;
         }
@@ -28,6 +28,12 @@ float Plane::get_speed_scaler(void)
             if (aspeed < threshold) {
                 float new_scaler = linear_interpolate(0, g.scaling_speed / threshold, aspeed, 0, threshold);
                 speed_scaler = MIN(speed_scaler, new_scaler);
+
+                // we also decay the integrator to prevent an integrator from before
+                // we were at low speed persistint at high speed
+                rollController.decay_I();
+                pitchController.decay_I();
+                yawController.decay_I();
             }
         }
     } else if (hal.util->get_soft_armed()) {
@@ -51,6 +57,7 @@ bool Plane::stick_mixing_enabled(void)
     if (auto_throttle_mode && auto_navigation_mode) {
         // we're in an auto mode. Check the stick mixing flag
         if (g.stick_mixing != STICK_MIXING_DISABLED &&
+            g.stick_mixing != STICK_MIXING_VTOL_YAW &&
             geofence_stickmixing() &&
             failsafe.state == FAILSAFE_NONE &&
             !rc_failsafe_active()) {
@@ -357,7 +364,9 @@ void Plane::stabilize_acro(float speed_scaler)
 void Plane::stabilize()
 {
     if (control_mode == &mode_manual) {
-        // nothing to do
+        // reset steering controls
+        steer_state.locked_course = false;
+        steer_state.locked_course_err = 0;
         return;
     }
     float speed_scaler = get_speed_scaler();
@@ -370,7 +379,21 @@ void Plane::stabilize()
         nav_pitch_cd = constrain_float((quadplane.tailsitter.transition_angle+5)*100, 5500, 8500),
         nav_roll_cd = 0;
     }
-    
+
+    uint32_t now = AP_HAL::millis();
+    if (now - last_stabilize_ms > 2000) {
+        // if we haven't run the rate controllers for 2 seconds then
+        // reset the integrators
+        rollController.reset_I();
+        pitchController.reset_I();
+        yawController.reset_I();
+
+        // and reset steering controls
+        steer_state.locked_course = false;
+        steer_state.locked_course_err = 0;
+    }
+    last_stabilize_ms = now;
+
     if (control_mode == &mode_training) {
         stabilize_training(speed_scaler);
     } else if (control_mode == &mode_acro) {

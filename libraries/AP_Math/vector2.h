@@ -30,6 +30,7 @@
 #pragma once
 
 #include <cmath>
+#include <AP_Common/AP_Common.h>
 
 template <typename T>
 struct Vector2
@@ -100,13 +101,15 @@ struct Vector2
     float angle(void) const;
 
     // check if any elements are NAN
-    bool is_nan(void) const;
+    bool is_nan(void) const WARN_IF_UNUSED;
 
     // check if any elements are infinity
-    bool is_inf(void) const;
+    bool is_inf(void) const WARN_IF_UNUSED;
 
     // check if all elements are zero
-    bool is_zero(void) const { return (fabsf(x) < FLT_EPSILON) && (fabsf(y) < FLT_EPSILON); }
+    bool is_zero(void) const WARN_IF_UNUSED {
+        return (fabsf(x) < FLT_EPSILON) && (fabsf(y) < FLT_EPSILON);
+    }
 
     // allow a vector2 to be used as an array, 0 indexed
     T & operator[](uint8_t i) {
@@ -151,6 +154,9 @@ struct Vector2
 
     // returns this vector projected onto v
     Vector2<T> projected(const Vector2<T> &v);
+
+    // adjust position by a given bearing (in degrees) and distance
+    void offset_bearing(float bearing, float distance);
 
     // given a position p1 and a velocity v1 produce a vector
     // perpendicular to v1 maximising distance from p1
@@ -207,15 +213,16 @@ struct Vector2
     // find the intersection between two line segments
     // returns true if they intersect, false if they do not
     // the point of intersection is returned in the intersection argument
-    static bool segment_intersection(const Vector2<T>& seg1_start, const Vector2<T>& seg1_end, const Vector2<T>& seg2_start, const Vector2<T>& seg2_end, Vector2<T>& intersection);
+    static bool segment_intersection(const Vector2<T>& seg1_start, const Vector2<T>& seg1_end, const Vector2<T>& seg2_start, const Vector2<T>& seg2_end, Vector2<T>& intersection) WARN_IF_UNUSED;
 
     // find the intersection between a line segment and a circle
     // returns true if they intersect and intersection argument is updated with intersection closest to seg_start
-    static bool circle_segment_intersection(const Vector2<T>& seg_start, const Vector2<T>& seg_end, const Vector2<T>& circle_center, float radius, Vector2<T>& intersection);
+    static bool circle_segment_intersection(const Vector2<T>& seg_start, const Vector2<T>& seg_end, const Vector2<T>& circle_center, float radius, Vector2<T>& intersection) WARN_IF_UNUSED;
 
+    // check if a point falls on the line segment from seg_start to seg_end
     static bool point_on_segment(const Vector2<T>& point,
                                  const Vector2<T>& seg_start,
-                                 const Vector2<T>& seg_end) {
+                                 const Vector2<T>& seg_end) WARN_IF_UNUSED {
         const float expected_run = seg_end.x-seg_start.x;
         const float intersection_run = point.x-seg_start.x;
         // check slopes are identical:

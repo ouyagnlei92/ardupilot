@@ -11,7 +11,7 @@
  *
  * You should have received a copy of the GNU General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
- * 
+ *
  * Code by Andrew Tridgell and Siddharth Bharat Purohit
  */
 #pragma once
@@ -104,6 +104,12 @@ public:
       A value of zero cancels the previous expected delay
      */
     void     expect_delay_ms(uint32_t ms) override;
+
+    /*
+      return true if we are in a period of expected delay. This can be
+      used to suppress error messages
+     */
+    bool in_expected_delay(void) const override;
     
     /*
       disable interrupts and return a context that can be used to
@@ -163,6 +169,6 @@ private:
 
     void _run_timers();
     void _run_io(void);
-    static void thread_create_trampoline(void *ctx);    
+    static void thread_create_trampoline(void *ctx);
 };
 #endif

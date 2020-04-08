@@ -28,6 +28,8 @@
 #include "SIM_Gripper_EPM.h"
 #include "SIM_Parachute.h"
 #include "SIM_Precland.h"
+#include "SIM_Buzzer.h"
+#include <Filter/Filter.h>
 
 namespace SITL {
 
@@ -36,12 +38,16 @@ namespace SITL {
  */
 class Aircraft {
 public:
-    Aircraft(const char *home_str, const char *frame_str);
+    Aircraft(const char *frame_str);
+
+    // called directly after constructor:
+    virtual void set_start_location(const Location &start_loc, const float start_yaw);
 
     /*
       set simulation speedup
      */
     void set_speedup(float speedup);
+    float get_speedup() { return target_speedup; }
 
     /*
       set instance number
@@ -65,6 +71,8 @@ public:
      */
     virtual void update(const struct sitl_input &input) = 0;
 
+    void update_model(const struct sitl_input &input);
+
     /* fill a sitl_fdm structure from the simulator state */
     void fill_fdm(struct sitl_fdm &fdm);
 
@@ -74,11 +82,18 @@ public:
     /* return normal distribution random numbers */
     static double rand_normal(double mean, double stddev);
 
-    /* parse a home location string */
-    static bool parse_home(const char *home_str, Location &loc, float &yaw_degrees);
-
     // get frame rate of model in Hz
     float get_rate_hz(void) const { return rate_hz; }
+
+    // get number of motors for model
+    uint16_t get_num_motors() const {
+        return num_motors;
+    }
+
+    // get motor offset for model
+    virtual uint16_t get_motors_offset() const {
+        return 0;
+    }
 
     const Vector3f &get_gyro(void) const {
         return gyro;
@@ -102,9 +117,15 @@ public:
 
     float gross_mass() const { return mass + external_payload_mass; }
 
+    virtual void set_config(const char* config) {
+        config_ = config;
+    }
+
+
     const Location &get_location() const { return location; }
 
     const Vector3f &get_position() const { return position; }
+    const float &get_range() const { return range; }
 
     void get_attitude(Quaternion &attitude) const {
         attitude.from_rotation_matrix(dcm);
@@ -113,6 +134,7 @@ public:
     const Location &get_home() const { return home; }
     float get_home_yaw() const { return home_yaw; }
 
+    void set_buzzer(Buzzer *_buzzer) { buzzer = _buzzer; }
     void set_sprayer(Sprayer *_sprayer) { sprayer = _sprayer; }
     void set_parachute(Parachute *_parachute) { parachute = _parachute; }
     void set_gripper_servo(Gripper_Servo *_gripper) { gripper = _gripper; }
@@ -122,6 +144,7 @@ public:
 protected:
     SITL *sitl;
     Location home;
+    bool home_is_set;
     Location location;
 
     float ground_level;
@@ -143,8 +166,8 @@ protected:
     float airspeed_pitot;                // m/s, apparent airspeed, as seen by fwd pitot tube
     float battery_voltage = -1.0f;
     float battery_current = 0.0f;
-    float rpm1 = 0;
-    float rpm2 = 0;
+    uint8_t num_motors = 1;
+    float rpm[12];
     uint8_t rcin_chan_count = 0;
     float rcin[8];
     float range = -1.0f;                 // rangefinder detection in m
@@ -177,9 +200,12 @@ protected:
     const char *frame;
     bool use_time_sync = true;
     float last_speedup = -1.0f;
+    const char *config_ = "";
 
     // allow for AHRS_ORIENTATION
     AP_Int8 *ahrs_orientation;
+    enum Rotation last_imu_rotation;
+    Matrix3f ahrs_rotation_inv;
 
     enum GroundBehaviour {
         GROUND_BEHAVIOR_NONE = 0,
@@ -192,9 +218,6 @@ protected:
 
     AP_Terrain *terrain;
     float ground_height_difference() const;
-
-    const float FEET_TO_METERS = 0.3048f;
-    const float KNOTS_TO_METERS_PER_SECOND = 0.51444f;
 
     virtual bool on_ground() const;
 
@@ -246,6 +269,9 @@ protected:
     void add_shove_forces(Vector3f &rot_accel, Vector3f &body_accel);
     void add_twist_forces(Vector3f &rot_accel);
 
+    // get local thermal updraft
+    float get_local_updraft(Vector3f currentPos);
+
 private:
     uint64_t last_time_us = 0;
     uint32_t frame_counter = 0;
@@ -265,6 +291,7 @@ private:
 
     LowPassFilterFloat servo_filter[4];
 
+    Buzzer *buzzer;
     Sprayer *sprayer;
     Gripper_Servo *gripper;
     Gripper_EPM *gripper_epm;

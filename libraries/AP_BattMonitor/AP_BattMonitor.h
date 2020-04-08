@@ -19,6 +19,14 @@
 #define AP_BATT_MONITOR_RES_EST_TC_1        0.5f
 #define AP_BATT_MONITOR_RES_EST_TC_2        0.1f
 
+#ifndef HAL_BATTMON_SMBUS_ENABLE
+#define HAL_BATTMON_SMBUS_ENABLE 1
+#endif
+
+#ifndef HAL_BATTMON_FUEL_ENABLE
+#define HAL_BATTMON_FUEL_ENABLE 1
+#endif
+
 // declare backend class
 class AP_BattMonitor_Backend;
 class AP_BattMonitor_Analog;
@@ -37,6 +45,7 @@ class AP_BattMonitor
     friend class AP_BattMonitor_UAVCAN;
     friend class AP_BattMonitor_Sum;
     friend class AP_BattMonitor_FuelFlow;
+    friend class AP_BattMonitor_FuelLevel_PWM;
 
 public:
 
@@ -96,14 +105,6 @@ public:
     bool healthy(uint8_t instance) const;
     bool healthy() const { return healthy(AP_BATT_PRIMARY_INSTANCE); }
 
-    /// has_consumed_energy - returns true if battery monitor instance provides consumed energy info
-    bool has_consumed_energy(uint8_t instance) const;
-    bool has_consumed_energy() const { return has_consumed_energy(AP_BATT_PRIMARY_INSTANCE); }
-
-    /// has_current - returns true if battery monitor instance provides current info
-    bool has_current(uint8_t instance) const;
-    bool has_current() const { return has_current(AP_BATT_PRIMARY_INSTANCE); }
-
     /// voltage - returns battery voltage in millivolts
     float voltage(uint8_t instance) const;
     float voltage() const { return voltage(AP_BATT_PRIMARY_INSTANCE); }
@@ -114,16 +115,13 @@ public:
     float voltage_resting_estimate() const { return voltage_resting_estimate(AP_BATT_PRIMARY_INSTANCE); }
 
     /// current_amps - returns the instantaneous current draw in amperes
-    float current_amps(uint8_t instance) const;
-    float current_amps() const { return current_amps(AP_BATT_PRIMARY_INSTANCE); }
+    bool current_amps(float &current, const uint8_t instance = AP_BATT_PRIMARY_INSTANCE) const WARN_IF_UNUSED;
 
     /// consumed_mah - returns total current drawn since start-up in milliampere.hours
-    float consumed_mah(uint8_t instance) const;
-    float consumed_mah() const { return consumed_mah(AP_BATT_PRIMARY_INSTANCE); }
+    bool consumed_mah(float &mah, const uint8_t instance = AP_BATT_PRIMARY_INSTANCE) const WARN_IF_UNUSED;
 
     /// consumed_wh - returns total energy drawn since start-up in watt.hours
-    float consumed_wh(uint8_t instance) const;
-    float consumed_wh() const { return consumed_wh(AP_BATT_PRIMARY_INSTANCE); }
+    bool consumed_wh(float&wh, const uint8_t instance = AP_BATT_PRIMARY_INSTANCE) const WARN_IF_UNUSED;
 
     /// capacity_remaining_pct - returns the % battery capacity remaining (0 ~ 100)
     virtual uint8_t capacity_remaining_pct(uint8_t instance) const;
@@ -154,8 +152,11 @@ public:
     const cells & get_cell_voltages(const uint8_t instance) const;
 
     // temperature
-    bool get_temperature(float &temperature) const { return get_temperature(temperature, AP_BATT_PRIMARY_INSTANCE); };
+    bool get_temperature(float &temperature) const { return get_temperature(temperature, AP_BATT_PRIMARY_INSTANCE); }
     bool get_temperature(float &temperature, const uint8_t instance) const;
+
+    // cycle count
+    bool get_cycle_count(uint8_t instance, uint16_t &cycles) const;
 
     // get battery resistance estimate in ohms
     float get_resistance() const { return get_resistance(AP_BATT_PRIMARY_INSTANCE); }

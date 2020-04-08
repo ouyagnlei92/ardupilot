@@ -11,12 +11,13 @@
  *
  * You should have received a copy of the GNU General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
- * 
+ *
  * Code by Andrew Tridgell and Siddharth Bharat Purohit
  */
 #include "GPIO.h"
 
 #include <AP_BoardConfig/AP_BoardConfig.h>
+#include "hwdef/common/stm32_util.h"
 
 using namespace ChibiOS;
 
@@ -66,7 +67,46 @@ void GPIO::init()
             g->enabled = g->pwm_num > pwm_count;
         }
     }
+#ifdef HAL_PIN_ALT_CONFIG
+    setup_alt_config();
+#endif
 }
+
+#ifdef HAL_PIN_ALT_CONFIG
+/*
+  alternative config table, selected using BRD_ALT_CONFIG
+ */
+static const struct alt_config {
+    uint8_t alternate;
+    uint16_t mode;
+    ioline_t line;
+} alternate_config[] HAL_PIN_ALT_CONFIG;
+
+/*
+  change pin configuration based on ALT() lines in hwdef.dat
+ */
+void GPIO::setup_alt_config(void)
+{
+    AP_BoardConfig *bc = AP::boardConfig();
+    if (!bc) {
+        return;
+    }
+    const uint8_t alt = bc->get_alt_config();
+    if (alt == 0) {
+        // use defaults
+        return;
+    }
+    for (uint8_t i=0; i<ARRAY_SIZE(alternate_config); i++) {
+        if (alt == alternate_config[i].alternate) {
+            const iomode_t mode = alternate_config[i].mode & ~PAL_STM32_HIGH;
+            const uint8_t odr = (alternate_config[i].mode & PAL_STM32_HIGH)?1:0;
+            palSetLineMode(alternate_config[i].line, mode);
+            palWriteLine(alternate_config[i].line, odr);
+        }
+    }
+}
+#endif // HAL_PIN_ALT_CONFIG
+
 
 void GPIO::pinMode(uint8_t pin, uint8_t output)
 {
@@ -79,6 +119,15 @@ void GPIO::pinMode(uint8_t pin, uint8_t output)
             return;
         }
         g->mode = output?PAL_MODE_OUTPUT_PUSHPULL:PAL_MODE_INPUT;
+#if defined(STM32F7) || defined(STM32H7) || defined(STM32F4)
+        if (g->mode == PAL_MODE_OUTPUT_PUSHPULL) {
+            // retain OPENDRAIN if already set
+            iomode_t old_mode = palReadLineMode(g->pal_line);
+            if ((old_mode & PAL_MODE_OUTPUT_OPENDRAIN) == PAL_MODE_OUTPUT_OPENDRAIN) {
+                g->mode = PAL_MODE_OUTPUT_OPENDRAIN;
+            }
+        }
+#endif
         palSetLineMode(g->pal_line, g->mode);
         g->is_input = !output;
     }
@@ -130,7 +179,7 @@ AP_HAL::DigitalSource* GPIO::channel(uint16_t pin)
 
 extern const AP_HAL::HAL& hal;
 
-/* 
+/*
    Attach an interrupt handler to a GPIO pin number. The pin number
    must be one specified with a GPIO() marker in hwdef.dat
  */
@@ -188,7 +237,7 @@ bool GPIO::_attach_interrupt(ioline_t line, palcallback_t cb, void *p, uint8_t m
                 return false;
             }
             break;
-    }    
+    }
 
     osalSysLock();
     palevent_t *pep = pal_lld_get_line_event(line);
@@ -260,4 +309,3 @@ void pal_interrupt_cb_functor(void *arg)
     }
     (g->fn)(g->pin_num, palReadLine(g->pal_line), now);
 }
-

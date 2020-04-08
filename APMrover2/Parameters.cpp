@@ -37,7 +37,7 @@ const AP_Param::Info Rover::var_info[] = {
     // @User: Advanced
     GSCALAR(initial_mode,        "INITIAL_MODE",     Mode::Number::MANUAL),
 
-    // @Param: SYSID_THIS_MAV
+    // @Param: SYSID_THISMAV
     // @DisplayName: MAVLink system ID of this vehicle
     // @Description: Allows setting an individual MAVLink system id for this vehicle to distinguish it from others on the same network
     // @Range: 1 255
@@ -169,41 +169,6 @@ const AP_Param::Info Rover::var_info[] = {
     // @User: Advanced
     GSCALAR(fs_ekf_thresh, "FS_EKF_THRESH", 0.8f),
 
-    // @Param: RNGFND_TRIGGR_CM
-    // @DisplayName: Object avoidance trigger distance
-    // @Description: The distance from an obstacle in centimeters at which the rangefinder triggers a turn to avoid the obstacle
-    // @Units: cm
-    // @Range: 0 1000
-    // @Increment: 1
-    // @User: Standard
-    GSCALAR(rangefinder_trigger_cm,   "RNGFND_TRIGGR_CM",    100),
-
-    // @Param: RNGFND_TURN_ANGL
-    // @DisplayName: Object avoidance turn aggressiveness and direction
-    // @Description: The aggressiveness and direction of turn to avoid an obstacle.  Large positive or negative values (i.e. -450 or 450) cause turns up to the vehicle's maximum lateral acceleration (TURN_MAX_G) while values near zero cause gentle turns. Positive means to turn right, negative means turn left.
-    // @Units: deg
-    // @Range: -450 450
-    // @Increment: 1
-    // @User: Standard
-    GSCALAR(rangefinder_turn_angle,   "RNGFND_TURN_ANGL",    45),
-
-    // @Param: RNGFND_TURN_TIME
-    // @DisplayName: Object avoidance turn time
-    // @Description: The amount of time in seconds to apply the RNGFND_TURN_ANGL after detecting an obstacle.
-    // @Units: s
-    // @Range: 0 100
-    // @Increment: 0.1
-    // @User: Standard
-    GSCALAR(rangefinder_turn_time,    "RNGFND_TURN_TIME",     1.0f),
-
-    // @Param: RNGFND_DEBOUNCE
-    // @DisplayName: Object avoidance rangefinder debounce count
-    // @Description: The number of 50Hz rangefinder hits needed to trigger an obstacle avoidance event. If you get a lot of false rangefinder events then raise this number, but if you make it too large then it will cause lag in detecting obstacles, which could cause you go hit the obstacle.
-    // @Range: 1 100
-    // @Increment: 1
-    // @User: Standard
-    GSCALAR(rangefinder_debounce,   "RNGFND_DEBOUNCE",    2),
-
     // @Param: MODE_CH
     // @DisplayName: Mode channel
     // @Description: RC Channel to use for driving mode control
@@ -287,19 +252,19 @@ const AP_Param::Info Rover::var_info[] = {
 
     // @Group: SR0_
     // @Path: GCS_Mavlink.cpp
-    GOBJECTN(_gcs._chan[0], gcs0,        "SR0_",     GCS_MAVLINK),
+    GOBJECTN(_gcs.chan_parameters[0], gcs0,        "SR0_",     GCS_MAVLINK_Parameters),
 
     // @Group: SR1_
     // @Path: GCS_Mavlink.cpp
-    GOBJECTN(_gcs._chan[1],  gcs1,       "SR1_",     GCS_MAVLINK),
+    GOBJECTN(_gcs.chan_parameters[1],  gcs1,       "SR1_",     GCS_MAVLINK_Parameters),
 
     // @Group: SR2_
     // @Path: GCS_Mavlink.cpp
-    GOBJECTN(_gcs._chan[2],  gcs2,       "SR2_",     GCS_MAVLINK),
+    GOBJECTN(_gcs.chan_parameters[2],  gcs2,       "SR2_",     GCS_MAVLINK_Parameters),
 
     // @Group: SR3_
     // @Path: GCS_Mavlink.cpp
-    GOBJECTN(_gcs._chan[3],  gcs3,       "SR3_",     GCS_MAVLINK),
+    GOBJECTN(_gcs.chan_parameters[3],  gcs3,       "SR3_",     GCS_MAVLINK_Parameters),
 
     // @Group: SERIAL
     // @Path: ../libraries/AP_SerialManager/AP_SerialManager.cpp
@@ -310,7 +275,7 @@ const AP_Param::Info Rover::var_info[] = {
     GOBJECT(L1_controller,         "NAVL1_",   AP_L1_Control),
 
     // @Group: RNGFND
-    // @Path: ../libraries/AP_RangeFinder/RangeFinder.cpp
+    // @Path: ../libraries/AP_RangeFinder/AP_RangeFinder.cpp
     GOBJECT(rangefinder,                 "RNGFND", RangeFinder),
 
     // @Group: INS_
@@ -367,13 +332,17 @@ const AP_Param::Info Rover::var_info[] = {
     GOBJECT(gps, "GPS_", AP_GPS),
 
 #if AP_AHRS_NAVEKF_AVAILABLE
+#if HAL_NAVEKF2_AVAILABLE
     // @Group: EK2_
     // @Path: ../libraries/AP_NavEKF2/AP_NavEKF2.cpp
-    GOBJECTN(EKF2, NavEKF2, "EK2_", NavEKF2),
+    GOBJECTN(ahrs.EKF2, NavEKF2, "EK2_", NavEKF2),
+#endif
 
+#if HAL_NAVEKF3_AVAILABLE
     // @Group: EK3_
     // @Path: ../libraries/AP_NavEKF3/AP_NavEKF3.cpp
-    GOBJECTN(EKF3, NavEKF3, "EK3_", NavEKF3),
+    GOBJECTN(ahrs.EKF3, NavEKF3, "EK3_", NavEKF3),
+#endif
 #endif
 
     // @Group: RPM
@@ -405,6 +374,10 @@ const AP_Param::Info Rover::var_info[] = {
     // @Path: ../libraries/AP_OSD/AP_OSD.cpp
     GOBJECT(osd, "OSD", AP_OSD),
 #endif
+
+    // @Group:
+    // @Path: ../libraries/AP_Vehicle/AP_Vehicle.cpp
+    { AP_PARAM_GROUP, "", Parameters::k_param_vehicle, (const void *)&rover, {group_info : AP_Vehicle::var_info} },
 
     AP_VAREND
 };
@@ -546,13 +519,15 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // @Param: LOIT_TYPE
     // @DisplayName: Loiter type
     // @Description: Loiter behaviour when moving to the target point
-    // @Values: 0:Forward or reverse to target point,1:Always face bow towards target point
+    // @Values: 0:Forward or reverse to target point,1:Always face bow towards target point,2:Always face stern towards target point
     // @User: Standard
     AP_GROUPINFO("LOIT_TYPE", 25, ParametersG2, loit_type, 0),
 
-    // @Group: SPRAYER_
+#if HAL_SPRAYER_ENABLED
+    // @Group: SPRAY_
     // @Path: ../libraries/AC_Sprayer/AC_Sprayer.cpp
     AP_SUBGROUPINFO(sprayer, "SPRAY_", 26, ParametersG2, AC_Sprayer),
+#endif
 
     // @Group: WRC
     // @Path: ../libraries/AP_WheelEncoder/AP_WheelRateControl.cpp
@@ -593,8 +568,8 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
 
     // @Param: MIS_DONE_BEHAVE
     // @DisplayName: Mission done behave
-    // @Description: Mode to become after mission done
-    // @Values: 0:Hold,1:Loiter, 2:Acro
+    // @Description: Behaviour after mission completes
+    // @Values: 0:Hold,1:Loiter,2:Acro
     // @User: Standard
     AP_GROUPINFO("MIS_DONE_BEHAVE", 38, ParametersG2, mis_done_behave, 0),
 
@@ -638,6 +613,31 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // @Path: ../libraries/AC_Avoidance/AP_OAPathPlanner.cpp
     AP_SUBGROUPINFO(oa, "OA_", 45, ParametersG2, AP_OAPathPlanner),
 
+    // @Param: SPEED_MAX
+    // @DisplayName: Speed maximum
+    // @Description: Maximum speed vehicle can obtain at full throttle. If 0, it will be estimated based on CRUISE_SPEED and CRUISE_THROTTLE.
+    // @Units: m/s
+    // @Range: 0 30
+    // @Increment: 0.1
+    // @User: Advanced
+    AP_GROUPINFO("SPEED_MAX", 46, ParametersG2, speed_max, 0.0f),
+
+    // @Param: LOIT_SPEED_GAIN
+    // @DisplayName: Loiter speed gain
+    // @Description: Determines how agressively LOITER tries to correct for drift from loiter point. Higher is faster but default should be acceptable.
+    // @Range: 0 5
+    // @Increment: 0.01
+    // @User: Advanced
+    AP_GROUPINFO("LOIT_SPEED_GAIN", 47, ParametersG2, loiter_speed_gain, 0.5f),
+
+    // @Param: FS_OPTIONS
+    // @DisplayName: Rover Failsafe Options
+    // @Description: Bitmask to enable Rover failsafe options
+    // @Values: 0:None,1:Failsafe enabled in Hold mode
+    // @Bitmask: 0:Failsafe enabled in Hold mode
+    // @User: Advanced
+    AP_GROUPINFO("FS_OPTIONS", 48, ParametersG2, fs_options, 0),
+
     AP_GROUPEND
 };
 
@@ -663,30 +663,6 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
 // @Increment: 1
 // @User: Standard
 
-// @Param: WP_RADIUS
-// @DisplayName: Waypoint radius
-// @Description: The distance in meters from a waypoint when we consider the waypoint has been reached. This determines when the rover will turn along the next waypoint path.
-// @Units: m
-// @Range: 0 1000
-// @Increment: 0.1
-// @User: Standard
-
-// @Param: WP_OVERSHOOT
-// @DisplayName: Waypoint overshoot maximum
-// @Description: Waypoint overshoot maximum in meters.  The vehicle will attempt to stay within this many meters of the track as it completes one waypoint and moves to the next.
-// @Units: m
-// @Range: 0 10
-// @Increment: 0.1
-// @User: Standard
-
-// @Param: WP_SPEED
-// @DisplayName: Waypoint speed default
-// @Description: Waypoint speed default.  If zero use CRUISE_SPEED.
-// @Units: m/s
-// @Range: 0 100
-// @Increment: 0.1
-// @User: Standard
-
 // @Param: PIVOT_TURN_RATE
 // @DisplayName: Pivot turn rate
 // @Description: Desired pivot turn rate in deg/s.
@@ -698,14 +674,14 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
 ParametersG2::ParametersG2(void)
     :
 #if ADVANCED_FAILSAFE == ENABLED
-    afs(rover.mission, rover.gps),
+    afs(rover.mode_auto.mission),
 #endif
     beacon(rover.serial_manager),
     motors(rover.ServoRelayEvents),
     wheel_rate_control(wheel_encoder),
     attitude_control(rover.ahrs),
     smart_rtl(),
-    proximity(rover.serial_manager),
+    proximity(),
     avoid(),
     follow(),
     windvane(),
@@ -742,7 +718,6 @@ const AP_Param::ConversionInfo conversion_table[] = {
     { Parameters::k_param_serial2_baud,       0,      AP_PARAM_INT16, "SERIAL2_BAUD" },
     { Parameters::k_param_throttle_min_old,   0,      AP_PARAM_INT8,  "MOT_THR_MIN" },
     { Parameters::k_param_throttle_max_old,   0,      AP_PARAM_INT8,  "MOT_THR_MAX" },
-
     { Parameters::k_param_compass_enabled_deprecated,       0,      AP_PARAM_INT8, "COMPASS_ENABLE" },
     { Parameters::k_param_pivot_turn_angle_old,   0,  AP_PARAM_INT16,  "WP_PIVOT_ANGLE" },
     { Parameters::k_param_waypoint_radius_old,    0,  AP_PARAM_FLOAT,  "WP_RADIUS" },
@@ -754,6 +729,7 @@ const AP_Param::ConversionInfo conversion_table[] = {
     { Parameters::k_param_g2,                34,      AP_PARAM_FLOAT,  "SAIL_ANGLE_IDEAL" },
     { Parameters::k_param_g2,                35,      AP_PARAM_FLOAT,  "SAIL_HEEL_MAX" },
     { Parameters::k_param_g2,                36,      AP_PARAM_FLOAT,  "SAIL_NO_GO_ANGLE" },
+    { Parameters::k_param_arming,             2,     AP_PARAM_INT16,  "ARMING_CHECK" },
 };
 
 void Rover::load_parameters(void)
@@ -789,15 +765,7 @@ void Rover::load_parameters(void)
         g2.crash_angle.set_default(30);
     }
 
-    const uint8_t old_rc_keys[14] = { Parameters::k_param_rc_1_old,  Parameters::k_param_rc_2_old,
-                                      Parameters::k_param_rc_3_old,  Parameters::k_param_rc_4_old,
-                                      Parameters::k_param_rc_5_old,  Parameters::k_param_rc_6_old,
-                                      Parameters::k_param_rc_7_old,  Parameters::k_param_rc_8_old,
-                                      Parameters::k_param_rc_9_old,  Parameters::k_param_rc_10_old,
-                                      Parameters::k_param_rc_11_old, Parameters::k_param_rc_12_old,
-                                      Parameters::k_param_rc_13_old, Parameters::k_param_rc_14_old };
-    const uint16_t old_aux_chan_mask = 0x3FFA;
-    SRV_Channels::upgrade_parameters(old_rc_keys, old_aux_chan_mask, &rcmap);
+    SRV_Channels::upgrade_parameters();
     hal.console->printf("load_all took %uus\n", unsigned(micros() - before));
 
     // set a more reasonable default NAVL1_PERIOD for rovers
@@ -824,6 +792,22 @@ void Rover::load_parameters(void)
     } else {
         // copy CRUISE_SPEED to new WP_SPEED
         AP_Param::convert_old_parameter(&cruise_speed_info, 1.0f);
+    }
+
+    // attitude control FF and FILT parameter changes for Rover-3.6
+    const AP_Param::ConversionInfo ff_and_filt_conversion_info[] = {
+        { Parameters::k_param_g2, 24650, AP_PARAM_FLOAT, "ATC_STR_RAT_FLTE" },
+        { Parameters::k_param_g2, 28746, AP_PARAM_FLOAT, "ATC_STR_RAT_FF" },
+        { Parameters::k_param_g2, 24714, AP_PARAM_FLOAT, "ATC_SPEED_FLTE" },
+        { Parameters::k_param_g2, 28810, AP_PARAM_FLOAT, "ATC_SPEED_FF" },
+        { Parameters::k_param_g2, 25226, AP_PARAM_FLOAT, "ATC_BAL_FLTE" },
+        { Parameters::k_param_g2, 29322, AP_PARAM_FLOAT, "ATC_BAL_FF" },
+        { Parameters::k_param_g2, 25354, AP_PARAM_FLOAT, "ATC_SAIL_FLTE" },
+        { Parameters::k_param_g2, 29450, AP_PARAM_FLOAT, "ATC_SAIL_FF" },
+    };
+    uint8_t filt_table_size = ARRAY_SIZE(ff_and_filt_conversion_info);
+    for (uint8_t i=0; i<filt_table_size; i++) {
+        AP_Param::convert_old_parameters(&ff_and_filt_conversion_info[i], 1.0f);
     }
 
     // configure safety switch to allow stopping the motors while armed

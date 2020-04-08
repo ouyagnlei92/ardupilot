@@ -20,7 +20,7 @@
  */
 #pragma once
 
-#pragma GCC optimize("O3")
+#pragma GCC optimize("O2")
 
 #define EK2_DISABLE_INTERRUPTS 0
 
@@ -30,7 +30,9 @@
 #include "AP_NavEKF2.h"
 #include <stdio.h>
 #include <AP_Math/vectorN.h>
+#include <AP_NavEKF/AP_NavEKF_core_common.h>
 #include <AP_NavEKF2/AP_NavEKF2_Buffer.h>
+#include <AP_InertialSensor/AP_InertialSensor.h>
 
 // GPS pre-flight check bit locations
 #define MASK_GPS_NSATS      (1<<0)
@@ -57,14 +59,14 @@
 
 class AP_AHRS;
 
-class NavEKF2_core
+class NavEKF2_core : public NavEKF_core_common
 {
 public:
     // Constructor
-    NavEKF2_core(void);
+    NavEKF2_core(NavEKF2 *_frontend);
 
     // setup this core backend
-    bool setup_core(NavEKF2 *_frontend, uint8_t _imu_index, uint8_t _core_index);
+    bool setup_core(uint8_t _imu_index, uint8_t _core_index);
     
     // Initialise the states from accelerometer and magnetometer data (if present)
     // This method can only be used when the vehicle is static
@@ -269,7 +271,7 @@ public:
     void  getFilterStatus(nav_filter_status &status) const;
 
     // send an EKF_STATUS_REPORT message to GCS
-    void send_status_report(mavlink_channel_t chan);
+    void send_status_report(mavlink_channel_t chan) const;
 
     // provides the height limit to be observed by the control loops
     // returns false if no height limiting is required
@@ -302,8 +304,9 @@ public:
     // publish output observer angular, velocity and position tracking error
     void getOutputTrackingError(Vector3f &error) const;
 
-    // get the IMU index
-    uint8_t getIMUIndex(void) const { return imu_index; }
+    // get the IMU index. For now we return the gyro index, as that is most
+    // critical for use by other subsystems.
+    uint8_t getIMUIndex(void) const { return gyro_index_active; }
 
     // get timing statistics structure
     void getTimingStatistics(struct ekf_timing &timing);
@@ -322,14 +325,18 @@ public:
     */
     void writeExtNavData(const Vector3f &sensOffset, const Vector3f &pos, const Quaternion &quat, float posErr, float angErr, uint32_t timeStamp_ms, uint32_t resetTime_ms);
 
+    // return true when external nav data is also being used as a yaw observation
+    bool isExtNavUsedForYaw(void);
+
 private:
     // Reference to the global EKF frontend for parameters
     NavEKF2 *frontend;
-    uint8_t imu_index;
+    uint8_t imu_index; // preferred IMU index
+    uint8_t gyro_index_active; // active gyro index (in case preferred fails)
+    uint8_t accel_index_active; // active accel index (in case preferred fails)
     uint8_t core_index;
     uint8_t imu_buffer_length;
 
-    typedef float ftype;
 #if MATH_CHECK_INDEXES
     typedef VectorN<ftype,2> Vector2;
     typedef VectorN<ftype,3> Vector3;
@@ -349,7 +356,6 @@ private:
     typedef VectorN<ftype,24> Vector24;
     typedef VectorN<ftype,25> Vector25;
     typedef VectorN<ftype,31> Vector31;
-    typedef VectorN<ftype,28> Vector28;
     typedef VectorN<VectorN<ftype,3>,3> Matrix3;
     typedef VectorN<VectorN<ftype,24>,24> Matrix24;
     typedef VectorN<VectorN<ftype,34>,50> Matrix34_50;
@@ -372,7 +378,6 @@ private:
     typedef ftype Vector23[23];
     typedef ftype Vector24[24];
     typedef ftype Vector25[25];
-    typedef ftype Vector28[28];
     typedef ftype Matrix3[3][3];
     typedef ftype Matrix24[24][24];
     typedef ftype Matrix34_50[34][50];
@@ -414,6 +419,8 @@ private:
         float       delAngDT;       // 6
         float       delVelDT;       // 7
         uint32_t    time_ms;        // 8
+        uint8_t     gyro_index;
+        uint8_t     accel_index;
     };
 
     struct gps_elements {
@@ -472,6 +479,14 @@ private:
         uint32_t        time_ms;    // measurement timestamp (msec)
         bool            posReset;   // true when the position measurement has been reset
     };
+
+    // bias estimates for the IMUs that are enabled but not being used
+    // by this core.
+    struct {
+        Vector3f gyro_bias;
+        Vector3f gyro_scale;
+        float accel_zbias;
+    } inactiveBias[INS_MAX_INSTANCES];
 
     // update the navigation filter status
     void  updateFilterStatus(void);
@@ -582,11 +597,14 @@ private:
     bool readDeltaAngle(uint8_t ins_index, Vector3f &dAng, float &dAng_dt);
 
     // helper functions for correcting IMU data
-    void correctDeltaAngle(Vector3f &delAng, float delAngDT);
-    void correctDeltaVelocity(Vector3f &delVel, float delVelDT);
+    void correctDeltaAngle(Vector3f &delAng, float delAngDT, uint8_t gyro_index);
+    void correctDeltaVelocity(Vector3f &delVel, float delVelDT, uint8_t accel_index);
 
     // update IMU delta angle and delta velocity measurements
     void readIMUData();
+
+    // update estimate of inactive bias states
+    void learnInactiveBiases();
 
     // check for new valid GPS data and update stored measurement if available
     void readGpsData();
@@ -693,7 +711,7 @@ private:
     void controlMagYawReset();
 
     // Set the NED origin to be used until the next filter reset
-    void setOrigin();
+    void setOrigin(const Location &loc);
 
     // determine if a takeoff is expected so that we can compensate for expected barometer errors due to ground effect
     bool getTakeoffExpected();
@@ -701,8 +719,8 @@ private:
     // determine if a touchdown is expected so that we can compensate for expected barometer errors due to ground effect
     bool getTouchdownExpected();
 
-    // Assess GPS data quality and return true if good enough to align the EKF
-    bool calcGpsGoodToAlign(void);
+    // Assess GPS data quality and set gpsGoodToAlign if good enough to align the EKF
+    void calcGpsGoodToAlign(void);
 
     // return true and set the class variable true if the delta angle bias has been learned
     bool checkGyroCalStatus(void);
@@ -757,7 +775,10 @@ private:
 
     // update timing statistics structure
     void updateTimingStatistics(void);
-    
+
+    // correct gps data for antenna position
+    void CorrectGPSForAntennaOffset(gps_elements &gps_data);
+
     // Length of FIFO buffers used for non-IMU sensor data.
     // Must be larger than the time period defined by IMU_BUFFER_LENGTH
     static const uint32_t OBS_BUFFER_LENGTH = 5;
@@ -779,9 +800,6 @@ private:
     bool badIMUdata;                // boolean true if the bad IMU data is detected
 
     float gpsNoiseScaler;           // Used to scale the  GPS measurement noise and consistency gates to compensate for operation with small satellite counts
-    Vector28 Kfusion;               // Kalman gain vector
-    Matrix24 KH;                    // intermediate result used for covariance updates
-    Matrix24 KHP;                   // intermediate result used for covariance updates
     Matrix24 P;                     // covariance matrix
     imu_ring_buffer_t<imu_elements> storedIMU;      // IMU data buffer
     obs_ring_buffer_t<gps_elements> storedGPS;      // GPS data buffer
@@ -836,12 +854,6 @@ private:
     bool allMagSensorsFailed;       // true if all magnetometer sensors have timed out on this flight and we are no longer using magnetometer data
     uint32_t lastYawTime_ms;        // time stamp when yaw observation was last fused (msec)
     uint32_t ekfStartTime_ms;       // time the EKF was started (msec)
-    Matrix24 nextP;                 // Predicted covariance matrix before addition of process noise to diagonals
-    Vector24 processNoise;          // process noise added to diagonals of predicted covariance matrix
-    Vector25 SF;                    // intermediate variables used to calculate predicted covariance matrix
-    Vector5 SG;                     // intermediate variables used to calculate predicted covariance matrix
-    Vector8 SQ;                     // intermediate variables used to calculate predicted covariance matrix
-    Vector23 SPP;                   // intermediate variables used to calculate predicted covariance matrix
     Vector2f lastKnownPositionNE;   // last known position
     uint32_t lastDecayTime_ms;      // time of last decay of GPS position offset
     float velTestRatio;             // sum of squares of GPS velocity innovation divided by fail threshold
@@ -859,6 +871,7 @@ private:
     float gpsPosAccuracy;           // estimated position accuracy in m returned by the GPS receiver
     float gpsHgtAccuracy;           // estimated height accuracy in m returned by the GPS receiver
     uint32_t lastGpsVelFail_ms;     // time of last GPS vertical velocity consistency check fail
+    uint32_t lastGpsVelPass_ms;     // time of last GPS vertical velocity consistency check pass
     uint32_t lastGpsAidBadTime_ms;  // time in msec gps aiding was last detected to be bad
     float posDownAtTakeoff;         // flight vehicle vertical position sampled at transition from on-ground to in-air and used as a reference (m)
     bool useGpsVertVel;             // true if GPS vertical velocity should be used
@@ -941,8 +954,11 @@ private:
     Vector3f posOffsetNED;          // This adds to the earth frame position estimate at the IMU to give the position at the body origin (m)
 
     // variables used to calculate a vertical velocity that is kinematically consistent with the verical position
-    float posDownDerivative;        // Rate of chage of vertical position (dPosD/dt) in m/s. This is the first time derivative of PosD.
-    float posDown;                  // Down position state used in calculation of posDownRate
+    struct {
+        float pos;
+        float vel;
+        float acc;
+    } vertCompFiltState;
 
     // variables used by the pre-initialisation GPS checks
     struct Location gpsloc_prev;    // LLH location of previous GPS measurement

@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include "Storage.h"
 
+#include <stdio.h>
+
 using namespace HALSITL;
 
 extern const AP_HAL::HAL& hal;
@@ -35,6 +37,9 @@ void Storage::_storage_open(void)
         hal.console->printf("open failed of " HAL_STORAGE_FILE "\n");
         return;
     }
+
+    fcntl(log_fd, F_SETFD, FD_CLOEXEC);
+
     int ret = read(log_fd, _buffer, HAL_STORAGE_SIZE);
     if (ret < 0) {
         hal.console->printf("read failed for " HAL_STORAGE_FILE "\n");
@@ -67,7 +72,10 @@ void Storage::_storage_open(void)
 */
 void Storage::_mark_dirty(uint16_t loc, uint16_t length)
 {
-    uint16_t end = loc + length;
+    if (length == 0) {
+        return;
+    }
+    uint16_t end = loc + length - 1;
     for (uint16_t line=loc>>STORAGE_LINE_SHIFT;
          line <= end>>STORAGE_LINE_SHIFT;
          line++) {

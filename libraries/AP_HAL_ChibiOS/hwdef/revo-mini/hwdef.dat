@@ -4,8 +4,6 @@
 # MCU class and specific type
 MCU STM32F4xx STM32F405xx
 
-define CONFIG_HAL_BOARD_SUBTYPE HAL_BOARD_SUBTYPE_CHIBIOS_REVOMINI
-
 # board ID for firmware load
 APJ_BOARD_ID 124
 
@@ -118,7 +116,7 @@ define STORAGE_FLASH_PAGE 2
 FLASH_RESERVE_START_KB 64
 
 # one IMU
-IMU Invensense SPI:mpu6000 ROTATION_YAW_90
+IMU Invensense SPI:mpu6000 ROTATION_YAW_180
 
 # one baro
 BARO MS56XX I2C:0:0x77
@@ -138,4 +136,5 @@ define HAL_LOGGING_DATAFLASH
 
 # 8 PWM available by default
 define BOARD_PWM_COUNT_DEFAULT 8
+define HAL_WITH_DSP FALSE
 

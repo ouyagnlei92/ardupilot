@@ -1,4 +1,5 @@
 #include "AP_Tuning.h"
+#include <AP_Logger/AP_Logger.h>
 #include <GCS_MAVLink/GCS.h>
 #include <RC_Channel/RC_Channel.h>
 
@@ -232,7 +233,7 @@ void AP_Tuning::check_input(uint8_t flightmode)
  */
 void AP_Tuning::Log_Write_Parameter_Tuning(float value)
 {
-    AP::logger().Write("PTUN", "TimeUS,Set,Parm,Value,CenterValue", "QBBff",
+    AP::logger().Write("PRTN", "TimeUS,Set,Parm,Value,CenterValue", "QBBff",
                                            AP_HAL::micros64(),
                                            parmset,
                                            current_parm,

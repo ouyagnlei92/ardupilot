@@ -2,7 +2,7 @@
 #include "Rover.h"
 
 // perform pre_arm_rc_checks checks
-bool AP_Arming_Rover::pre_arm_rc_checks(const bool display_failure)
+bool AP_Arming_Rover::rc_calibration_checks(const bool display_failure)
 {
     // set rc-checks to success if RC checks are disabled
     if ((checks_to_perform != ARMING_CHECK_ALL) && !(checks_to_perform & ARMING_CHECK_RC)) {
@@ -27,16 +27,8 @@ bool AP_Arming_Rover::pre_arm_rc_checks(const bool display_failure)
             check_failed(ARMING_CHECK_RC, display_failure, "%s radio max too low", channel_name);
             return false;
         }
-        if (channel->get_radio_trim() < channel->get_radio_min()) {
-            check_failed(ARMING_CHECK_RC, display_failure, "%s radio trim below min", channel_name);
-            return false;
-        }
-        if (channel->get_radio_trim() > channel->get_radio_max()) {
-            check_failed(ARMING_CHECK_RC, display_failure, "%s radio trim above max", channel_name);
-            return false;
-        }
     }
-    return true;
+    return AP_Arming::rc_calibration_checks(display_failure);
 }
 
 // performs pre_arm gps related checks and returns true if passed
@@ -55,13 +47,13 @@ bool AP_Arming_Rover::gps_checks(bool display_failure)
         if (reason == nullptr) {
             reason = "AHRS not healthy";
         }
-        check_failed(ARMING_CHECK_NONE, display_failure, "%s", reason);
+        check_failed(display_failure, "%s", reason);
         return false;
     }
 
     // check for ekf failsafe
     if (rover.failsafe.ekf) {
-        check_failed(ARMING_CHECK_NONE, display_failure, "EKF failsafe");
+        check_failed(display_failure, "EKF failsafe");
         return false;
     }
 
@@ -71,7 +63,7 @@ bool AP_Arming_Rover::gps_checks(bool display_failure)
         if (reason == nullptr) {
             reason = "Need Position Estimate";
         }
-        check_failed(ARMING_CHECK_NONE, display_failure, "%s", reason);
+        check_failed(display_failure, "%s", reason);
         return false;
     }
 
@@ -82,24 +74,26 @@ bool AP_Arming_Rover::gps_checks(bool display_failure)
 bool AP_Arming_Rover::pre_arm_checks(bool report)
 {
     //are arming checks disabled?
-    if (checks_to_perform == ARMING_CHECK_NONE) {
+    if (checks_to_perform == 0) {
         return true;
     }
     if (SRV_Channels::get_emergency_stop()) {
-        check_failed(ARMING_CHECK_NONE, report, "Motors Emergency Stopped");
+        check_failed(report, "Motors Emergency Stopped");
         return false;
     }
 
     return (AP_Arming::pre_arm_checks(report)
             & rover.g2.motors.pre_arm_check(report)
             & fence_checks(report)
-            & oa_check(report));
+            & oa_check(report)
+            & parameter_checks(report)
+            & mode_checks(report));
 }
 
 bool AP_Arming_Rover::arm_checks(AP_Arming::Method method)
 {
     //are arming checks disabled?
-    if (checks_to_perform == ARMING_CHECK_NONE) {
+    if (checks_to_perform == 0) {
         return true;
     }
     return AP_Arming::arm_checks(method);
@@ -110,15 +104,6 @@ void AP_Arming_Rover::update_soft_armed()
     hal.util->set_soft_armed(is_armed() &&
                              hal.util->safety_switch_state() != AP_HAL::Util::SAFETY_DISARMED);
     AP::logger().set_vehicle_armed(hal.util->get_soft_armed());
-}
-
-/*
-  update AHRS soft arm state and log as needed
- */
-void AP_Arming_Rover::change_arm_state(void)
-{
-    Log_Write_Arm_Disarm();
-    update_soft_armed();
 }
 
 /*
@@ -140,7 +125,7 @@ bool AP_Arming_Rover::arm(AP_Arming::Method method, const bool do_arming_checks)
     // save home heading for use in sail vehicles
     rover.g2.windvane.record_home_heading();
 
-    change_arm_state();
+    update_soft_armed();
 
     gcs().send_text(MAV_SEVERITY_INFO, "Throttle armed");
 
@@ -150,9 +135,9 @@ bool AP_Arming_Rover::arm(AP_Arming::Method method, const bool do_arming_checks)
 /*
   disarm motors
  */
-bool AP_Arming_Rover::disarm(void)
+bool AP_Arming_Rover::disarm(const AP_Arming::Method method)
 {
-    if (!AP_Arming::disarm()) {
+    if (!AP_Arming::disarm(method)) {
         return false;
     }
     if (rover.control_mode != &rover.mode_auto) {
@@ -160,8 +145,7 @@ bool AP_Arming_Rover::disarm(void)
         rover.mode_auto.mission.reset();
     }
 
-    // only log if disarming was successful
-    change_arm_state();
+    update_soft_armed();
 
     gcs().send_text(MAV_SEVERITY_INFO, "Throttle disarmed");
 
@@ -178,9 +162,37 @@ bool AP_Arming_Rover::oa_check(bool report)
 
     // display failure
     if (strlen(failure_msg) == 0) {
-        check_failed(ARMING_CHECK_NONE, report, "Check Object Avoidance");
+        check_failed(report, "Check Object Avoidance");
     } else {
-        check_failed(ARMING_CHECK_NONE, report, failure_msg);
+        check_failed(report, "%s", failure_msg);
     }
     return false;
+}
+
+// perform parameter checks
+bool AP_Arming_Rover::parameter_checks(bool report)
+{
+    // success if parameter checks are disabled
+    if ((checks_to_perform != ARMING_CHECK_ALL) && !(checks_to_perform & ARMING_CHECK_PARAMETERS)) {
+        return true;
+    }
+
+    // check waypoint speed is positive
+    if (!is_positive(rover.g2.wp_nav.get_default_speed())) {
+        check_failed(ARMING_CHECK_PARAMETERS, report, "WP_SPEED too low");
+        return false;
+    }
+
+    return true;
+}
+
+// check if arming allowed from this mode
+bool AP_Arming_Rover::mode_checks(bool report)
+{   
+    //display failure if arming in this mode is not allowed
+    if (!rover.control_mode->allows_arming()) {
+        check_failed(report, "Mode not armable");
+        return false;
+    }
+    return true;
 }

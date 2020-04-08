@@ -16,6 +16,7 @@
 #include "AP_VisualOdom.h"
 #include "AP_VisualOdom_Backend.h"
 #include "AP_VisualOdom_MAV.h"
+#include <AP_AHRS/AP_AHRS.h>
 #include <AP_Logger/AP_Logger.h>
 
 extern const AP_HAL::HAL &hal;
@@ -34,18 +35,24 @@ const AP_Param::GroupInfo AP_VisualOdom::var_info[] = {
     // @DisplayName: Visual odometry camera X position offset
     // @Description: X position of the camera in body frame. Positive X is forward of the origin.
     // @Units: m
+    // @Range: -5 5
+    // @Increment: 0.01
     // @User: Advanced
 
     // @Param: _POS_Y
     // @DisplayName: Visual odometry camera Y position offset
     // @Description: Y position of the camera in body frame. Positive Y is to the right of the origin.
     // @Units: m
+    // @Range: -5 5
+    // @Increment: 0.01
     // @User: Advanced
 
     // @Param: _POS_Z
     // @DisplayName: Visual odometry camera Z position offset
     // @Description: Z position of the camera in body frame. Positive Z is down from the origin.
     // @Units: m
+    // @Range: -5 5
+    // @Increment: 0.01
     // @User: Advanced
     AP_GROUPINFO("_POS", 1, AP_VisualOdom, _pos_offset, 0.0f),
 
@@ -126,7 +133,7 @@ bool AP_VisualOdom::healthy() const
 }
 
 // consume VISION_POSITION_DELTA MAVLink message
-void AP_VisualOdom::handle_msg(mavlink_message_t *msg)
+void AP_VisualOdom::handle_msg(const mavlink_message_t &msg)
 {
     // exit immediately if not enabled
     if (!enabled()) {

@@ -11,7 +11,7 @@
  *
  * You should have received a copy of the GNU General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
- * 
+ *
  * Code by Andrew Tridgell and Siddharth Bharat Purohit
  */
 #pragma once
@@ -55,12 +55,15 @@ public:
 
     /* attach interrupt via ioline_t */
     bool _attach_interrupt(ioline_t line, AP_HAL::Proc p, uint8_t mode);
-    
+
 private:
     bool _usb_connected;
     bool _ext_started;
 
     bool _attach_interrupt(ioline_t line, palcallback_t cb, void *p, uint8_t mode);
+#ifdef HAL_PIN_ALT_CONFIG
+    void setup_alt_config(void);
+#endif
 };
 
 class ChibiOS::DigitalSource : public AP_HAL::DigitalSource {

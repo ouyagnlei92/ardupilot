@@ -3,7 +3,6 @@
 #include <AP_Common/AP_Common.h>
 #include <AP_Common/Location.h>
 #include <AP_Math/AP_Math.h>
-#include <AP_Proximity/AP_Proximity.h>
 #include <AP_HAL/AP_HAL.h>
 
 /*
@@ -22,6 +21,7 @@ public:
     void set_config(float lookahead, float margin_max) { _lookahead = MAX(lookahead, 1.0f); _margin_max = MAX(margin_max, 0.0f); }
 
     // run background task to find best path and update avoidance_results
+    // returns true and populates origin_new and destination_new if OA is required.  returns false if OA is not required
     bool update(const Location& current_loc, const Location& destination, const Vector2f &ground_speed_vec, Location &origin_new, Location &destination_new);
 
 private:
@@ -33,13 +33,17 @@ private:
     // on success returns true and updates margin
     bool calc_margin_from_circular_fence(const Location &start, const Location &end, float &margin);
 
-    // calculate minimum distance between a path and the polygon fence
+    // calculate minimum distance between a path and all inclusion and exclusion polygons
     // on success returns true and updates margin
-    bool calc_margin_from_polygon_fence(const Location &start, const Location &end, float &margin);
+    bool calc_margin_from_inclusion_and_exclusion_polygons(const Location &start, const Location &end, float &margin);
+
+    // calculate minimum distance between a path and all inclusion and exclusion circles
+    // on success returns true and updates margin
+    bool calc_margin_from_inclusion_and_exclusion_circles(const Location &start, const Location &end, float &margin);
 
     // calculate minimum distance between a path and proximity sensor obstacles
     // on success returns true and updates margin
-    bool calc_margin_from_proximity_sensors(const Location &start, const Location &end, float &margin);
+    bool calc_margin_from_object_database(const Location &start, const Location &end, float &margin);
 
     // configuration parameters
     float _lookahead;               // object avoidance will look this many meters ahead of vehicle
@@ -47,6 +51,4 @@ private:
 
     // internal variables used by background thread
     float _current_lookahead;       // distance (in meters) ahead of the vehicle we are looking for obstacles
-    AP_Proximity::Proximity_Location _prx_locs[PROXIMITY_MAX_DIRECTION];  // buffer of locations from proximity library
-    uint16_t _prx_loc_count;
 };

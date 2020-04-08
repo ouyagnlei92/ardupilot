@@ -1,6 +1,7 @@
 #pragma once
 
 #include <AP_Common/AP_Common.h>
+#include "RC_Channel.h"
 
 #if GRIPPER_ENABLED == ENABLED
  # include <AP_Gripper/AP_Gripper.h>
@@ -184,7 +185,7 @@ public:
         k_param_disarm_delay,
         k_param_fs_crash_check,
         k_param_throw_motor_start,
-        k_param_terrain_follow,    // 94
+        k_param_rtl_alt_type,
         k_param_avoid,
         k_param_avoidance_adsb,
 
@@ -372,6 +373,8 @@ public:
 
         // 254,255: reserved
 
+        k_param_vehicle = 257, // vehicle common block of parameters
+
         // the k_param_* space is 9-bits in size
         // 511: reserved
     };
@@ -450,9 +453,7 @@ public:
     AP_Int8         throw_motor_start;
 #endif
 
-#if AP_TERRAIN_AVAILABLE && AC_TERRAIN
-    AP_Int8         terrain_follow;
-#endif
+    AP_Int8         rtl_alt_type;
 
     AP_Int16                rc_speed; // speed of fast RC Channels in Hz
 
@@ -485,7 +486,7 @@ public:
     AP_Float wp_navalt_min;
 
     // button checking
-    AP_Button button;
+    AP_Button *button_ptr;
 
 #if STATS_ENABLED == ENABLED
     // vehicle statistics
@@ -596,6 +597,33 @@ public:
 
     AP_Float tuning_min;
     AP_Float tuning_max;
+
+#if AC_OAPATHPLANNER_ENABLED == ENABLED
+    // object avoidance path planning
+    AP_OAPathPlanner oa;
+#endif
+
+#if MODE_SYSTEMID_ENABLED == ENABLED
+    // we need a pointer to the mode for the G2 table
+    void *mode_systemid_ptr;
+#endif
+
+    // vibration failsafe enable/disable
+    AP_Int8 fs_vibe_enabled;
+
+    // Failsafe options bitmask #36
+    AP_Int32 fs_options;
+
+#if MODE_AUTOROTATE_ENABLED == ENABLED
+    // Autonmous autorotation
+    AC_Autorotation arot;
+#endif
+
+#if MODE_ZIGZAG_ENABLED == ENABLED && SPRAYER_ENABLED == ENABLED
+    // auto pump enable/disable
+    AP_Int8 zigzag_auto_pump_enabled;
+#endif
+
 };
 
 extern const AP_Param::Info        var_info[];

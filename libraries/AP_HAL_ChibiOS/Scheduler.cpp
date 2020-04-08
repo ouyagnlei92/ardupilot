@@ -11,7 +11,7 @@
  *
  * You should have received a copy of the GNU General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
- * 
+ *
  * Code by Andrew Tridgell and Siddharth Bharat Purohit
  */
 #include <AP_HAL/AP_HAL.h>
@@ -163,12 +163,12 @@ void Scheduler::boost_end(void)
  */
 void Scheduler::delay_microseconds_boost(uint16_t usec)
 {
-    if (in_main_thread()) {
+    if (!_priority_boosted && in_main_thread()) {
         set_high_priority();
         _priority_boosted = true;
+        _called_boost = true;
     }
     delay_microseconds(usec); //Suspends Thread for desired microseconds
-    _called_boost = true;
 }
 
 /*
@@ -225,7 +225,7 @@ void Scheduler::register_io_process(AP_HAL::MemberProc proc)
             return;
         }
     }
-    
+
     if (_num_io_procs < CHIBIOS_SCHEDULER_MAX_TIMER_PROCS) {
         _io_proc[_num_io_procs] = proc;
         _num_io_procs++;
@@ -251,7 +251,7 @@ void Scheduler::reboot(bool hold_in_bootloader)
     }
 #endif
 
-#ifndef NO_LOGGING
+#ifndef HAL_NO_LOGGING
     //stop logging
     if (AP_Logger::get_singleton()) {
         AP::logger().StopLogging();
@@ -261,14 +261,14 @@ void Scheduler::reboot(bool hold_in_bootloader)
     sdcard_stop();
 #endif
 
-#if defined(HAL_USE_RTC) && HAL_USE_RTC
+#if !defined(NO_FASTBOOT)
     // setup RTC for fast reboot
     set_fast_reboot(hold_in_bootloader?RTC_BOOT_HOLD:RTC_BOOT_FAST);
 #endif
 
     // disable all interrupt sources
     port_disable();
-    
+
     // reboot
     NVIC_SystemReset();
 }
@@ -321,15 +321,28 @@ void Scheduler::_timer_thread(void *arg)
         // process any pending RC output requests
         hal.rcout->timer_tick();
 
-        if (sched->expect_delay_start != 0) {
-            uint32_t now = AP_HAL::millis();
-            if (now - sched->expect_delay_start <= sched->expect_delay_length) {
-                sched->watchdog_pat();
-            }
+        if (sched->in_expected_delay()) {
+            sched->watchdog_pat();
         }
     }
 }
 
+/*
+  return true if we are in a period of expected delay. This can be
+  used to suppress error messages
+*/
+bool Scheduler::in_expected_delay(void) const
+{
+    if (expect_delay_start != 0) {
+        uint32_t now = AP_HAL::millis();
+        if (now - expect_delay_start <= expect_delay_length) {
+            return true;
+        }
+    }
+    return false;
+}
+
+#ifndef HAL_NO_MONITOR_THREAD
 void Scheduler::_monitor_thread(void *arg)
 {
     Scheduler *sched = (Scheduler *)arg;
@@ -351,17 +364,19 @@ void Scheduler::_monitor_thread(void *arg)
             // the main loop has been stuck for at least
             // 200ms. Starting logging the main loop state
             const AP_HAL::Util::PersistentData &pd = hal.util->persistent_data;
-            AP::logger().Write("MON", "TimeUS,LDelay,Task,IErr,IErrCnt,MavMsg,MavCmd,SemLine,SPICnt,I2CCnt", "QIbIIHHHII",
-                               AP_HAL::micros64(),
-                               loop_delay,
-                               pd.scheduler_task,
-                               pd.internal_errors,
-                               pd.internal_error_count,
-                               pd.last_mavlink_msgid,
-                               pd.last_mavlink_cmd,
-                               pd.semaphore_line,
-                               pd.spi_count,
-                               pd.i2c_count);
+            if (AP_Logger::get_singleton()) {
+                AP::logger().Write("MON", "TimeUS,LDelay,Task,IErr,IErrCnt,MavMsg,MavCmd,SemLine,SPICnt,I2CCnt", "QIbIIHHHII",
+                                   AP_HAL::micros64(),
+                                   loop_delay,
+                                   pd.scheduler_task,
+                                   pd.internal_errors,
+                                   pd.internal_error_count,
+                                   pd.last_mavlink_msgid,
+                                   pd.last_mavlink_cmd,
+                                   pd.semaphore_line,
+                                   pd.spi_count,
+                                   pd.i2c_count);
+                }
         }
         if (loop_delay >= 500) {
             // at 500ms we declare an internal error
@@ -369,6 +384,7 @@ void Scheduler::_monitor_thread(void *arg)
         }
     }
 }
+#endif // HAL_NO_MONITOR_THREAD
 
 void Scheduler::_rcin_thread(void *arg)
 {
@@ -378,7 +394,7 @@ void Scheduler::_rcin_thread(void *arg)
         sched->delay_microseconds(20000);
     }
     while (true) {
-        sched->delay_microseconds(2500);
+        sched->delay_microseconds(1000);
         ((RCInput *)hal.rcin)->_timer_tick();
     }
 }
@@ -541,6 +557,10 @@ void Scheduler::expect_delay_ms(uint32_t ms)
         // only for main thread
         return;
     }
+
+    // pat once immediately
+    watchdog_pat();
+
     if (ms == 0) {
         if (expect_delay_nesting > 0) {
             expect_delay_nesting--;

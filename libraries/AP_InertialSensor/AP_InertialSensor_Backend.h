@@ -75,7 +75,7 @@ public:
 
     // notify of a fifo reset
     void notify_fifo_reset(void);
-    
+
     /*
       device driver IDs. These are used to fill in the devtype field
       of the device ID, which shows up as INS*ID* parameters to
@@ -115,7 +115,7 @@ protected:
     AP_InertialSensor &_imu;
 
     // semaphore for access to shared frontend data
-    HAL_Semaphore_Recursive _sem;
+    HAL_Semaphore _sem;
 
     //Default Clip Limit
     float _clip_limit = 15.5f * GRAVITY_MSS;
@@ -173,13 +173,16 @@ protected:
     void _set_raw_sample_accel_multiplier(uint8_t instance, uint16_t mul) {
         _imu._accel_raw_sampling_multiplier[instance] = mul;
     }
-    void _set_raw_sampl_gyro_multiplier(uint8_t instance, uint16_t mul) {
+    void _set_raw_sample_gyro_multiplier(uint8_t instance, uint16_t mul) {
         _imu._gyro_raw_sampling_multiplier[instance] = mul;
     }
 
     // update the sensor rate for FIFO sensors
     void _update_sensor_rate(uint16_t &count, uint32_t &start_us, float &rate_hz) const;
-    
+
+    // return true if the sensors are still converging and sampling rates could change significantly
+    bool sensors_converging() const { return AP_HAL::millis() < 30000; }
+
     // set accelerometer max absolute offset for calibration
     void _set_accel_max_abs_offset(uint8_t instance, float offset);
 
@@ -233,15 +236,26 @@ protected:
     uint16_t get_sample_rate_hz(void) const;
 
     // return the notch filter center in Hz for the sample rate
-    uint16_t _gyro_notch_center_freq_hz(void) const { return _imu._notch_filter.center_freq_hz(); }
+    float _gyro_notch_center_freq_hz(void) const { return _imu._notch_filter.center_freq_hz(); }
 
     // return the notch filter bandwidth in Hz for the sample rate
-    uint16_t _gyro_notch_bandwidth_hz(void) const { return _imu._notch_filter.bandwidth_hz(); }
+    float _gyro_notch_bandwidth_hz(void) const { return _imu._notch_filter.bandwidth_hz(); }
 
     // return the notch filter attenuation in dB for the sample rate
     float _gyro_notch_attenuation_dB(void) const { return _imu._notch_filter.attenuation_dB(); }
 
-    uint8_t _gyro_notch_enabled(void) const { return _imu._notch_filter.enabled(); }
+    bool _gyro_notch_enabled(void) const { return _imu._notch_filter.enabled(); }
+
+    // return the harmonic notch filter center in Hz for the sample rate
+    float gyro_harmonic_notch_center_freq_hz() const { return _imu._calculated_harmonic_notch_freq_hz; }
+
+    // return the harmonic notch filter bandwidth in Hz for the sample rate
+    float gyro_harmonic_notch_bandwidth_hz(void) const { return _imu._harmonic_notch_filter.bandwidth_hz(); }
+
+    // return the harmonic notch filter attenuation in dB for the sample rate
+    float gyro_harmonic_notch_attenuation_dB(void) const { return _imu._harmonic_notch_filter.attenuation_dB(); }
+
+    bool gyro_harmonic_notch_enabled(void) const { return _imu._harmonic_notch_filter.enabled(); }
 
     // common gyro update function for all backends
     void update_gyro(uint8_t instance);
@@ -250,11 +264,21 @@ protected:
     void update_accel(uint8_t instance);
 
     // support for updating filter at runtime
-    uint16_t _last_accel_filter_hz[INS_MAX_INSTANCES];
-    uint16_t _last_gyro_filter_hz[INS_MAX_INSTANCES];
-    uint16_t _last_notch_center_freq_hz[INS_MAX_INSTANCES];
-    uint16_t _last_notch_bandwidth_hz[INS_MAX_INSTANCES];
-    float _last_notch_attenuation_dB[INS_MAX_INSTANCES];
+    uint16_t _last_accel_filter_hz;
+    uint16_t _last_gyro_filter_hz;
+    float _last_notch_center_freq_hz;
+    float _last_notch_bandwidth_hz;
+    float _last_notch_attenuation_dB;
+
+    // support for updating harmonic filter at runtime
+    float _last_harmonic_notch_center_freq_hz;
+    float _last_harmonic_notch_bandwidth_hz;
+    float _last_harmonic_notch_attenuation_dB;
+
+    // local window of gyro values to be copied to the frontend for FFT analysis
+    uint16_t _last_circular_buffer_idx;
+    uint16_t _num_gyro_samples;
+    Vector3f _last_gyro_window[INS_MAX_GYRO_WINDOW_SAMPLES]; // The maximum we need to store is gyro-rate / loop-rate
 
     void set_gyro_orientation(uint8_t instance, enum Rotation rotation) {
         _imu._gyro_orientation[instance] = rotation;
