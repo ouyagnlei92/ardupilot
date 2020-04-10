@@ -416,9 +416,7 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // @Path: ../libraries/AP_Beacon/AP_Beacon.cpp
     AP_SUBGROUPINFO(beacon, "BCN", 6, ParametersG2, AP_Beacon),
 
-    // @Group: VISO
-    // @Path: ../libraries/AP_VisualOdom/AP_VisualOdom.cpp
-    AP_SUBGROUPINFO(visual_odom, "VISO", 7, ParametersG2, AP_VisualOdom),
+    // 7 was used by AP_VisualOdometry
 
     // @Group: MOT_
     // @Path: AP_MotorsUGV.cpp
@@ -657,7 +655,7 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
 
 // @Param: PIVOT_TURN_ANGLE
 // @DisplayName: Pivot turn angle
-// @Description: Navigation angle threshold in degrees to switch to pivot steering when SKID_STEER_OUT is 1. This allows you to setup a skid steering rover to turn on the spot in auto mode when the angle it needs to turn it greater than this angle. An angle of zero means to disable pivot turning. Note that you will probably also want to set a low value for WP_RADIUS to get neat turns.
+// @Description: Navigation angle threshold in degrees to switch to pivot steering. This allows you to setup a skid steering rover to turn on the spot in auto mode when the angle it needs to turn it greater than this angle. An angle of zero means to disable pivot turning. Note that you will probably also want to set a low value for WP_RADIUS to get neat turns.
 // @Units: deg
 // @Range: 0 360
 // @Increment: 1

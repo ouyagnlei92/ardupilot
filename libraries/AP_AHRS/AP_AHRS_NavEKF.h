@@ -115,6 +115,9 @@ public:
     }
 #endif
 
+    // return the quaternion defining the rotation from NED to XYZ (body) axes
+    bool get_quaternion(Quaternion &quat) const override WARN_IF_UNUSED;
+
     // return secondary attitude solution if available, as eulers in radians
     bool get_secondary_attitude(Vector3f &eulers) const override;
 
@@ -280,8 +283,8 @@ public:
 
     void Log_Write();
 
-    // check whether compass can be bypassed for arming check in case when external navigation data is available 
-    bool is_ext_nav_used_for_yaw(void) const;
+    // check whether external navigation is providing yaw.  Allows compass pre-arm checks to be bypassed
+    bool is_ext_nav_used_for_yaw(void) const override;
 
     // these are only out here so vehicles can reference them for parameters
 #if HAL_NAVEKF2_AVAILABLE

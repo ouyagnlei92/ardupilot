@@ -650,6 +650,20 @@ struct PACKED log_VisualOdom {
     float confidence;
 };
 
+// visual position data
+struct PACKED log_VisualPosition {
+    LOG_PACKET_HEADER;
+    uint64_t time_us;
+    uint64_t remote_time_us;
+    uint32_t time_ms;
+    float pos_x;
+    float pos_y;
+    float pos_z;
+    float roll;     // degrees
+    float pitch;    // degrees
+    float yaw;      // degrees
+};
+
 struct PACKED log_ekfBodyOdomDebug {
     LOG_PACKET_HEADER;
     uint64_t time_us;
@@ -1874,6 +1888,30 @@ struct PACKED log_Arm_Disarm {
 // @Field: Clip1: Number of clipping events on 2nd accelerometer
 // @Field: Clip2: Number of clipping events on 3rd accelerometer
 
+// @LoggerMessage: VISO
+// @Description: Visual Odometry
+// @Field: TimeUS: System time
+// @Field: dt: Time period this data covers
+// @Field: AngDX: Angular change for body-frame roll axis
+// @Field: AngDY: Angular change for body-frame pitch axis
+// @Field: AngDZ: Angular change for body-frame z axis
+// @Field: PosDX: Position change for body-frame X axis (Forward-Back)
+// @Field: PosDY: Position change for body-frame Y axis (Right-Left)
+// @Field: PosDZ: Position change for body-frame Z axis (Down-Up)
+// @Field: conf: Confidence
+
+// @LoggerMessage: VISP
+// @Description: Vision Position
+// @Field: TimeUS: System time
+// @Field: RemTimeUS: Remote system time
+// @Field: CTimeMS: Corrected system time
+// @Field: PX: Position X-axis (North-South)
+// @Field: PY: Position Y-axis (East-West)
+// @Field: PZ: Position Z-axis (Down-Up)
+// @Field: Roll: Roll lean angle
+// @Field: Pitch: Pitch lean angle
+// @Field: Yaw: Yaw angle
+
 // messages for all boards
 #define LOG_BASE_STRUCTURES \
     { LOG_FORMAT_MSG, sizeof(log_Format), \
@@ -2094,6 +2132,8 @@ struct PACKED log_Arm_Disarm {
       "MAV", "QBHHHBH",   "TimeUS,chan,txp,rxp,rxdp,flags,ss", "s#----s", "F-000-C" },   \
     { LOG_VISUALODOM_MSG, sizeof(log_VisualOdom), \
       "VISO", "Qffffffff", "TimeUS,dt,AngDX,AngDY,AngDZ,PosDX,PosDY,PosDZ,conf", "ssrrrmmm-", "FF000000-" }, \
+    { LOG_VISUALPOS_MSG, sizeof(log_VisualPosition), \
+      "VISP", "QQIffffff", "TimeUS,RemTimeUS,CTimeMS,PX,PY,PZ,Roll,Pitch,Yaw", "sssmmmddh", "FFC000000" }, \
     { LOG_OPTFLOW_MSG, sizeof(log_Optflow), \
       "OF",   "QBffff",   "TimeUS,Qual,flowX,flowY,bodyX,bodyY", "s-EEnn", "F-0000" }, \
     { LOG_WHEELENCODER_MSG, sizeof(log_WheelEncoder), \
@@ -2239,6 +2279,7 @@ enum LogMessages : uint8_t {
     LOG_RATE_MSG,
     LOG_RALLY_MSG,
     LOG_VISUALODOM_MSG,
+    LOG_VISUALPOS_MSG,
     LOG_AOA_SSA_MSG,
     LOG_BEACON_MSG,
     LOG_PROXIMITY_MSG,

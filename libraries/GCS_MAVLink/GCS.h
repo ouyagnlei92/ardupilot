@@ -18,6 +18,7 @@
 #include <RC_Channel/RC_Channel.h>
 #include <AP_Filesystem/AP_Filesystem_Available.h>
 #include <AP_GPS/AP_GPS.h>
+#include <AP_VisualOdom/AP_VisualOdom.h>
 
 #include "MissionItemProtocol_Waypoints.h"
 #include "MissionItemProtocol_Rally.h"
@@ -740,14 +741,6 @@ private:
                                                      const float pitch,
                                                      const float yaw,
                                                      const uint16_t payload_size);
-    void log_vision_position_estimate_data(const uint64_t usec,
-                                           const uint32_t corrected_msec,
-                                           const float x,
-                                           const float y,
-                                           const float z,
-                                           const float roll,
-                                           const float pitch,
-                                           const float yaw);
 
     void lock_channel(const mavlink_channel_t chan, bool lock);
 
