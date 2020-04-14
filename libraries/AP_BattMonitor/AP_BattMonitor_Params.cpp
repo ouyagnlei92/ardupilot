@@ -162,6 +162,8 @@ const AP_Param::GroupInfo AP_BattMonitor_Params::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("ARM_MAH", 19, AP_BattMonitor_Params, _arming_minimum_capacity, 0),
 
+    AP_GROUPINFO("FS_CYC_CNT", 20, AP_BattMonitor_Params, _batt_max_cycle_count, 150),
+
     AP_GROUPEND
 
 };

@@ -6,6 +6,7 @@
 #include "AP_BattMonitor_Backend.h"
 #include <utility>
 
+
 #define AP_BATTMONITOR_SMBUS_BUS_INTERNAL           0
 #define AP_BATTMONITOR_SMBUS_BUS_EXTERNAL           1
 #define AP_BATTMONITOR_SMBUS_I2C_ADDR               0x0B

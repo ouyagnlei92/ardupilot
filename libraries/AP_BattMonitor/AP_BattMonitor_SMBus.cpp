@@ -1,5 +1,7 @@
 #include "AP_BattMonitor_SMBus.h"
 
+#include <GCS_MAVLink/GCS.h>
+
 #define AP_BATTMONITOR_SMBUS_PEC_POLYNOME 0x07 // Polynome for CRC generation
 
 AP_BattMonitor_SMBus::AP_BattMonitor_SMBus(AP_BattMonitor &mon,
@@ -15,7 +17,7 @@ AP_BattMonitor_SMBus::AP_BattMonitor_SMBus(AP_BattMonitor &mon,
 
 void AP_BattMonitor_SMBus::init(void) {
     if (_dev) {
-        _dev->register_periodic_callback(100000, FUNCTOR_BIND_MEMBER(&AP_BattMonitor_SMBus::timer, void));
+        _dev->register_periodic_callback(200000, FUNCTOR_BIND_MEMBER(&AP_BattMonitor_SMBus::timer, void)); //5hz
     }
 }
 
@@ -43,7 +45,7 @@ bool AP_BattMonitor_SMBus::read_full_charge_capacity(void)
     if (_full_charge_capacity != 0) {
         return true;
     } else if (read_word(BATTMONITOR_SMBUS_FULL_CHARGE_CAPACITY, data)) {
-        _full_charge_capacity = data;
+        _full_charge_capacity = data*10;
         return true;
     }
     return false;
@@ -59,7 +61,8 @@ bool AP_BattMonitor_SMBus::read_remaining_capacity(void)
     if (capacity > 0) {
         uint16_t data;
         if (read_word(BATTMONITOR_SMBUS_REMAINING_CAPACITY, data)) {
-            _state.consumed_mah = MAX(0, capacity - data);
+            _state.remaining_mah = data*10;
+            _state.consumed_mah = MAX(0, capacity - _state.remaining_mah);
             return true;
         }
     }

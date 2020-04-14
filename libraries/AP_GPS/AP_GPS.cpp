@@ -36,6 +36,7 @@
 #include "AP_GPS_UBLOX.h"
 #include "AP_GPS_MAV.h"
 #include "GPS_Backend.h"
+#include "AP_GPS_JOYTON.h"
 
 #if HAL_WITH_UAVCAN
 #include <AP_BoardConfig/AP_BoardConfig_CAN.h>
@@ -64,7 +65,7 @@ const uint32_t AP_GPS::_baudrates[] = {9600U, 115200U, 4800U, 19200U, 38400U, 57
 
 // initialisation blobs to send to the GPS to try to get it into the
 // right mode
-const char AP_GPS::_initialisation_blob[] = UBLOX_SET_BINARY MTK_SET_BINARY SIRF_SET_BINARY;
+const char AP_GPS::_initialisation_blob[] = UBLOX_SET_BINARY MTK_SET_BINARY SIRF_SET_BINARY JOYTON_GPS_CONFIG;;
 
 AP_GPS *AP_GPS::_singleton;
 
@@ -299,6 +300,7 @@ AP_GPS::AP_GPS()
         AP_HAL::panic("AP_GPS must be singleton");
     }
     _singleton = this;
+    _camera_feedback_count = 0;
 }
 
 // return true if a specific type of GPS uses a UART
@@ -588,6 +590,19 @@ void AP_GPS::detect_instance(uint8_t instance)
                     _type[instance] == GPS_TYPE_HEMI) &&
                    AP_GPS_NMEA::_detect(dstate->nmea_detect_state, data)) {
             new_gps = new AP_GPS_NMEA(*this, state[instance], _port[instance]);
+        }else if(_type[instance] ==GPS_TYPE_JOYTON &&
+     		AP_GPS_JOYTON::_detect(dstate->nmea_detect_state, data)){
+            new_gps = new AP_GPS_JOYTON(*this, state[instance], _port[instance]);
+            //send joyton gps config
+            int16_t space = _port[instance]->txspace();
+            if(space > (int16_t)(sizeof(JOYTON_GPS_CONFIG)-1)) space = (int16_t)(sizeof(JOYTON_GPS_CONFIG)-1);
+            uint8_t* config = (uint8_t*)JOYTON_GPS_CONFIG;
+            while (space > 0) {
+                    _port[instance]->write(*config);
+                    config++;
+                    space--;
+            }
+            gcs().send_text(MAV_SEVERITY_INFO, "Joyton GPS Configured!");
         }
 #endif // HAL_BUILD_AP_PERIPH
         if (new_gps) {

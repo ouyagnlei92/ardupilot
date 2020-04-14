@@ -618,7 +618,7 @@ bool ModeAuto::get_wp(Location& destination)
 // update mission
 void ModeAuto::run_autopilot()
 {
-    mission.update();
+    mission.update(copter.current_loc);
 }
 
 /*******************************************************************************

@@ -366,7 +366,7 @@ public:
 
     /// update - ensures the command queues are loaded with the next command and calls main programs command_init and command_verify functions to progress the mission
     ///     should be called at 10hz or higher
-    void update();
+    void update(Location& currentLoc);
 
     ///
     /// public command methods
@@ -468,6 +468,34 @@ public:
     // available.
     bool jump_to_landing_sequence(void);
 
+        //�Ƿ����ϵ���������
+    bool wp_continue_is_open() const { return _continue>=1?true:false; }
+
+    //��ȡλ�òɼ����
+    float wp_continue_pos_distance() const { return _pos_distance.get(); }
+
+    //�ϵ����������������������
+    uint16_t wp_continue_cmd_total() const { return _continue_wp_cmd_total; }
+
+    //�ϵ����������е����
+    uint16_t wp_continue_nav_cmd_index() const { return _continue_wp_index; }
+
+    //�Ѿ�ִ�������󺽵�
+    const Mission_Command& wp_continue_nav_cmd_complete() const { return _complete_nav_cmd; }
+
+    //�Ѿ�ִ�����������ָ��
+    const Mission_Command& wp_continue_do_cmd_complete() const { return _complete_do_cmd; }
+
+    //�������к���
+    bool wp_continue_reset_wp(uint16_t index, AP_Mission::Mission_Command* wpcmd);
+
+    //���öϵ������´μ������е����
+    //void wp_continue_set_nav_cmd_index(int16_t index);
+
+    void wp_continue_set_cmd_index(int16_t index);
+
+    void wp_continue_set_continue_total(int16_t to);
+
     // jumps the mission to the closest landing abort that is planned, returns false if unable to find a valid abort
     bool jump_to_abort_landing_sequence(void);
 
@@ -555,6 +583,14 @@ private:
     AP_Int16                _cmd_total;  // total number of commands in the mission
     AP_Int8                 _restart;   // controls mission starting point when entering Auto mode (either restart from beginning of mission or resume from last command run)
     AP_Int16                _options;    // bitmask options for missions, currently for mission clearing on reboot but can be expanded as required
+
+    AP_Int8 _continue;              //�ϵ����ɴ򿪲���
+    AP_Float _pos_distance;         //λ�òɼ����
+    AP_Int16 _continue_wp_cmd_total; //�¼Ӻ����ĺ�������
+    AP_Int16 _continue_wp_index;    //�´���������ʱ��¼�ĺ����������Զ��е���
+
+    Mission_Command  _complete_nav_cmd;   //�Ѿ�����ĺ������
+    Mission_Command  _complete_do_cmd;    //�Ѿ�����Ŀ���ָ������
 
     // pointer to main program functions
     mission_cmd_fn_t        _cmd_start_fn;  // pointer to function which will be called when a new command is started

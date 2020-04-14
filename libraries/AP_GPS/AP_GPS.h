@@ -62,6 +62,7 @@ class AP_GPS
     friend class AP_GPS_SIRF;
     friend class AP_GPS_UBLOX;
     friend class AP_GPS_Backend;
+    friend class AP_GPS_JOYTON;
 
 public:
     AP_GPS();
@@ -92,6 +93,7 @@ public:
         GPS_TYPE_MAV = 14,
         GPS_TYPE_NOVA = 15,
         GPS_TYPE_HEMI = 16, // hemisphere NMEA
+        GPS_TYPE_JOYTON = 17,
     };
 
     /// GPS status codes
@@ -438,6 +440,8 @@ public:
 
     // handle possibly fragmented RTCM injection data
     void handle_gps_rtcm_fragment(uint8_t flags, const uint8_t *data, uint8_t len);
+
+    uint16_t _camera_feedback_count;
 
 protected:
 

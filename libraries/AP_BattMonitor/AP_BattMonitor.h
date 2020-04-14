@@ -61,7 +61,7 @@ public:
     }
 
     struct cells {
-        uint16_t cells[MAVLINK_MSG_BATTERY_STATUS_FIELD_VOLTAGES_LEN];
+        uint16_t cells[12];
     };
 
     // The BattMonitor_State structure is filled in by the backend driver
@@ -71,6 +71,7 @@ public:
         float       current_amps;              // current in amperes
         float       consumed_mah;              // total current draw in milliamp hours since start-up
         float       consumed_wh;               // total energy consumed in Wh since start-up
+        float       remaining_mah;
         uint32_t    last_time_micros;          // time when voltage and current was last read in microseconds
         uint32_t    low_voltage_start_ms;      // time when voltage dropped below the minimum in milliseconds
         uint32_t    critical_voltage_start_ms; // critical voltage failsafe start timer in milliseconds
@@ -78,6 +79,13 @@ public:
         uint32_t    temperature_time;          // timestamp of the last received temperature message
         float       voltage_resting_estimate;  // voltage with sag removed based on current and resistance estimate in Volt
         float       resistance;                // resistance, in Ohms, calculated by comparing resting voltage vs in flight voltage
+        uint32_t    safe_alert;                // safe alert bit flag
+        uint32_t    pf_alert;
+        uint32_t    operation_status;
+        uint16_t    guaing_status;
+        uint16_t    charging_status;
+        uint16_t    cycle_count;
+        int16_t    TSx[4];
         BatteryFailsafe failsafe;              // stage failsafe the battery is in
         bool        healthy;                   // battery monitor is communicating correctly
         bool        is_powering_off;           // true when power button commands power off
@@ -110,10 +118,17 @@ public:
     bool current_amps(float &current, const uint8_t instance = AP_BATT_PRIMARY_INSTANCE) const WARN_IF_UNUSED;
 
     /// consumed_mah - returns total current drawn since start-up in milliampere.hours
+   float remaining_mah(uint8_t instance) const;
+   float remaining_mah() const { return remaining_mah(AP_BATT_PRIMARY_INSTANCE); }
+
+    /// consumed_mah - returns total current drawn since start-up in milliampere.hours
     bool consumed_mah(float &mah, const uint8_t instance = AP_BATT_PRIMARY_INSTANCE) const WARN_IF_UNUSED;
 
     /// consumed_wh - returns total energy drawn since start-up in watt.hours
     bool consumed_wh(float&wh, const uint8_t instance = AP_BATT_PRIMARY_INSTANCE) const WARN_IF_UNUSED;
+  
+    //have smart battery
+    bool has_smart_battery(uint8_t& num);
 
     /// capacity_remaining_pct - returns the % battery capacity remaining (0 ~ 100)
     virtual uint8_t capacity_remaining_pct(uint8_t instance) const;
@@ -122,7 +137,7 @@ public:
     /// pack_capacity_mah - returns the capacity of the battery pack in mAh when the pack is full
     int32_t pack_capacity_mah(uint8_t instance) const;
     int32_t pack_capacity_mah() const { return pack_capacity_mah(AP_BATT_PRIMARY_INSTANCE); }
- 
+
     /// returns true if a battery failsafe has ever been triggered
     bool has_failsafed(void) const { return _has_triggered_failsafe; };
 
@@ -140,8 +155,11 @@ public:
     // cell voltages
     bool has_cell_voltages() { return has_cell_voltages(AP_BATT_PRIMARY_INSTANCE); }
     bool has_cell_voltages(const uint8_t instance) const;
-    const cells & get_cell_voltages() const { return get_cell_voltages(AP_BATT_PRIMARY_INSTANCE); }
-    const cells & get_cell_voltages(const uint8_t instance) const;
+    const cells& get_cell_voltages() const { return get_cell_voltages(AP_BATT_PRIMARY_INSTANCE); }
+    const cells& get_cell_voltages(const uint8_t instance) const;
+
+    const int16_t* get_tsx() const { return get_tsx(AP_BATT_PRIMARY_INSTANCE); }
+    const int16_t* get_tsx(const uint8_t instance) const;
 
     // temperature
     bool get_temperature(float &temperature) const { return get_temperature(temperature, AP_BATT_PRIMARY_INSTANCE); };
@@ -159,6 +177,33 @@ public:
 
     // reset battery remaining percentage
     bool reset_remaining(uint16_t battery_mask, float percentage);
+
+    // get battery cycle count
+	uint16_t get_cycle_count() const { return get_cycle_count(AP_BATT_PRIMARY_INSTANCE); }
+	uint16_t get_cycle_count(uint8_t instance) const { return state[instance].cycle_count; }
+
+	int16_t get_max_cycle_count() const { return get_max_cycle_count(AP_BATT_PRIMARY_INSTANCE); }
+	int16_t get_max_cycle_count(uint8_t instance) const { return _params[instance]._batt_max_cycle_count; }
+
+	// get smart battery safe alert
+	uint32_t get_safe_alert() const { return get_safe_alert(AP_BATT_PRIMARY_INSTANCE); }
+	uint32_t get_safe_alert(uint8_t instance) const { return state[instance].safe_alert; }
+
+	// get smart battery pf alert
+	uint32_t get_pf_alert() const { return get_safe_alert(AP_BATT_PRIMARY_INSTANCE); }
+	uint32_t get_pf_alert(uint8_t instance) const { return state[instance].pf_alert; }
+
+	// get smart battery operation status
+	uint32_t get_operation_status() const { return get_safe_alert(AP_BATT_PRIMARY_INSTANCE); }
+	uint32_t get_operation_status(uint8_t instance) const { return state[instance].operation_status; }
+
+	// get smart battery charging status
+	uint16_t get_charging_status() const { return get_safe_alert(AP_BATT_PRIMARY_INSTANCE); }
+	uint16_t get_charging_status(uint8_t instance) const { return state[instance].charging_status; }
+
+	// get smart battery guaing status
+	uint16_t get_guaing_status() const { return get_safe_alert(AP_BATT_PRIMARY_INSTANCE); }
+    uint16_t get_guaing_status(uint8_t instance) const { return state[instance].guaing_status; }
 
     static const struct AP_Param::GroupInfo var_info[];
 

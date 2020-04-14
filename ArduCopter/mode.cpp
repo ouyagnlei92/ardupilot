@@ -293,6 +293,8 @@ bool Copter::set_mode(Mode::Number mode, ModeReason reason)
     // update notify object
     notify_flight_mode();
 
+    switchModeMessage(mode, reason);
+
     // return success
     return true;
 }
@@ -808,3 +810,5 @@ uint16_t Mode::get_pilot_speed_dn()
 {
     return copter.get_pilot_speed_dn();
 }
+
+

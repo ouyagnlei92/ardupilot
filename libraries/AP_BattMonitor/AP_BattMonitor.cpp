@@ -293,6 +293,14 @@ bool AP_BattMonitor::current_amps(float &current, uint8_t instance) const {
     }
 }
 
+float AP_BattMonitor::remaining_mah(uint8_t instance) const{
+	 if (instance < _num_instances) {
+	        return state[instance].remaining_mah;
+	    } else {
+	        return 0.0f;
+	    }
+}
+
 /// consumed_mah - returns total current drawn since start-up in milliampere.hours
 bool AP_BattMonitor::consumed_mah(float &mah, const uint8_t instance) const {
     if ((instance < _num_instances) && (drivers[instance] != nullptr) && drivers[instance]->has_current()) {
@@ -340,6 +348,19 @@ void AP_BattMonitor::check_failsafes(void)
             if (drivers[i] == nullptr) {
                 continue;
             }
+
+           /* check battery discharge cycle count -- action: waring*/
+			int16_t cCount =  (int16_t)get_cycle_count(i);
+			if( _params[i]._batt_max_cycle_count>0 && cCount>=(int16_t)(_params[i]._batt_max_cycle_count*0.85) )
+			{
+				static uint8_t cc = 0;
+				if( cc<=30 )
+				{
+					++cc;
+				    gcs().send_text(MAV_SEVERITY_WARNING, "Battery %d use cycleCount %d -- Max %d",
+								    i+1, cCount, _params[i]._batt_max_cycle_count);
+				}
+			}
 
             const BatteryFailsafe type = drivers[i]->update_failsafes();
             if (type <= state[i].failsafe) {
@@ -431,6 +452,15 @@ const AP_BattMonitor::cells & AP_BattMonitor::get_cell_voltages(const uint8_t in
     }
 }
 
+const int16_t* AP_BattMonitor::get_tsx(const uint8_t instance) const
+{
+	if (instance >= AP_BATT_MONITOR_MAX_INSTANCES) {
+	        return &state[AP_BATT_PRIMARY_INSTANCE].TSx[0];
+	} else {
+		return &state[instance].TSx[0];
+	}
+}
+
 // returns true if there is a temperature reading
 bool AP_BattMonitor::get_temperature(float &temperature, const uint8_t instance) const
 {
@@ -502,6 +532,18 @@ bool AP_BattMonitor::reset_remaining(uint16_t battery_mask, float percentage)
         AP_Notify::flags.failsafe_battery = false;
     }
     return ret;
+}
+
+// have smart battery
+bool AP_BattMonitor::has_smart_battery(uint8_t& num)
+{
+	for(uint8_t i=0; i<num_instances(); ++i){
+		if((get_type(i)==AP_BattMonitor_Params::BattMonitor_TYPE_MAXELL)&&healthy(i)){
+			num = i;
+			return true;
+		}
+	}
+	return false;
 }
 
 namespace AP {

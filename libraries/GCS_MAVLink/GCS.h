@@ -171,6 +171,8 @@ public:
     void send_meminfo(void);
     void send_fence_status() const;
     void send_power_status(void);
+    bool send_battery_status_o10s(void) const;
+    bool send_battery_by_data64(void) const;
     void send_battery_status(const uint8_t instance) const;
     bool send_battery_status() const;
     void send_distance_sensor() const;
