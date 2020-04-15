@@ -189,6 +189,8 @@ const AP_Scheduler::Task Copter::scheduler_tasks[] = {
     SCHED_TASK_CLASS(AP_Button,            &copter.g2.button,           update,           5, 100),
 #if STATS_ENABLED == ENABLED
     SCHED_TASK_CLASS(AP_Stats,             &copter.g2.stats,            update,           1, 100),
+
+	SCHED_TASK(batterySmartRTLUpdate,   5,    120),
 #endif
 };
 
@@ -299,7 +301,7 @@ void Copter::throttle_loop()
 void Copter::update_batt_compass(void)
 {
     // read battery before compass because it may be used for motor interference compensation
-    battery.read();
+	battery.read();
 
     if(g.compass_enabled) {
         // update compass with throttle value - used for compassmot
@@ -410,6 +412,10 @@ void Copter::three_hz_loop()
 
     // update ch6 in flight tuning
     tuning();
+
+    //AP_BattMonitor &battery = AP::battery();
+    //gcs().send_text(MAV_SEVERITY_WARNING,"cycle_count %d", (int32_t)battery.get_cycle_count());
+    gcs().send_message(MSG_DATA64);
 }
 
 // one_hz_loop - runs at 1Hz

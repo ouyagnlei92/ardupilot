@@ -29,6 +29,15 @@ const AP_Param::GroupInfo AP_Mission::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("OPTIONS",  2, AP_Mission, _options, AP_MISSION_OPTIONS_DEFAULT),
 
+	AP_GROUPINFO("CONTINUE",  3, AP_Mission, _continue, 0),  //�ϵ���д򿪱�־
+
+	AP_GROUPINFO("POSDIST",  4, AP_Mission, _pos_distance, 10.0),  //λ�òɼ����
+
+	AP_GROUPINFO("BREAK",  5, AP_Mission, _continue_wp_index, 0),  //�ϵ�������λ��
+
+	AP_GROUPINFO("CNTALL",  6, AP_Mission, _continue_wp_cmd_total, 0), //���ɺ�����������ĺ�������
+
+
     AP_GROUPEND
 };
 
@@ -216,7 +225,7 @@ void AP_Mission::truncate(uint16_t index)
 
 /// update - ensures the command queues are loaded with the next command and calls main programs command_init and command_verify functions to progress the mission
 ///     should be called at 10hz or higher
-void AP_Mission::update()
+void AP_Mission::update(Location& currentLoc)
 {
     // exit immediately if not running or no mission commands
     if (_flags.state != MISSION_RUNNING || _cmd_total == 0) {
@@ -233,7 +242,10 @@ void AP_Mission::update()
         }
     }else{
         // run the active nav command
-        if (_cmd_verify_fn(_nav_cmd)) {
+        if (_cmd_verify_fn(_nav_cmd)) {    //ִ����һ���������
+            if(_continue && (_nav_cmd.id==MAV_CMD_NAV_WAYPOINT || _nav_cmd.id==MAV_CMD_NAV_TAKEOFF)){ //�Ѿ����ﺽ��
+            	_complete_nav_cmd = _nav_cmd;
+            }
             // market _nav_cmd as complete (it will be started on the next iteration)
             _flags.nav_cmd_loaded = false;
             // immediately advance to the next mission command
@@ -253,6 +265,7 @@ void AP_Mission::update()
         if (_cmd_verify_fn(_do_cmd)) {
             // market _nav_cmd as complete (it will be started on the next iteration)
             _flags.do_cmd_loaded = false;
+            if(_continue) _complete_do_cmd = _do_cmd;
         }
     }
 }
@@ -1796,4 +1809,62 @@ const char *AP_Mission::Mission_Command::type() const {
     default:
         return "?";
     }
+}
+
+//�������к���
+bool AP_Mission::wp_continue_reset_wp(uint16_t index, AP_Mission::Mission_Command* wpcmd)
+{
+	AP_Mission::Mission_Command temp_cmd;
+	int16_t cmd_all = _cmd_total;
+    uint16_t add_count = 0;
+    bool have_spd = false;
+    bool have_cam_dist = false;
+    uint8_t ind = 0;
+
+    if(wpcmd[0].id==MAV_CMD_DO_CHANGE_SPEED)        have_spd = true;
+    if(wpcmd[1].id==MAV_CMD_DO_SET_CAM_TRIGG_DIST)  have_cam_dist = true;
+
+    if(have_spd && have_cam_dist) add_count = 3; 
+    else if(have_spd && !have_cam_dist) { ind = 0; add_count = 2; }
+    else if(!have_spd && have_cam_dist) { ind = 1; add_count = 2;}
+    else if(!have_spd && !have_cam_dist) add_count = 1;
+    _cmd_total += add_count;
+    _continue_wp_cmd_total = _cmd_total;
+
+	if(_cmd_total>=num_commands_max())  //�¼Ӻ����������������󺽵���
+	{
+		gcs().send_text(MAV_SEVERITY_INFO, "Mission Out Capacity!Max=%d",num_commands_max());
+		return false;
+	}
+    
+	gcs().send_text(MAV_SEVERITY_INFO, "Start Reset WP!");
+
+	_cmd_total.set_and_save(_cmd_total);
+    _continue_wp_cmd_total.set_and_save(_continue_wp_cmd_total);
+
+	int16_t cc = cmd_all - index;  //ѭ����д����
+	int16_t j = 0;
+
+	for(; j<cc; ++j)
+	{
+		read_cmd_from_storage(cmd_all-1-j, temp_cmd);
+		replace_cmd(_cmd_total-1-j, temp_cmd);
+	}
+	replace_cmd(index, wpcmd[2]);   //����
+    if(add_count==2) replace_cmd(index+1, wpcmd[ind]); //�ٶ�
+    else if(add_count==3){
+        replace_cmd(index+1, wpcmd[0]); //�ٶ�
+        replace_cmd(index+2, wpcmd[1]); //�����������
+    }
+	return true;
+
+}
+
+void AP_Mission::wp_continue_set_cmd_index(int16_t index){
+	_continue_wp_index = index;
+	_continue_wp_index.set_and_save(_continue_wp_index);
+}
+
+void AP_Mission::wp_continue_set_continue_total(int16_t to){
+	_continue_wp_cmd_total.set_and_save(to);
 }

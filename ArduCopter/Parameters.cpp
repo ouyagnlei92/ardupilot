@@ -805,6 +805,11 @@ const AP_Param::Info Copter::var_info[] = {
     // @Path: Parameters.cpp
     GOBJECT(g2, "",  ParametersG2),
 
+	GSCALAR(bat_auto_rtl,             "BATT_SMRTL_SW",           0),
+	GSCALAR(bat_type,                 "BATT_SMRTL_TP",           0),
+	GSCALAR(bat_cell,                 "BATT_SMRTL_CLL",          6),
+	GSCALAR(bat_auto_rtl_keep_cap,    "BATT_SMRTL_KP",           0.2),
+
     AP_VAREND
 };
 

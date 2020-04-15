@@ -681,14 +681,22 @@ struct PACKED log_Current {
     float    current_total;
     float    consumed_wh;
     int16_t  temperature; // degrees C * 100
+    uint16_t cycle_count; // battery cycle count
     float    resistance;
+    float remaing_mah;
+    uint32_t pf_alert;
+    uint32_t safe_alert;
+    uint32_t operation_status;
+    uint16_t charging_status;
+    uint16_t guaing_status;
 };
 
 struct PACKED log_Current_Cells {
     LOG_PACKET_HEADER;
     uint64_t time_us;
     float    voltage;
-    uint16_t cell_voltages[10];
+    float    current;
+    uint16_t cell_voltages[12];
 };
 
 struct PACKED log_Compass {
@@ -1064,6 +1072,21 @@ struct PACKED log_DSTL {
     float D;
 };
 
+/* 时间， 电压， 当前剩余容量， 电池类型， 爬升高度消耗电量， 水平平均消耗电量， 返回需要电量，回家距离 ,当前高度*/
+struct PACKED log_Bat_smart_rtl {
+	LOG_PACKET_HEADER;
+	uint64_t time_us;
+	float vol;
+	float currentmah;
+	float vertmah;
+	float hormahAvr;
+	float returnToHomeMah;
+	float homeDistance;
+	float currentAlt;
+	uint8_t flyStatus;
+	uint8_t type;
+};
+
 // #endif // SBP_HW_LOGGING
 
 // FMT messages define all message formats other than FMT
@@ -1137,20 +1160,25 @@ struct PACKED log_DSTL {
 #define QUAT_UNITS  "s????"
 #define QUAT_MULTS  "F????"
 
-#define CURR_LABELS "TimeUS,Volt,VoltR,Curr,CurrTot,EnrgTot,Temp,Res"
-#define CURR_FMT    "Qfffffcf"
-#define CURR_UNITS  "svvA?JOw"
-#define CURR_MULTS  "F000?/?0"
+#define CURR_LABELS "TimeUS,Volt,VoltR,Curr,UseMah,useWh,Temp,Cyc,R,RM,PA,SA,OS,CS,GS"
+#define CURR_FMT    "QfffffcHffIIIHH"
+#define CURR_UNITS  "svvA?JO-w------"
+#define CURR_MULTS  "F000?/?-0??????"
 
-#define CURR_CELL_LABELS "TimeUS,Volt,V1,V2,V3,V4,V5,V6,V7,V8,V9,V10"
-#define CURR_CELL_FMT    "QfHHHHHHHHHH"
-#define CURR_CELL_UNITS  "svvvvvvvvvvv"
-#define CURR_CELL_MULTS  "F00000000000"
+#define CURR_CELL_LABELS "TimeUS,Volt,C,V1,V2,V3,V4,V5,V6,V7,V8,V9,V10,V11,V12"
+#define CURR_CELL_FMT    "QffHHHHHHHHHHHH"
+#define CURR_CELL_UNITS  "svvvvvvvvvvvvvv"
+#define CURR_CELL_MULTS  "F00000000000000"
 
 #define ARSP_LABELS "TimeUS,Airspeed,DiffPress,Temp,RawPress,Offset,U,Health,Primary"
 #define ARSP_FMT "QffcffBBB"
 #define ARSP_UNITS "snPOPP---"
 #define ARSP_MULTS "F00B00---"
+
+#define BAT_SMATR_RTL_LABELS "TimeUS,Volt,Cmah,Verm,horAvrm,RTmah,HD,alt,FS,Type"
+#define BAT_SMATR_RTL_FMT    "QfffffffBB"
+#define BAT_SMATR_RTL_UNITS  "svvvvvvv--"
+#define BAT_SMATR_RTL_MULTS  "F0000000--"
 
 /*
 Format characters in the format string for binary log messages
@@ -1249,7 +1277,9 @@ Format characters in the format string for binary log messages
     { LOG_PERFORMANCE_MSG, sizeof(log_Performance),                     \
       "PM",  "QHHIIH", "TimeUS,NLon,NLoop,MaxT,Mem,Load", "s---b%", "F---0A" }, \
     { LOG_SRTL_MSG, sizeof(log_SRTL), \
-      "SRTL", "QBHHBfff", "TimeUS,Active,NumPts,MaxPts,Action,N,E,D", "s----mmm", "F----000" }
+      "SRTL", "QBHHBfff", "TimeUS,Active,NumPts,MaxPts,Action,N,E,D", "s----mmm", "F----000" },\
+	{ LOG_BAT_SMART_RTL, sizeof(log_Bat_smart_rtl), \
+	  "BATS", BAT_SMATR_RTL_FMT,BAT_SMATR_RTL_LABELS,BAT_SMATR_RTL_UNITS,BAT_SMATR_RTL_MULTS }
 
 // messages for more advanced boards
 #define LOG_EXTRA_STRUCTURES \
@@ -1560,7 +1590,8 @@ enum LogMessages : uint8_t {
     LOG_ISBD_MSG,
     LOG_ASP2_MSG,
     LOG_PERFORMANCE_MSG,
-    _LOG_LAST_MSG_
+    _LOG_LAST_MSG_,
+	LOG_BAT_SMART_RTL
 };
 
 static_assert(_LOG_LAST_MSG_ <= 255, "Too many message formats");

@@ -235,6 +235,8 @@ bool Copter::set_mode(control_mode_t mode, mode_reason_t reason)
     // update notify object
     notify_flight_mode();
 
+    switchModeMessage(mode, reason);
+
     // return success
     return true;
 }

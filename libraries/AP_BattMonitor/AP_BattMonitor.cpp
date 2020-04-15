@@ -280,6 +280,14 @@ float AP_BattMonitor::consumed_mah(uint8_t instance) const {
     }
 }
 
+float AP_BattMonitor::remaining_mah(uint8_t instance) const{
+	 if (instance < _num_instances) {
+	        return state[instance].remaining_mah;
+	    } else {
+	        return 0.0f;
+	    }
+}
+
 /// consumed_wh - returns energy consumed since start-up in Watt.hours
 float AP_BattMonitor::consumed_wh(uint8_t instance) const {
     if (instance < _num_instances) {
@@ -313,7 +321,20 @@ void AP_BattMonitor::check_failsafes(void)
 {
     if (hal.util->get_soft_armed()) {
         for (uint8_t i = 0; i < _num_instances; i++) {
-            const BatteryFailsafe type = check_failsafe(i);
+			/* check battery discharge cycle count -- action: waring*/
+			int16_t cCount =  (int16_t)get_cycle_count(i);
+			if( _params[i]._batt_max_cycle_count>0 && cCount>=(int16_t)(_params[i]._batt_max_cycle_count*0.85) )
+			{
+				static uint8_t cc = 0;
+				if( cc<=30 )
+				{
+					++cc;
+				    gcs().send_text(MAV_SEVERITY_WARNING, "Battery %d use cycleCount %d -- Max %d",
+								    i+1, cCount, _params[i]._batt_max_cycle_count);
+				}
+			}
+
+            const BatteryFailsafe type = check_failsafe(i);  //check the battery\A3\ACreturn the failsafe type
             if (type <= state[i].failsafe) {
                 continue;
             }
@@ -459,13 +480,22 @@ bool AP_BattMonitor::has_cell_voltages(const uint8_t instance) const
 }
 
 // return the current cell voltages, returns the first monitor instances cells if the instance is out of range
-const AP_BattMonitor::cells & AP_BattMonitor::get_cell_voltages(const uint8_t instance) const
+const AP_BattMonitor::cells& AP_BattMonitor::get_cell_voltages(const uint8_t instance) const
 {
     if (instance >= AP_BATT_MONITOR_MAX_INSTANCES) {
         return state[AP_BATT_PRIMARY_INSTANCE].cell_voltages;
     } else {
         return state[instance].cell_voltages;
     }
+}
+
+const int16_t* AP_BattMonitor::get_tsx(const uint8_t instance) const
+{
+	if (instance >= AP_BATT_MONITOR_MAX_INSTANCES) {
+	        return &state[AP_BATT_PRIMARY_INSTANCE].TSx[0];
+	} else {
+		return &state[instance].TSx[0];
+	}
 }
 
 // returns true if there is a temperature reading
@@ -477,6 +507,18 @@ bool AP_BattMonitor::get_temperature(float &temperature, const uint8_t instance)
         temperature = state[instance].temperature;
         return (AP_HAL::millis() - state[instance].temperature_time) <= AP_BATT_MONITOR_TIMEOUT;
     }
+}
+
+// have smart battery
+bool AP_BattMonitor::has_smart_battery(uint8_t& num)
+{
+	for(uint8_t i=0; i<num_instances(); ++i){
+		if((get_type(i)==AP_BattMonitor_Params::BattMonitor_TYPE_MAXELL)&&healthy(i)){
+			num = i;
+			return true;
+		}
+	}
+	return false;
 }
 
 

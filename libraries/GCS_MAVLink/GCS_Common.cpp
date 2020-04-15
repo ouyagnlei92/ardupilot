@@ -194,12 +194,105 @@ void GCS_MAVLINK::send_power_status(void)
                                   hal.analogin->power_status_flags());
 }
 
+/* data64 send battery message */
+bool GCS_MAVLINK::send_battery_by_data64(void) const
+{
+	uint8_t ins = 0;
+        uint8_t i = 0;
+	AP_BattMonitor &battery = AP::battery();
+	if(battery.has_smart_battery(ins))
+	{
+	    union batts{
+	    	struct x{
+				float vol;   	/* 电压：V */
+				float current;	/* 电流： A */
+				int32_t cap;	/* 电池容量  mah  */
+				float recap;	/* 剩余电量 mah */
+				uint32_t safeAlert; /* safe alert bit flag */
+				uint32_t pfAlert;   /* PFAlert */
+				uint32_t operationStatus; /* 应用标志   */
+				uint16_t chargingStatus;  /* 充电应用标志   */
+				uint16_t gaugingStatus;   /* 智能电池状态标志 */
+				uint16_t cycCount;  /* 充电循环次数 */
+				uint16_t cell[12]; /* 每节电池电压 mV */
+				int16_t temp[3];  /* 0.01摄氏度 */
+	    	}batt;
+	    	uint8_t data[64];
+	    }bat;
+	    bat.batt.vol = battery.voltage(ins);  				/* 电压：V */
+	    bat.batt.current = battery.current_amps(ins);  		/* 电流： A */
+	    bat.batt.cap = battery.pack_capacity_mah(ins); 		/* 电池容量  mah  */
+	    bat.batt.recap = battery.remaining_mah(ins);    	/* 耗电量 mah */
+	    bat.batt.cycCount = battery.get_cycle_count(ins);	/* 充电循环次数 */
+	    bat.batt.safeAlert = battery.get_safe_alert(ins);   /* get safe alert */
+	    bat.batt.pfAlert = battery.get_pf_alert(ins);
+		bat.batt.operationStatus = battery.get_operation_status(ins);
+		bat.batt.gaugingStatus = battery.get_guaing_status(ins);
+		bat.batt.chargingStatus = battery.get_charging_status(ins);
+	    uint16_t* cel = (uint16_t*)battery.get_cell_voltages(ins).cells;  /* 每节电池电压 mV */
+	    for(i=0; i<12; ++i) bat.batt.cell[i] = cel[i];
+        int16_t* ts = (int16_t*)battery.get_tsx(ins);  /* 0.01度 */
+        for(i=0; i<3; ++i) bat.batt.temp[i] = ts[i];
+
+        CHECK_PAYLOAD_SIZE(DATA64);
+        mavlink_msg_data64_send(chan, 1, sizeof(bat.batt)/sizeof(uint8_t), (const uint8_t *)bat.data);
+	}
+	return true;
+}
+
+bool GCS_MAVLINK::send_battery_status_o10s(void) const//add by awesome
+{
+
+	static bool first[5] = {false, false, false, false, false };
+	uint8_t ins = 0;
+	AP_BattMonitor &battery = AP::battery();
+
+	if(battery.has_smart_battery(ins)){
+		float temp;
+		bool got_temperature = battery.get_temperature(temp, ins);
+		CHECK_PAYLOAD_SIZE(BATTERY_STATUS);
+		if(!first[chan])
+		{
+			first[chan] = true;
+			mavlink_msg_battery_status_send(chan,
+											0, // id
+											(uint8_t)(battery.get_cycle_count(ins)/256), // function
+											(uint8_t)(battery.get_cycle_count(ins)%256), // type
+											got_temperature ? ((int16_t) (temp * 100)) : INT16_MAX, // temperature. INT16_MAX if unknown
+											battery.get_cell_voltages(ins).cells, // cell voltages
+											battery.has_current(ins) ? battery.current_amps(ins) * 100 : -1, // current in centiampere
+											battery.has_current(ins) ? battery.consumed_mah(ins) : -1,       // total consumed current in milliampere.hour
+											battery.has_consumed_energy(ins) ? battery.consumed_wh(ins) * 36 : -1, // consumed energy in hJ (hecto-Joules)
+											battery.capacity_remaining_pct(ins),
+											0, // time remaining, seconds (not provided)
+											MAV_BATTERY_CHARGE_STATE_UNDEFINED);
+		}else{
+			first[chan] = false;
+			mavlink_msg_battery_status_send(chan,
+											1, // id
+											(uint8_t)(battery.get_cycle_count(ins)/256), // function
+											(uint8_t)(battery.get_cycle_count(ins)%256), // type
+											got_temperature ? ((int16_t) (temp * 100)) : INT16_MAX, // temperature. INT16_MAX if unknown
+											(const uint16_t*)(&(battery.get_cell_voltages(ins).cells[2])), // cell voltages
+											battery.has_current(ins) ? battery.current_amps(ins) * 100 : -1, // current in centiampere
+											battery.has_current(ins) ? battery.consumed_mah(ins) : -1,       // total consumed current in milliampere.hour
+											battery.has_consumed_energy(ins) ? battery.consumed_wh(ins) * 36 : -1, // consumed energy in hJ (hecto-Joules)
+											battery.capacity_remaining_pct(ins),
+											0, // time remaining, seconds (not provided)
+											MAV_BATTERY_CHARGE_STATE_UNDEFINED);
+		}
+		return true;
+	}
+	else return false;
+
+}
+
 void GCS_MAVLINK::send_battery_status(const AP_BattMonitor &battery,
                                       const uint8_t instance) const
 {
     // catch the battery backend not supporting the required number of cells
-    static_assert(sizeof(AP_BattMonitor::cells) >= (sizeof(uint16_t) * MAVLINK_MSG_BATTERY_STATUS_FIELD_VOLTAGES_LEN),
-                  "Not enough battery cells for the MAVLink message");
+    //static_assert(sizeof(AP_BattMonitor::cells) >= (sizeof(uint16_t) * MAVLINK_MSG_BATTERY_STATUS_FIELD_VOLTAGES_LEN),
+    //              "Not enough battery cells for the MAVLink message");
 
     float temp;
     bool got_temperature = battery.get_temperature(temp, instance);
@@ -220,13 +313,20 @@ void GCS_MAVLINK::send_battery_status(const AP_BattMonitor &battery,
 // returns true if all battery instances were reported
 bool GCS_MAVLINK::send_battery_status() const
 {
-    const AP_BattMonitor &battery = AP::battery();
+   uint8_t ins = 4;
+   AP_BattMonitor &battery = AP::battery();
 
-    for(uint8_t i = 0; i < battery.num_instances(); i++) {
-        CHECK_PAYLOAD_SIZE(BATTERY_STATUS);
-        send_battery_status(battery, i);
-    }
-    return true;
+	battery.has_smart_battery(ins);
+	if(send_battery_status_o10s()) return true;
+        else{
+
+		for(uint8_t i = 0; i < battery.num_instances(); i++) {
+			CHECK_PAYLOAD_SIZE(BATTERY_STATUS);
+                        if(i==ins) continue;
+			send_battery_status(battery, i);
+		}
+        }
+        return true;
 }
 
 void GCS_MAVLINK::send_distance_sensor(const AP_RangeFinder_Backend *sensor, const uint8_t instance) const
@@ -2917,6 +3017,10 @@ bool GCS_MAVLINK::try_send_message(const enum ap_message id)
     case MSG_BATTERY_STATUS:
         send_battery_status();
         break;
+
+    case MSG_DATA64:
+    	send_battery_by_data64();
+    	break;
 
     case MSG_BATTERY2:
         CHECK_PAYLOAD_SIZE(BATTERY2);
