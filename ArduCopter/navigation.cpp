@@ -49,6 +49,7 @@ void Copter::wp_continue_fly()
 	static uint32_t led_time_ms = 0;
 
 	uint32_t pos_time_ms = 0;
+	AP_Mission& mission = copter.mode_auto.mission;
 
 	if(!mission.wp_continue_is_open()) return;   //û�д򿪶ϵ���������  �û���ѡ��򿪶ϵ����ɹ���
 
@@ -61,13 +62,13 @@ void Copter::wp_continue_fly()
 			nav_cmd1.id = 0;
 			do_cmd1.id = 0;
 			pos_count = 0;
-			copter.mission.wp_continue_set_cmd_index(0);
+			mission.wp_continue_set_cmd_index(0);
 			return;
 		}
 	}
 
-	nav_cmd1 = copter.mission.wp_continue_nav_cmd_complete();
-	do_cmd1 = copter.mission.wp_continue_do_cmd_complete();
+	nav_cmd1 = mission.wp_continue_nav_cmd_complete();
+	do_cmd1 = mission.wp_continue_do_cmd_complete();
 
 	//���������жϣ���¼�ж�λ��
 	if(!wp_continue_complete && wp_continue_start && mission.state()==AP_Mission::MISSION_STOPPED){
@@ -92,10 +93,10 @@ void Copter::wp_continue_fly()
 				gcs().send_text(MAV_SEVERITY_INFO, "Start Record Waypoint");
 			}else if(nav_cmd1.id==MAV_CMD_NAV_TAKEOFF /*|| copter.mission.get_current_nav_cmd().id==MAV_CMD_NAV_TAKEOFF*/){   //TAKE OFFִ����ϣ�ѡ���Զ�����
 			    have_take_off = true;
-				if(copter.mission.wp_continue_cmd_total()==copter.mission.num_commands() && copter.mission.wp_continue_nav_cmd_index()>0 && copter.mission.wp_continue_cmd_total()>1){  //����û�б�����޸Ĺ�����ѡ��ϵ�����
-					if(!auto_continue_success && copter.mission.set_current_cmd(copter.mission.wp_continue_nav_cmd_index())){
+				if(mission.wp_continue_cmd_total()==mission.num_commands() && mission.wp_continue_nav_cmd_index()>0 &&mission.wp_continue_cmd_total()>1){  //����û�б�����޸Ĺ�����ѡ��ϵ�����
+					if(!auto_continue_success && mission.set_current_cmd(mission.wp_continue_nav_cmd_index())){
 						auto_continue_success = true;
-						gcs().send_text(MAV_SEVERITY_INFO, "Auto Switch to WP #%d", copter.mission.wp_continue_nav_cmd_index());
+						gcs().send_text(MAV_SEVERITY_INFO, "Auto Switch to WP #%d", mission.wp_continue_nav_cmd_index());
 					}
 				}
 			} 
@@ -112,7 +113,7 @@ void Copter::wp_continue_fly()
 		//ִ�к���ָ���ʼ������ʱ�����Ҽ�¼λ��
 		if(wp_continue_start){
 			float groundSpeed = ahrs.groundspeed()*100;    //��ȡ��ǰ����   cm/s
-			float dist = copter.mission.wp_continue_pos_distance();              //�û��趨�Ķϵ�������ǰѡ�����
+			float dist = mission.wp_continue_pos_distance();              //�û��趨�Ķϵ�������ǰѡ�����
 			dist = dist<=10.0 ? 10.0 : dist;
 			dist = dist*100.0;
 			float gds = (groundSpeed*0.6+old_ground_speed*0.4);
@@ -124,10 +125,13 @@ void Copter::wp_continue_fly()
 			if(AP_HAL::millis()-pos_last_time_ms>=pos_time_ms){ //��¼һ������λ��
 			    if(nav_cmd1.id==MAV_CMD_NAV_WAYPOINT){
 					//current wp distance with current pos
-					const Vector3f currentpos = pv_location_to_vector(copter.current_loc); 
-					Vector3f currentwp = pv_location_to_vector(nav_cmd1.content.location);
+					Vector3f currentpos; 
+					Vector3f currentwp;
+					bool terra;
+					copter.wp_nav->get_vector_NEU(copter.current_loc, currentpos, terra);
+					copter.wp_nav->get_vector_NEU(nav_cmd1.content.location, currentwp, terra);
 					float curr_posdis = get_horizontal_distance_cm(currentwp, currentpos);
-					if(curr_posdis<=copter.mission.wp_continue_pos_distance()*100){
+					if(curr_posdis<=mission.wp_continue_pos_distance()*100){
 						pos_count = 0;
 						current_cmd_index = 0;
 					}else{
@@ -156,25 +160,25 @@ void Copter::wp_continue_fly()
 	  }
 
 	//������ɲ����п������ϵ�����,�������к���,�ڼ�����ʱ�����
-   if(!motors->armed() && wp_continue_complete && ap.land_complete && copter.mission.state()!=AP_Mission::MISSION_COMPLETE){
+   if(!motors->armed() && wp_continue_complete && ap.land_complete && mission.state()!=AP_Mission::MISSION_COMPLETE){
 
 		if(pos_count==0 && mission_cmd[0].id==0 && mission_cmd[1].id==0){
 			//copter.mission.wp_continue_set_cmd_index(0);	
 			//copter.mission.wp_continue_set_continue_total(0);
-			gcs().send_text(MAV_SEVERITY_INFO, "No Continue WP #%d", copter.mission.wp_continue_nav_cmd_index());		
+			gcs().send_text(MAV_SEVERITY_INFO, "No Continue WP #%d", mission.wp_continue_nav_cmd_index());		
 		}else if(pos_count<=2 && mission_cmd[0].id==MAV_CMD_NAV_WAYPOINT && mission_cmd[1].id==MAV_CMD_NAV_WAYPOINT){
-			copter.mission.wp_continue_set_cmd_index(old_nav_cmd.index);
-			copter.mission.wp_continue_set_continue_total(copter.mission.num_commands());
+			mission.wp_continue_set_cmd_index(old_nav_cmd.index);
+			mission.wp_continue_set_continue_total(mission.num_commands());
 			gcs().send_text(MAV_SEVERITY_INFO, "Save Continue WP #%d", old_nav_cmd.index);
 		}else if(pos_count>2&& mission_cmd[0].id==MAV_CMD_NAV_WAYPOINT && mission_cmd[1].id==MAV_CMD_NAV_WAYPOINT){
-			copter.mission.wp_continue_set_cmd_index(old_nav_cmd.index+1);
+			mission.wp_continue_set_cmd_index(old_nav_cmd.index+1);
 			current_cmd_index = (current_cmd_index%2==0?0:1);
 			mission_cmd[current_cmd_index].id = MAV_CMD_NAV_WAYPOINT;
-			mission_cmd[current_cmd_index].index = copter.mission.wp_continue_nav_cmd_index();
+			mission_cmd[current_cmd_index].index = mission.wp_continue_nav_cmd_index();
 			mission_cmd[current_cmd_index].p1 = old_nav_cmd.p1;
 			mission_add_cmd[2] = mission_cmd[current_cmd_index];
 			mission_add_cmd[2].content.location.alt = old_nav_cmd.content.location.alt;
-			if(copter.mission.wp_continue_reset_wp(copter.mission.wp_continue_nav_cmd_index(), &mission_add_cmd[0])){
+			if(mission.wp_continue_reset_wp(mission.wp_continue_nav_cmd_index(), &mission_add_cmd[0])){
 				AP_Notify::flags.wp_continue = true;
 				led_time_ms = AP_HAL::millis();
 				gcs().send_text(MAV_SEVERITY_INFO, "Reset WP Success, WP #%d", old_nav_cmd.index+1);
@@ -189,7 +193,7 @@ void Copter::wp_continue_fly()
 		do_cmd1.id = 0;
 	}
 
-	if(copter.mission.state()==AP_Mission::MISSION_COMPLETE){
+	if(mission.state()==AP_Mission::MISSION_COMPLETE){
 		wp_continue_start = false;
 		wp_continue_complete = false;
 		auto_continue_success = false;
@@ -198,7 +202,7 @@ void Copter::wp_continue_fly()
 		do_cmd1.id = 0;
 		pos_count = 0;
 		have_take_off = false;
-		copter.mission.wp_continue_set_cmd_index(0);
+		mission.wp_continue_set_cmd_index(0);
 	}
 
 	if(AP_Notify::flags.wp_continue && AP_HAL::millis()-led_time_ms>=8000){

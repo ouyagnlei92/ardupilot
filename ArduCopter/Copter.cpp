@@ -330,10 +330,6 @@ void Copter::update_batt_compass(void)
         compass.set_voltage(battery.voltage());
         compass.read();
     }
-
-    //AP_BattMonitor &battery = AP::battery();
-    //gcs().send_text(MAV_SEVERITY_WARNING,"cycle_count %d", (int32_t)battery.get_cycle_count());
-    gcs().send_message(MSG_DATA64);
 }
 
 // Full rate logging of attitude, rate and pid loops
@@ -437,6 +433,11 @@ void Copter::three_hz_loop()
 
     // update ch6 in flight tuning
     tuning();
+
+
+    //AP_BattMonitor &battery = AP::battery();
+    //gcs().send_text(MAV_SEVERITY_WARNING,"cycle_count %d", (int32_t)battery.get_cycle_count());
+    gcs().send_message(MSG_DATA64);
 }
 
 // one_hz_loop - runs at 1Hz
@@ -672,7 +673,7 @@ void Copter::batterySmartRTLUpdate(void){
 
 	if(_set_error && AP_HAL::millis()-_error_time>5000){   
 		_error_time = AP_HAL::millis();
-		gcs().send_text(MAV_SEVERITY_WARNING, "Batt SmartRTL Set Error!Type:%d, Cell:%d", _battery_type, g.bat_cell);
+		gcs().send_text(MAV_SEVERITY_WARNING, "Batt SmartRTL Set Error!Type:%d, Cell:%d", _battery_type, g.bat_cell.get());
 		return;
 	}
 	
@@ -721,8 +722,8 @@ void Copter::climbUseMahCal(void){
 			_old_climb_time = AP_HAL::millis();
 		}
 		if(_climbing && (AP_HAL::millis()-_old_climb_time)>=500){  
-			_climb_start = true; 
-			_old_use_mah = battery.consumed_mah();  
+			_climb_start = true;  
+			if(!battery.consumed_mah(_old_use_mah, 0)) return;
 			_fly_status = Copter::CLIMB;
 			_old_pos_ms = AP_HAL::millis();
 
@@ -736,7 +737,8 @@ void Copter::climbUseMahCal(void){
 	}
 
 	if(_climb_start && AP_HAL::millis()-_old_pos_ms>=500){
-		float cu =  battery.consumed_mah();
+		float cu = 0.0;  
+		if(!battery.consumed_mah(cu, 0)) return;
     	if(!_up_flag){ 
     		_verUseMah -= cu-_old_use_mah;
     	}else if(_up_flag){ 
@@ -755,7 +757,7 @@ void Copter::horUserMahCal(void){
 		}
 		if(_horMoving && (AP_HAL::millis()-_old_hormove_time)>=500){  
 			_hormove_start = true;  
-			_old_use_mah = battery.consumed_mah();  
+			if(!battery.consumed_mah(_old_use_mah, 0)) return;
 			_old_pos = inertial_nav.get_position();  
 			_old_pos_ms = AP_HAL::millis();
 			_fly_status = Copter::HOR_MOVING;
@@ -770,17 +772,18 @@ void Copter::horUserMahCal(void){
 	}
 
 	if(_hormove_start){
-		if(AP_HAL::millis()-_old_pos_ms>=500 && position_ok() && control_mode!=RTL){  
-    		float speed1 = copter.wp_nav->get_speed_xy()*0.5;
+		if(AP_HAL::millis()-_old_pos_ms>=500 && position_ok() && control_mode!=Mode::Number::RTL){  
 			float groundSpeed = ahrs.groundspeed()*100;
 			 
-			if(_hor_mah_speed_avr>=0.00001 && groundSpeed-speed1>=0.0001){
+			if(_hor_mah_speed_avr>=0.00001 && groundSpeed>=50){
 				cacl_hor_mahspd();
 			}else if(_hor_mah_speed_avr<0.00001){
 				cacl_hor_mahspd();
-				_hor_mah_speed_avr *= 0.65;
-			}else{
-				_old_use_mah = battery.consumed_mah();
+				float a = barometer.get_altitude()*100;
+				if(!is_zero(a)) _hor_mah_speed_avr = (_verUseMah/a) * 0.65;
+				
+			}else{ 
+				if(!battery.consumed_mah(_old_use_mah, 0)) return;
 				_old_pos = inertial_nav.get_position();
 				_old_pos_ms = AP_HAL::millis();
 			}
@@ -795,8 +798,8 @@ void Copter::horClimbUseMahCal(void){
 			_old_horclimb_time = AP_HAL::millis();
 		}
 		if(_horclimbing && (AP_HAL::millis()-_old_horclimb_time)>=500){  
-			_horclimbe_start = true;  
-			_old_use_mah = battery.consumed_mah();  
+			_horclimbe_start = true;   
+			if(!battery.consumed_mah(_old_use_mah, 0)) return; 
 			_old_pos = inertial_nav.get_position();  
 			_old_alt = barometer.get_altitude()*100;
 			_old_pos_ms = AP_HAL::millis();
@@ -812,17 +815,17 @@ void Copter::horClimbUseMahCal(void){
 	}
 
 	if(_horclimbe_start){
-    	if(AP_HAL::millis()-_old_pos_ms>=500 && position_ok() && control_mode!=RTL){   
-			float speed1 = copter.wp_nav->get_speed_xy()*0.5;
+    	if(AP_HAL::millis()-_old_pos_ms>=500 && position_ok() && control_mode!=Mode::Number::RTL){   
 			float groundSpeed = ahrs.groundspeed()*100;
 			 
-			if(_hor_mah_speed_avr>=0.00001 && groundSpeed-speed1>=0.0001){
+			if(_hor_mah_speed_avr>=0.00001 && groundSpeed>=50){
 				cacl_hor_ver_mahspd();
 			}else if(_hor_mah_speed_avr<0.00001){
 				cacl_hor_ver_mahspd();
-				_hor_mah_speed_avr *= 0.65;
-			}else{
-				_old_use_mah = battery.consumed_mah();
+				float a = barometer.get_altitude()*100;
+				if(!is_zero(a)) _hor_mah_speed_avr = (_verUseMah/a) * 0.65;
+			}else{  
+				if(!battery.consumed_mah(_old_use_mah, 0)) return;
 				_old_pos = inertial_nav.get_position();
 				_old_alt = barometer.get_altitude()*100;
 				_old_pos_ms = AP_HAL::millis();
@@ -858,13 +861,16 @@ void Copter::lowPowerRTL(void){
 	if(_verUseMah<0.001) _verUseMah = fabs(_hor_mah_speed_avr*barometer.get_altitude()*100);
 
 	_to_home_mah = _to_home_distance*_hor_mah_speed_avr + _verUseMah + _verUseMah*0.10;      
-	if(mode_auto.mode()==Auto_RTL || mode_auto.mode()==Auto_Land || control_mode==RTL ) return;
+	if(mode_auto.mode()==Auto_RTL || mode_auto.mode()==Auto_Land || control_mode==Mode::Number::RTL) return;
 
-	if( !_open_rtl && (_to_home_mah>=(_pre_arm_mah-battery.pack_capacity_mah()*g.bat_auto_rtl_keep_cap-battery.consumed_mah())) )	{
+	float mah = 0.0;  
+	if(!battery.consumed_mah(mah, 0)) return;
+
+	if( !_open_rtl && (_to_home_mah>=(_pre_arm_mah-battery.pack_capacity_mah()*g.bat_auto_rtl_keep_cap-mah)) )	{
 		_open_rtl = true;
-		set_mode_RTL_or_land_with_pause(MODE_REASON_BATTERY_FAILSAFE);
+		set_mode_RTL_or_land_with_pause(ModeReason::BATTERY_FAILSAFE);
 		AP_Notify::flags.failsafe_battery = true;
-		gcs().send_text(MAV_SEVERITY_INFO, "RTL! Used %.1fmah", battery.consumed_mah());
+		gcs().send_text(MAV_SEVERITY_INFO, "RTL! Used %.1fmah", mah);
 		writeLog();
 
 		init();
@@ -883,7 +889,8 @@ void Copter::cacl_hor_mahspd(void){
 
 	if(distance<=0.0001) return; 
 
-	float curr_mah = battery.consumed_mah(); 
+	float curr_mah = 0.0;
+	if(!battery.consumed_mah(curr_mah, 0)) return;
 	float mah_speed = (curr_mah-_old_use_mah)/distance;     // mah/cm
 	_old_use_mah = curr_mah;
 
@@ -913,7 +920,9 @@ void Copter::cacl_hor_ver_mahspd(void){
 	distance = get_horizontal_distance_cm(_old_pos, curr_pos);
 	_old_pos = curr_pos;
 
-	float curr_mah = battery.consumed_mah(); 
+	float curr_mah = 0.0;
+	if(!battery.consumed_mah(curr_mah, 0)) return;
+	
 	float diffalt = curr_alt-_old_alt;
 	float ccc = distance+fabs(diffalt);
 	if(ccc<=0.0001) return;
@@ -946,7 +955,7 @@ void Copter::cacl_hor_ver_mahspd(void){
 
 void Copter::smartBatteryAutoRTL(void){
 
-	if(!battery.has_current()) return;
+	if(!battery.healthy()) return;
 
 	if(battery.get_type()!=AP_BattMonitor_Params::BattMonitor_TYPE_MAXELL) return;
 
@@ -971,7 +980,7 @@ void Copter::smartBatteryAutoRTL(void){
 
 void Copter::LiPoBatteryAutoRTL(void){
 
-	if(!battery.has_current()) return;
+	if(!battery.healthy()) return;
 
 	if(_battery_type!=0) return;
 
@@ -1025,7 +1034,7 @@ void Copter::LiPoBatteryAutoRTL(void){
 					_pre_arm_mah = ( ((vol_mah_pre[index2]-vol_mah_pre[index1])/(vol[index2]-vol[index1]))*(avr-vol[index1]) + vol_mah_pre[index1] )*battery.pack_capacity_mah(); // �����ϵ�ʱ�ĵ���
 					gcs().send_text(MAV_SEVERITY_WARNING, "Armed! Smart Battery Remaining %.1fmah, type:%d", _pre_arm_mah, _battery_type);
 				}
-				_old_mah = battery.consumed_mah(); 
+				if(!battery.consumed_mah(_old_mah)) _old_mah = 0.0;
 				init();
 			}
 		}
@@ -1045,11 +1054,14 @@ void Copter::writeLog(void){
 
 	if(_set_error) return;
 
+	float mah = 0.0;
+	if(!battery.consumed_mah(mah, 0)) mah = 0.0;
+
 	struct log_Bat_smart_rtl bat_smart{
 		LOG_PACKET_HEADER_INIT(LOG_BAT_SMART_RTL),
 		time_us	:	AP_HAL::micros64(),
 		vol : battery.voltage(),
-		currentmah : battery.consumed_mah(),
+		currentmah : mah,
 		vertmah : _verUseMah,
 		hormahAvr : _hor_mah_speed_avr*100,  /* m/mah */
 		returnToHomeMah : _to_home_mah,
@@ -1059,15 +1071,15 @@ void Copter::writeLog(void){
 		type : _battery_type,
 	};
 
-	DataFlash.WriteCriticalBlock(&bat_smart, sizeof(bat_smart));
+	AP::logger().WriteCriticalBlock(&bat_smart, sizeof(bat_smart));
 }
 
-void Copter::switchModeMessage(control_mode_t mode, mode_reason_t reason){
+void Copter::switchModeMessage(Mode::Number mode, ModeReason reason){
 	uint8_t md = 0;
-	if(mode==LAND) md = 8;
-	else if(mode==DRIFT) md = 9;
-	else if(mode<=CIRCLE) md = (uint8_t)mode;
-	else if(mode>=SPORT) md = (uint8_t)(mode-3);
+	if(mode==Mode::Number::LAND) md = 8;
+	else if(mode==Mode::Number::DRIFT) md = 9;
+	else if(mode<=Mode::Number::CIRCLE) md = (uint8_t)mode;
+	else if(mode>=Mode::Number::SPORT) md = (uint8_t)((int)mode-3);
 
 	gcs().send_text(MAV_SEVERITY_WARNING, "Mode:%s, Reason:%s", MODE_STRING[md], MODE_REASON[(uint8_t)reason]);
 

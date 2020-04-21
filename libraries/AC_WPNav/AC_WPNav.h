@@ -221,6 +221,10 @@ public:
     /// return the crosstrack_error - horizontal error of the actual position vs the desired position
     float crosstrack_error() const { return _track_error_xy;}
 
+    // convert location to vector from ekf origin.  terrain_alt is set to true if resulting vector's z-axis should be treated as alt-above-terrain
+    //      returns false if conversion failed (likely because terrain data was not available)
+    bool get_vector_NEU(const Location &loc, Vector3f &vec, bool &terrain_alt);
+
     static const struct AP_Param::GroupInfo var_info[];
 
 protected:
@@ -263,10 +267,6 @@ protected:
 
     // get terrain's altitude (in cm above the ekf origin) at the current position (+ve means terrain below vehicle is above ekf origin's altitude)
     bool get_terrain_offset(float& offset_cm);
-
-    // convert location to vector from ekf origin.  terrain_alt is set to true if resulting vector's z-axis should be treated as alt-above-terrain
-    //      returns false if conversion failed (likely because terrain data was not available)
-    bool get_vector_NEU(const Location &loc, Vector3f &vec, bool &terrain_alt);
 
     // set heading used for spline and waypoint navigation
     void set_yaw_cd(float heading_cd);

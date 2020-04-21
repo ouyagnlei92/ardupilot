@@ -496,13 +496,13 @@ bool AP_Arming::battery_checks(bool report)
         }
      }
     /* check battery discharge cycle count -- action: none Arm*/
-    int16_t cCount =  (int16_t)_battery.get_cycle_count(i);
-    if( _battery.get_max_cycle_count(i)>0 && cCount>=_battery.get_max_cycle_count(i) )
+    int16_t cCount =  (int16_t)AP::battery().get_cycle_count(0);
+    if( AP::battery().get_max_cycle_count(0)>0 && cCount>=AP::battery().get_max_cycle_count(0) )
     {
         check_failed(ARMING_CHECK_BATTERY, report, "PreArm: Battery %d use cycleCount %d More than Max %d",
-                        i+1,
+                        0+1,
                         cCount,
-                        _battery.get_max_cycle_count(i) );
+                        AP::battery().get_max_cycle_count(0) );
         return false;
     }
     return true;

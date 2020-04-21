@@ -668,26 +668,37 @@ void AP_Logger::Write_Current_instance(const uint64_t time_us,
         current_total       : consumed_mah,
         consumed_wh         : consumed_wh,
         temperature         : (int16_t)(has_temp ? (temp * 100) : 0),
-        resistance          : battery.get_resistance(battery_instance)
+        cycle_count         : battery.get_cycle_count(battery_instance),
+        resistance          : battery.get_resistance(battery_instance),
+		remaing_mah         : battery.remaining_mah(battery_instance),
+		pf_alert			: battery.get_pf_alert(battery_instance),
+		safe_alert			: battery.get_safe_alert(battery_instance),
+		operation_status	: battery.get_operation_status(battery_instance),
+		charging_status		: battery.get_charging_status(battery_instance),
+		guaing_status		: battery.get_guaing_status(battery_instance)
     };
     WriteBlock(&pkt, sizeof(pkt));
 
     // individual cell voltages
     if (battery.has_cell_voltages(battery_instance)) {
-        const AP_BattMonitor::cells &cells = battery.get_cell_voltages(battery_instance);
-        struct log_Current_Cells cell_pkt{
-            LOG_PACKET_HEADER_INIT(celltype),
-            time_us             : time_us,
-            voltage             : battery.voltage(battery_instance)
-        };
-        for (uint8_t i = 0; i < ARRAY_SIZE(cells.cells); i++) {
-            cell_pkt.cell_voltages[i] = cells.cells[i] + 1;
-        }
-        WriteBlock(&cell_pkt, sizeof(cell_pkt));
+        float ff = 0.0;
+        if(battery.current_amps(ff, battery_instance)){
+            const AP_BattMonitor::cells &cells = battery.get_cell_voltages(battery_instance);
+            struct log_Current_Cells cell_pkt{
+                LOG_PACKET_HEADER_INIT(celltype),
+                time_us             : time_us,
+                voltage             : battery.voltage(battery_instance),
+                current				: ff
+            };
+            for (uint8_t i = 0; i < ARRAY_SIZE(cells.cells); i++) {
+                cell_pkt.cell_voltages[i] = cells.cells[i] + 1;
+            }
+            WriteBlock(&cell_pkt, sizeof(cell_pkt));
 
-        // check battery structure can hold all cells
-        static_assert(ARRAY_SIZE(cells.cells) == (sizeof(cell_pkt.cell_voltages) / sizeof(cell_pkt.cell_voltages[0])),
-                      "Battery cell number doesn't match in library and log structure");
+            // check battery structure can hold all cells
+            static_assert(ARRAY_SIZE(cells.cells) == (sizeof(cell_pkt.cell_voltages) / sizeof(cell_pkt.cell_voltages[0])),
+                          "Battery cell number doesn't match in library and log structure");
+        }
     }
 }
 

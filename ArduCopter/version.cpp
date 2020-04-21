@@ -31,10 +31,10 @@ const AP_FWVersion AP_FWVersion::fwver{
     .fw_string = THISFIRMWARE " (" GIT_VERSION ")",
     .fw_hash_str = GIT_VERSION,
 #endif
-    .middleware_name = nullptr,
+    .middleware_name = "Joyton",//nullptr,
     .middleware_hash_str = nullptr,
 #ifdef CHIBIOS_GIT_VERSION
-    .os_name = "ChibiOS",
+    .os_name = "CRTOS",
     .os_hash_str = CHIBIOS_GIT_VERSION,
 #else
     .os_name = nullptr,

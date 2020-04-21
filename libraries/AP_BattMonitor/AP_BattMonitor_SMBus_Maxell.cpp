@@ -7,7 +7,7 @@
 
 #include <GCS_MAVLink/GCS.h>
 
-#define BATTMONITOR_SMBUS_MAXELL_NUM_CELLS 6
+#define BATTMONITOR_SMBUS_MAXELL_NUM_CELLS 12
 uint8_t maxell_cell_ids[] = { 0x3f,  // cell 1
                               0x3e,  // cell 2
                               0x3d,  // cell 3

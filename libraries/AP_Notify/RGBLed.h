@@ -103,7 +103,8 @@ private:
     const uint32_t sequence_disarmed_good_dgps = DEFINE_COLOUR_SEQUENCE_ALTERNATE(GREEN,OFF);
     const uint32_t sequence_disarmed_good_gps = DEFINE_COLOUR_SEQUENCE_SLOW(GREEN);
     const uint32_t sequence_disarmed_bad_gps = DEFINE_COLOUR_SEQUENCE_SLOW(BLUE);
-
+    const uint32_t sequence_save_wp = DEFINE_COLOUR_SEQUENCE_ALTERNATE(RED, GREEN);
+    
     uint8_t last_step;
     enum rgb_source_t {
         standard = 0,

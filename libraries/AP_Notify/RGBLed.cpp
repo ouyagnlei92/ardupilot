@@ -114,6 +114,10 @@ uint32_t RGBLed::get_colour_sequence(void) const
         return sequence_trim_or_esc;
     }
 
+    if(AP_Notify::flags.wp_continue){
+        return sequence_save_wp;
+    }
+
     // radio and battery failsafe patter: flash yellow
     // gps failsafe pattern : flashing yellow and blue
     // ekf_bad pattern : flashing yellow and red

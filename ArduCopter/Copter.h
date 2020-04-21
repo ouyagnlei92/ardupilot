@@ -1110,7 +1110,7 @@ private:
 
 	void writeLog(void);
 
-	void switchModeMessage(control_mode_t mode, mode_reason_t reason);
+	void switchModeMessage(Mode::Number mode, ModeReason reason);
 
 public:
     void mavlink_delay_cb();    // GCS_Mavlink.cpp
