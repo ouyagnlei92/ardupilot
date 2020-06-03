@@ -7,6 +7,7 @@
 
 #include <AP_HAL/AP_HAL.h>
 #include "AP_Relay.h"
+#include <GCS_MAVLink/GCS.h>
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
   #define RELAY1_PIN_DEFAULT 13
@@ -95,6 +96,10 @@ const AP_Param::GroupInfo AP_Relay::var_info[] = {
     // @Values: -1:Disabled,49:BB Blue GP0 pin 4,50:AUXOUT1,51:AUXOUT2,52:AUXOUT3,53:AUXOUT4,54:AUXOUT5,55:AUXOUT6,57:BB Blue GP0 pin 3,113:BB Blue GP0 pin 6,116:BB Blue GP0 pin 5
     AP_GROUPINFO("PIN6",  6, AP_Relay, _pin[5], RELAY6_PIN_DEFAULT),
 
+    AP_GROUPINFO("STRGR_EN",  7, AP_Relay, _steering_gear_enable, 1),
+
+    AP_GROUPINFO("STRGR_RC",  8, AP_Relay, _steering_gear_rc_override, 6),
+
     AP_GROUPEND
 };
 
@@ -102,7 +107,9 @@ AP_Relay *AP_Relay::singleton;
 
 extern const AP_HAL::HAL& hal;
 
-AP_Relay::AP_Relay(void)
+AP_Relay::AP_Relay(void) :
+  _steering_gear_open(false)
+  ,_steering_gear_rc_value(900)
 {
     AP_Param::setup_object_defaults(this, var_info);
 
@@ -143,6 +150,24 @@ void AP_Relay::toggle(uint8_t instance)
         bool ison = hal.gpio->read(_pin[instance]);
         set(instance, !ison);
     }
+}
+
+bool  AP_Relay::steering_gear_is_enable(void) { 
+  return _steering_gear_enable.get()>0 ? true : false; 
+}
+
+void  AP_Relay::update_steering_gear_control(void){
+  if( _steering_gear_enable.get()<=0 ) return;
+
+  if( _steering_gear_open ){
+    _steering_gear_open = false;
+    _steering_gear_rc_value = 900;
+  }else {
+    _steering_gear_open = true;
+    _steering_gear_rc_value = 2000;
+  }
+  gcs().send_text(MAV_SEVERITY_INFO, "Steering Gear: CH: %d, Open %d, Value: %d", _steering_gear_rc_override.get(), _steering_gear_open, _steering_gear_rc_value);
+
 }
 
 namespace AP {

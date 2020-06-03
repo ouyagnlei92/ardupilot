@@ -1627,6 +1627,16 @@ void GCS_MAVLINK::send_rc_channels() const
     uint16_t values[18] = {};
     rc().get_radio_in(values, ARRAY_SIZE(values));
 
+    AP_Relay *relay = AP::relay();
+    if (relay != nullptr) {
+        if( relay->steering_gear_is_enable() ){
+            int8_t rcm = relay->get_steering_gear_rc_override();
+            if( rcm>0 && rcm<=18 ){
+                values[rcm-1] = relay->get_steering_gear_rc_value();
+            }
+        }  
+    }
+
     mavlink_msg_rc_channels_send(
         chan,
         AP_HAL::millis(),
