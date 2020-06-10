@@ -253,7 +253,7 @@ void AP_Camera::configure(float shooting_mode, float shutter_speed, float apertu
 void AP_Camera::control(float session, float zoom_pos, float zoom_step, float focus_lock, float shooting_cmd, float cmd_id)
 {
     // take picture
-    if (is_equal(shooting_cmd,1.0f)) {
+    if (is_equal(shooting_cmd,1.0f) || is_equal(session,1.0f)) {
         trigger_pic();
     }
 
