@@ -713,14 +713,15 @@ const AP_Param::Info Copter::var_info[] = {
     GOBJECT(osd, "OSD", AP_OSD),
 #endif
 
-    // @Group:
-    // @Path: Parameters.cpp
-    GOBJECT(g2, "",  ParametersG2),
-
     GSCALAR(bat_auto_rtl,             "BATT_SMRTL_SW",           0),
 	GSCALAR(bat_type,                 "BATT_SMRTL_TP",           0),
 	GSCALAR(bat_cell,                 "BATT_SMRTL_CLL",          6),
 	GSCALAR(bat_auto_rtl_keep_cap,    "BATT_SMRTL_KP",           0.2),
+    GSCALAR(init_delay_ms,            "INIT_DELAY_MS",           5000),
+
+    // @Group:
+    // @Path: Parameters.cpp
+    GOBJECT(g2, "",  ParametersG2),
 
     AP_VAREND
 };

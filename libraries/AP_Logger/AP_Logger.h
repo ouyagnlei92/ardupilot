@@ -324,6 +324,7 @@ public:
     void set_force_log_disarmed(bool force_logging) { _force_log_disarmed = force_logging; }
     bool log_while_disarmed(void) const;
     uint8_t log_replay(void) const { return _params.log_replay; }
+    uint8_t log_debug(void) const { return _params.debug; }
     
     vehicle_startup_message_Writer _vehicle_messages;
 
@@ -336,6 +337,7 @@ public:
         AP_Int8 log_disarmed;
         AP_Int8 log_replay;
         AP_Int8 mav_bufsize; // in kilobytes
+        AP_Int8 debug;
         AP_Int16 file_timeout; // in seconds
     } _params;
 

@@ -376,6 +376,7 @@ public:
 		k_param_bat_type,
 		k_param_bat_cell,
 		k_param_bat_auto_rtl_keep_cap,
+        k_param_init_delay_ms,
 
         // the k_param_* space is 9-bits in size
         // 511: reserved
@@ -385,6 +386,8 @@ public:
 	AP_Int8 bat_type;
 	AP_Int8 bat_cell;
 	AP_Float bat_auto_rtl_keep_cap;
+
+    AP_Int32 init_delay_ms;
 
     AP_Int16        format_version;
 

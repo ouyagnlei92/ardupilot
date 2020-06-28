@@ -92,6 +92,8 @@ const AP_Param::GroupInfo AP_Logger::var_info[] = {
     // @User: Standard
     // @Units: s
     AP_GROUPINFO("_FILE_TIMEOUT",  6, AP_Logger, _params.file_timeout,     HAL_LOGGING_FILE_TIMEOUT),
+
+    AP_GROUPINFO("_DEBUG",  7, AP_Logger, _params.debug,    0),
     
     AP_GROUPEND
 };
@@ -525,19 +527,30 @@ void AP_Logger::backend_starting_new_log(const AP_Logger_Backend *backend)
 bool AP_Logger::should_log(const uint32_t mask) const
 {
     bool armed = vehicle_is_armed();
+    
+    if (!armed && log_while_disarmed() && _params.debug>0 ) {
+        if( (1UL<<20)==mask )  //MASK_LOG_ATTITUDE_MED (1<<1)
+        {
+            return true;
+        }
+        return false;
+    }
 
     if (!(mask & _log_bitmask)) {
         return false;
     }
+
     if (!armed && !log_while_disarmed()) {
         return false;
     }
+
     if (in_log_download()) {
         return false;
     }
     if (_next_backend == 0) {
         return false;
     }
+
     return true;
 }
 

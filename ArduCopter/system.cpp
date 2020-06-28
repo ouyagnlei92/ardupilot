@@ -37,6 +37,16 @@ void Copter::init_ardupilot()
     // load parameters from EEPROM
     load_parameters();
 
+    //delay 5S run the copter
+    uint32_t curtime = AP_HAL::millis();
+    int32_t delay_ms = g.init_delay_ms.get();
+    if( delay_ms>0 )
+    {
+        hal.console->printf("Waiting time: %d\n",(int)delay_ms);
+        while( (AP_HAL::millis()-curtime) < delay_ms );
+        hal.console->printf("Start setup!\n");
+    }
+
     // time per loop - this gets updated in the main loop() based on
     // actual loop rate
     G_Dt = 1.0 / scheduler.get_loop_rate_hz();

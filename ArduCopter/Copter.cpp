@@ -434,7 +434,6 @@ void Copter::three_hz_loop()
     // update ch6 in flight tuning
     tuning();
 
-
     //AP_BattMonitor &battery = AP::battery();
     //gcs().send_text(MAV_SEVERITY_WARNING,"cycle_count %d", (int32_t)battery.get_cycle_count());
     gcs().send_message(MSG_DATA64);
@@ -445,6 +444,11 @@ void Copter::one_hz_loop()
 {
     if (should_log(MASK_LOG_ANY)) {
         Log_Write_Data(DATA_AP_STATE, ap.value);
+    }	
+
+	// diarmed record the attitude data
+	if ( AP::logger().log_debug() && should_log(MASK_LOG_DEBUG_MSG) && !copter.flightmode->logs_attitude()) {  
+        Log_Write_Attitude();
     }
 
     arming.update();
