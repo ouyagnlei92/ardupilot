@@ -1,5 +1,5 @@
 /*
-   Please contribute your ideas! See http://dev.ardupilot.org for details
+   Please contribute your ideas! See https://dev.ardupilot.org for details
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -52,6 +52,10 @@
 #define AP_SERIALMANAGER_MAVLINK_BUFSIZE_RX     128
 #define AP_SERIALMANAGER_MAVLINK_BUFSIZE_TX     256
 
+// LTM buffer sizes
+#define AP_SERIALMANAGER_LTM_BUFSIZE_RX         0
+#define AP_SERIALMANAGER_LTM_BUFSIZE_TX         32
+
 // FrSky default baud rates, use default buffer sizes
 #define AP_SERIALMANAGER_FRSKY_D_BAUD           9600
 #define AP_SERIALMANAGER_FRSKY_SPORT_BAUD       57600
@@ -79,6 +83,11 @@
 
 #define AP_SERIALMANAGER_ROBOTIS_BUFSIZE_RX  128
 #define AP_SERIALMANAGER_ROBOTIS_BUFSIZE_TX  128
+
+// MegaSquirt EFI protocol
+#define AP_SERIALMANAGER_EFI_MS_BAUD           115
+#define AP_SERIALMANAGER_EFI_MS_BUFSIZE_RX     512
+#define AP_SERIALMANAGER_EFI_MS_BUFSIZE_TX     16
 
 // SBUS servo outputs
 #define AP_SERIALMANAGER_SBUS1_BAUD           100000
@@ -123,6 +132,13 @@ public:
         SerialProtocol_WindVane = 21,
         SerialProtocol_SLCAN = 22,
         SerialProtocol_RCIN = 23,
+        SerialProtocol_EFI_MS = 24,                   // MegaSquirt EFI serial protocol
+        SerialProtocol_LTM_Telem = 25,
+        SerialProtocol_RunCam = 26,
+        SerialProtocol_Hott = 27,
+        SerialProtocol_Scripting = 28,
+        SerialProtocol_CRSF = 29,
+        SerialProtocol_Generator = 30,
     };
 
     // get singleton instance
@@ -151,6 +167,9 @@ public:
     //  returns true if a channel is found, false if not
     bool get_mavlink_channel(enum SerialProtocol protocol, uint8_t instance, mavlink_channel_t &mav_chan) const;
 
+    // should_forward_mavlink_telemetry - returns true if this port should forward telemetry
+    bool should_forward_mavlink_telemetry(enum SerialProtocol protocol, uint8_t instance) const;
+
     // get_mavlink_protocol - provides the specific MAVLink protocol for a
     // given channel, or SerialProtocol_None if not found
     SerialProtocol get_mavlink_protocol(mavlink_channel_t mav_chan) const;
@@ -166,6 +185,11 @@ public:
 
     // get Serial Port
     AP_HAL::UARTDriver *get_serial_by_id(uint8_t id);
+
+    // accessors for AP_Periph to set baudrate and type
+    void set_protocol_and_baud(uint8_t sernum, enum SerialProtocol protocol, uint32_t baudrate);
+
+    static uint32_t map_baudrate(int32_t rate);
 
     // parameter var table
     static const struct AP_Param::GroupInfo var_info[];
@@ -191,13 +215,11 @@ private:
     const UARTState *find_protocol_instance(enum SerialProtocol protocol,
                                       uint8_t instance) const;
 
-    uint32_t map_baudrate(int32_t rate) const;
-
     // protocol_match - returns true if the protocols match
     bool protocol_match(enum SerialProtocol protocol1, enum SerialProtocol protocol2) const;
 
     // setup any special options
-    void set_options(uint8_t i);
+    void set_options(uint16_t i);
 };
 
 namespace AP {

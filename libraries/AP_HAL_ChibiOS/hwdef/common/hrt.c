@@ -40,17 +40,25 @@
   the same property, but which also maintains timer_base_us64 to allow
   for micros64()
 */
+<<<<<<< HEAD
 
 #if CH_CFG_ST_FREQUENCY != 1000000U && CH_CFG_ST_FREQUENCY != 1000U
 #error "unsupported tick frequency"
 #endif
+=======
+>>>>>>> upstream/master
 
 #if CH_CFG_ST_RESOLUTION == 16
 static uint32_t system_time_u32_us(void)
 {
     systime_t now = chVTGetSystemTimeX();
+<<<<<<< HEAD
 #if CH_CFG_ST_FREQUENCY == 1000U
     now *= 1000U;
+=======
+#if CH_CFG_ST_FREQUENCY != 1000000U
+    #error "must use 32 bit timer if system clock not 1MHz"
+>>>>>>> upstream/master
 #endif
     static systime_t last_systime;
     static uint32_t timer_base_us32;
@@ -63,8 +71,13 @@ static uint32_t system_time_u32_us(void)
 static uint32_t system_time_u32_us(void)
 {
     systime_t now = chVTGetSystemTimeX();
+<<<<<<< HEAD
 #if CH_CFG_ST_FREQUENCY == 1000U
     now *= 1000U;
+=======
+#if CH_CFG_ST_FREQUENCY != 1000000U
+    now *= 1000000U/CH_CFG_ST_FREQUENCY;
+>>>>>>> upstream/master
 #endif
     return now;
 }

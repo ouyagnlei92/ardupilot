@@ -334,14 +334,25 @@ void AP_IOMCU::read_status()
     uint32_t now = AP_HAL::millis();
     if (now - last_log_ms >= 1000U) {
         last_log_ms = now;
-        AP::logger().Write("IOMC", "TimeUS,Mem,TS,NPkt,Nerr,Nerr2,NDel", "QHIIIII",
-                           AP_HAL::micros64(),
-                           reg_status.freemem,
-                           reg_status.timestamp_ms,
-                           reg_status.total_pkts,
-                           total_errors,
-                           reg_status.num_errors,
-                           num_delayed);
+        if (AP_Logger::get_singleton()) {
+// @LoggerMessage: IOMC
+// @Description: IOMCU diagnostic information
+// @Field: TimeUS: Time since system startup
+// @Field: Mem: Free memory
+// @Field: TS: IOMCU uptime
+// @Field: NPkt: Number of packets received by IOMCU
+// @Field: Nerr: Protocol failures on MCU side
+// @Field: Nerr2: Reported number of failures on IOMCU side
+// @Field: NDel: Number of delayed packets received by MCU
+            AP::logger().Write("IOMC", "TimeUS,Mem,TS,NPkt,Nerr,Nerr2,NDel", "QHIIIII",
+                               AP_HAL::micros64(),
+                               reg_status.freemem,
+                               reg_status.timestamp_ms,
+                               reg_status.total_pkts,
+                               total_errors,
+                               reg_status.num_errors,
+                               num_delayed);
+        }
 #if IOMCU_DEBUG_ENABLE
         static uint32_t last_io_print;
         if (now - last_io_print >= 5000) {
@@ -378,10 +389,7 @@ void AP_IOMCU::read_servo()
  */
 void AP_IOMCU::discard_input(void)
 {
-    uint32_t n = uart.available();
-    while (n--) {
-        uart.read();
-    }
+    uart.discard_input();
 }
 
 /*
@@ -774,12 +782,12 @@ bool AP_IOMCU::check_crc(void)
         hal.console->printf("failed to find %s\n", fw_name);
         return false;
     }
-    uint32_t crc = crc_crc32(0, fw, fw_size);
+    uint32_t crc = crc32_small(0, fw, fw_size);
 
     // pad CRC to max size
 	for (uint32_t i=0; i<flash_size-fw_size; i++) {
 		uint8_t b = 0xff;
-		crc = crc_crc32(crc, &b, 1);
+        crc = crc32_small(crc, &b, 1);
 	}
 
     uint32_t io_crc = 0;
@@ -805,7 +813,7 @@ bool AP_IOMCU::check_crc(void)
     if (!upload_fw()) {
         AP_ROMFS::free(fw);
         fw = nullptr;
-        AP_BoardConfig::sensor_config_error("Failed to update IO firmware");
+        AP_BoardConfig::config_error("Failed to update IO firmware");
     }
 
     AP_ROMFS::free(fw);
@@ -976,7 +984,7 @@ void AP_IOMCU::handle_repeated_failures(void)
         // initial sync with IOMCU
         return;
     }
-    AP::internalerror().error(AP_InternalError::error_t::iomcu_fail);
+    INTERNAL_ERROR(AP_InternalError::error_t::iomcu_fail);
 }
 
 /*
@@ -998,9 +1006,16 @@ void AP_IOMCU::check_iomcu_reset(void)
         return;
     }
     detected_io_reset = true;
-    AP::internalerror().error(AP_InternalError::error_t::iomcu_reset);
+    INTERNAL_ERROR(AP_InternalError::error_t::iomcu_reset);
     hal.console->printf("IOMCU reset t=%u %u %u dt=%u\n",
                         unsigned(AP_HAL::millis()), unsigned(ts1), unsigned(reg_status.timestamp_ms), unsigned(dt_ms));
+
+    if (safety_forced_off && !reg_status.flag_safety_off && hal.util->get_soft_armed()) {
+        // IOMCU has reset while armed with safety off - force it off
+        // again so we can keep flying
+        force_safety_off();
+    }
+
     // we need to ensure the mixer data and the rates are sent over to
     // the IOMCU
     if (mixing.enabled) {

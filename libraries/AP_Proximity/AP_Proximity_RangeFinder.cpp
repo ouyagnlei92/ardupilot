@@ -18,7 +18,11 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <AP_RangeFinder/AP_RangeFinder.h>
+<<<<<<< HEAD
 #include <AP_RangeFinder/RangeFinder_Backend.h>
+=======
+#include <AP_RangeFinder/AP_RangeFinder_Backend.h>
+>>>>>>> upstream/master
 
 // update the state of the sensor
 void AP_Proximity_RangeFinder::update(void)

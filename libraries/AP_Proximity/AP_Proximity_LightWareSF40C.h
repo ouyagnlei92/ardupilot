@@ -1,21 +1,33 @@
 #pragma once
 
 #include "AP_Proximity.h"
-#include "AP_Proximity_Backend.h"
+#include "AP_Proximity_Backend_Serial.h"
 
 #define PROXIMITY_SF40C_TIMEOUT_MS            200   // requests timeout after 0.2 seconds
 #define PROXIMITY_SF40C_PAYLOAD_LEN_MAX       256   // maximum payload size we can accept (in some configurations sensor may send as large as 1023)
+<<<<<<< HEAD
+=======
+#define PROXIMITY_SF40C_COMBINE_READINGS        7   // combine this many readings together to improve efficiency
+>>>>>>> upstream/master
 
-class AP_Proximity_LightWareSF40C : public AP_Proximity_Backend
+class AP_Proximity_LightWareSF40C : public AP_Proximity_Backend_Serial
 {
 
 public:
     // constructor
+<<<<<<< HEAD
     AP_Proximity_LightWareSF40C(AP_Proximity &_frontend,
                                 AP_Proximity::Proximity_State &_state);
 
     // static detection function
     static bool detect();
+=======
+    using AP_Proximity_Backend_Serial::AP_Proximity_Backend_Serial;
+
+    uint16_t rxspace() const override {
+        return 1280;
+    };
+>>>>>>> upstream/master
 
     // update state
     void update(void) override;
@@ -28,7 +40,10 @@ private:
 
     // initialise sensor
     void initialise();
+<<<<<<< HEAD
     void init_sectors();
+=======
+>>>>>>> upstream/master
 
     // restart sensor and re-init our state
     void restart_sensor();
@@ -66,6 +81,7 @@ private:
         ALARM5 = 116,
         ALARM6 = 117,
         ALARM7 = 118
+<<<<<<< HEAD
     };
 
     // motor states
@@ -77,6 +93,19 @@ private:
         FAILED_TO_COMMUNICATE = 4
     };
 
+=======
+    };
+
+    // motor states
+    enum class MotorState : uint8_t {
+        UNKNOWN = 0,
+        PREPARING_FOR_STARTUP = 1,
+        WAITING_FOR_FIVE_REVS = 2,
+        RUNNING_NORMALLY = 3,
+        FAILED_TO_COMMUNICATE = 4
+    };
+
+>>>>>>> upstream/master
     // send message to sensor
     void send_message(MessageID msgid, bool write, const uint8_t *payload, uint16_t payload_len);
 
@@ -85,12 +114,21 @@ private:
 
     // request start of streaming of distances
     void request_stream_start();
+<<<<<<< HEAD
 
     // request token of sensor (required for reset)
     void request_token();
     bool got_token() const { return (_sensor_state.token[0] != 0 || _sensor_state.token[1] != 0); }
     void clear_token() { memset(_sensor_state.token, 0, ARRAY_SIZE(_sensor_state.token)); }
 
+=======
+
+    // request token of sensor (required for reset)
+    void request_token();
+    bool got_token() const { return (_sensor_state.token[0] != 0 || _sensor_state.token[1] != 0); }
+    void clear_token() { memset(_sensor_state.token, 0, ARRAY_SIZE(_sensor_state.token)); }
+
+>>>>>>> upstream/master
     // request reset of sensor
     void request_reset();
 
@@ -105,8 +143,11 @@ private:
     void process_message();
 
     // internal variables
+<<<<<<< HEAD
     AP_HAL::UARTDriver *_uart;              // uart for communicating with sensor
     bool _sector_initialised;               // true if sectors have been initialised
+=======
+>>>>>>> upstream/master
     uint32_t _last_request_ms;              // system time of last request
     uint32_t _last_reply_ms;                // system time of last valid reply
     uint32_t _last_restart_ms;              // system time we restarted the sensor

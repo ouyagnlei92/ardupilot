@@ -15,17 +15,29 @@ local num_leds = 30
 local chan = SRV_Channels:find_channel(94)
 
 if not chan then
+<<<<<<< HEAD
     gcs:send_text(6, string.format("LEDs: channel not set"))
+=======
+    gcs:send_text(6, "LEDs: channel not set")
+>>>>>>> upstream/master
     return
 end
 
 -- find_channel returns 0 to 15, convert to 1 to 16
 chan = chan + 1
 
+<<<<<<< HEAD
 gcs:send_text(6, string.format("LEDs: chan=" .. tostring(chan)))
 
 -- initialisation code
 serialLED:set_num_LEDs(chan,  num_leds)
+=======
+gcs:send_text(6, "LEDs: chan=" .. tostring(chan))
+
+-- initialisation code
+--serialLED:set_num_neopixel(chan,  num_leds)
+serialLED:set_num_profiled(chan,  num_leds)
+>>>>>>> upstream/master
 
 -- constrain a value between limits
 function constrain(v, vmin, vmax)
@@ -63,7 +75,11 @@ function set_Rainbow(chan, led, v)
   r = math.floor(rainbow[row][1] + p * (rainbow[row+1][1] - rainbow[row][1]))
   g = math.floor(rainbow[row][2] + p * (rainbow[row+1][2] - rainbow[row][2]))
   b = math.floor(rainbow[row][3] + p * (rainbow[row+1][3] - rainbow[row][3]))
+<<<<<<< HEAD
   serialLED:set_RGB(chan, uint32_t(1 << led), r, g, b)
+=======
+  serialLED:set_RGB(chan, led, r, g, b)
+>>>>>>> upstream/master
 end
 
 --[[
@@ -76,7 +92,11 @@ function update_LEDs()
     local v  = constrain(0.5 + 0.5 * math.sin(roll * (led - num_leds/2) / (num_leds/2)), 0, 1)
     set_Rainbow(chan, led, v)
   end
+<<<<<<< HEAD
   serialLED:send()
+=======
+  serialLED:send(chan)
+>>>>>>> upstream/master
 
   return update_LEDs, 20 -- run at 50Hz
 end

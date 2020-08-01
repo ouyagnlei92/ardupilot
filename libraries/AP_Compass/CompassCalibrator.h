@@ -7,12 +7,17 @@
 #define COMPASS_CAL_NUM_SAMPLES             300     // number of samples required before fitting begins
 
 #define COMPASS_MIN_SCALE_FACTOR 0.85
+<<<<<<< HEAD
 #define COMPASS_MAX_SCALE_FACTOR 1.3
+=======
+#define COMPASS_MAX_SCALE_FACTOR 1.4
+>>>>>>> upstream/master
 
 class CompassCalibrator {
 public:
     CompassCalibrator();
 
+<<<<<<< HEAD
     // set tolerance of calibration (aka fitness)
     void set_tolerance(float tolerance) { _tolerance = tolerance; }
 
@@ -26,10 +31,20 @@ public:
     // update the state machine and calculate offsets, diagonals and offdiagonals
     void update(bool &failure);
     void new_sample(const Vector3f &sample);
+=======
+    // start or stop the calibration
+    void start(bool retry, float delay, uint16_t offset_max, uint8_t compass_idx, float tolerance);
+    void stop();
 
-    bool check_for_timeout();
+    // Update point sample
+    void new_sample(const Vector3f& sample);
+>>>>>>> upstream/master
+
+    // set compass's initial orientation and whether it should be automatically fixed (if required)
+    void set_orientation(enum Rotation orientation, bool is_external, bool fix_orientation);
 
     // running is true if actively calculating offsets, diagonals or offdiagonals
+<<<<<<< HEAD
     bool running() const;
 
     // compass calibration states
@@ -61,6 +76,74 @@ public:
 
     // get how many attempts have been made to calibrate for reporting to GCS
     uint8_t get_attempt() const { return _attempt; }
+=======
+    bool running();
+
+    // failed is true if either of the failure states are hit
+    bool failed();
+
+
+    // update the state machine and calculate offsets, diagonals and offdiagonals
+    void update();
+
+    // compass calibration states
+    enum class Status {
+        NOT_STARTED = 0,
+        WAITING_TO_START = 1,
+        RUNNING_STEP_ONE = 2,
+        RUNNING_STEP_TWO = 3,
+        SUCCESS = 4,
+        FAILED = 5,
+        BAD_ORIENTATION = 6,
+        BAD_RADIUS = 7,
+    };
+
+    // get completion mask for mavlink reporting (a bitmask of faces/directions for which we have compass samples)
+    typedef uint8_t completion_mask_t[10];
+
+    // Structure accessed for cal status update via mavlink 
+    struct State {
+        Status status;
+        uint8_t attempt;
+        float completion_pct;
+        completion_mask_t completion_mask;
+    } cal_state;
+
+    // Structure accessed after calibration is finished/failed
+    struct Report {
+        Status status;
+        float fitness;
+        Vector3f ofs;
+        Vector3f diag;
+        Vector3f offdiag;
+        float orientation_confidence;
+        Rotation original_orientation;
+        Rotation orientation;
+        float scale_factor;
+    } cal_report;
+
+    // Structure setup to set calibration run settings
+    struct Settings {
+        float tolerance;
+        bool check_orientation;
+        enum Rotation orientation;
+        enum Rotation orig_orientation;
+        bool is_external;
+        bool fix_orientation;
+        uint16_t offset_max;
+        uint8_t attempt;
+        bool retry;
+        float delay_start_sec;
+        uint32_t start_time_ms;
+        uint8_t compass_idx;
+    } cal_settings;
+
+    // Get calibration result
+    const Report get_report();
+    
+    // Get current Calibration state
+    const State get_state();
+>>>>>>> upstream/master
 
     // get completion mask for mavlink reporting (a bitmask of faces/directions for which we have compass samples)
     typedef uint8_t completion_mask_t[10];
@@ -111,6 +194,12 @@ private:
 
     // set status including any required initialisation
     bool set_status(Status status);
+<<<<<<< HEAD
+=======
+
+    // consume point raw sample from intermediate structure
+    void pull_sample();
+>>>>>>> upstream/master
 
     // returns true if sample should be added to buffer
     bool accept_sample(const Vector3f &sample, uint16_t skip_index = UINT16_MAX);
@@ -126,7 +215,11 @@ private:
     void initialize_fit();
 
     // true if enough samples have been collected and fitting has begun (aka runniong())
+<<<<<<< HEAD
     bool fitting() const;
+=======
+    bool _fitting() const;
+>>>>>>> upstream/master
 
     // thins out samples between step one and step two
     void thin_samples();
@@ -162,9 +255,22 @@ private:
     // fix radius to compensate for sensor scaling errors
     bool fix_radius();
 
+<<<<<<< HEAD
     uint8_t _compass_idx;                   // index of the compass providing data
     Status _status;                         // current state of calibrator
     uint32_t _last_sample_ms;               // system time of last sample received for timeout
+=======
+    // update methods to read write intermediate structures, called inside thread
+    inline void update_cal_status();
+    inline void update_cal_report();
+    inline void update_cal_settings();
+
+    // running method for use in thread
+    bool _running() const;
+
+    uint8_t _compass_idx;                   // index of the compass providing data
+    Status _status;                         // current state of calibrator
+>>>>>>> upstream/master
 
     // values provided by caller
     float _delay_start_sec;                 // seconds to delay start of calibration (provided by caller)
@@ -191,8 +297,27 @@ private:
     // variables for orientation checking
     enum Rotation _orientation;             // latest detected orientation
     enum Rotation _orig_orientation;        // original orientation provided by caller
+<<<<<<< HEAD
+=======
+    enum Rotation _orientation_solution;    // latest solution
+>>>>>>> upstream/master
     bool _is_external;                      // true if compass is external (provided by caller)
     bool _check_orientation;                // true if orientation should be automatically checked
     bool _fix_orientation;                  // true if orientation should be fixed if necessary
     float _orientation_confidence;          // measure of confidence in automatic orientation detection
+<<<<<<< HEAD
+=======
+    CompassSample _last_sample;
+
+    Status _requested_status;
+    bool   _status_set_requested;
+
+    bool _new_sample;
+
+    // Semaphore for state related intermediate structures
+    HAL_Semaphore state_sem;
+
+    // Semaphore for intermediate structure for point sample collection
+    HAL_Semaphore sample_sem;
+>>>>>>> upstream/master
 };

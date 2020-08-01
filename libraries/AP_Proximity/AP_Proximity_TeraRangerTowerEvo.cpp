@@ -15,13 +15,13 @@
 
 #include <AP_HAL/AP_HAL.h>
 #include "AP_Proximity_TeraRangerTowerEvo.h"
-#include <AP_SerialManager/AP_SerialManager.h>
 #include <AP_Math/crc.h>
 #include <ctype.h>
 #include <stdio.h>
 
 extern const AP_HAL::HAL& hal;
 
+<<<<<<< HEAD
 /*
    The constructor also initialises the proximity sensor. Note that this
    constructor is not called until detect() returns true, so we
@@ -46,13 +46,17 @@ bool AP_Proximity_TeraRangerTowerEvo::detect()
     return (AP::serialmanager().find_serial(AP_SerialManager::SerialProtocol_Lidar360, 0) != nullptr);
 }
 
+=======
+>>>>>>> upstream/master
 // update the state of the sensor
 void AP_Proximity_TeraRangerTowerEvo::update(void)
 {
-    if (uart == nullptr) {
+    if (_uart == nullptr) {
         return;
     }
-
+    if (_last_request_sent_ms == 0) {
+        _last_request_sent_ms = AP_HAL::millis();
+    }
     //initialize the sensor
     if(_current_init_state != InitState::InitState_Finished)
     {
@@ -101,19 +105,19 @@ void AP_Proximity_TeraRangerTowerEvo::initialise_modes()
 
 void AP_Proximity_TeraRangerTowerEvo::set_mode(const uint8_t *c, int length)
 {
-    uart->write(c, length);
+    _uart->write(c, length);
     _last_request_sent_ms = AP_HAL::millis();
 }
 
 // check for replies from sensor, returns true if at least one message was processed
 bool AP_Proximity_TeraRangerTowerEvo::read_sensor_data()
 {
-    if (uart == nullptr) {
+    if (_uart == nullptr) {
         return false;
     }
 
     uint16_t message_count = 0;
-    int16_t nbytes = uart->available();
+    int16_t nbytes = _uart->available();
 
     if(_current_init_state != InitState_Finished && nbytes == 4) {
 
@@ -137,7 +141,7 @@ bool AP_Proximity_TeraRangerTowerEvo::read_sensor_data()
     }
 
     while (nbytes-- > 0) {
-        char c = uart->read();
+        char c = _uart->read();
         if (c == 'T' ) {
             buffer_count = 0;
         }
@@ -168,15 +172,13 @@ bool AP_Proximity_TeraRangerTowerEvo::read_sensor_data()
 // process reply
 void AP_Proximity_TeraRangerTowerEvo::update_sector_data(int16_t angle_deg, uint16_t distance_cm)
 {
-    uint8_t sector;
-    if (convert_angle_to_sector(angle_deg, sector)) {
-        _angle[sector] = angle_deg;
-        _distance[sector] = ((float) distance_cm) / 1000;
+    const uint8_t sector = convert_angle_to_sector(angle_deg);
+    _angle[sector] = angle_deg;
+    _distance[sector] = ((float) distance_cm) / 1000;
 
-        //check for target too far, target too close and sensor not connected
-        _distance_valid[sector] = distance_cm != 0xffff && distance_cm != 0x0000 && distance_cm != 0x0001;
-        _last_distance_received_ms = AP_HAL::millis();
-        // update boundary used for avoidance
-        update_boundary_for_sector(sector, true);
-    }
+    //check for target too far, target too close and sensor not connected
+    _distance_valid[sector] = distance_cm != 0xffff && distance_cm != 0x0000 && distance_cm != 0x0001;
+    _last_distance_received_ms = AP_HAL::millis();
+    // update boundary used for avoidance
+    update_boundary_for_sector(sector, true);
 }

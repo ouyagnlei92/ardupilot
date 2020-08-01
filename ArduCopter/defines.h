@@ -19,6 +19,7 @@ enum autopilot_yaw_mode {
     AUTO_YAW_LOOK_AHEAD =       4,  // point in the direction the copter is moving
     AUTO_YAW_RESETTOARMEDYAW =  5,  // point towards heading at time motors were armed
     AUTO_YAW_RATE =             6,  // turn at a specified rate (held in auto_yaw_rate)
+    AUTO_YAW_CIRCLE =           7,  // use AC_Circle's provided yaw (used during Loiter-Turns commands)
 };
 
 // Frame types
@@ -57,9 +58,9 @@ enum tuning_func {
     TUNING_CIRCLE_RATE =                39, // circle turn rate in degrees (hard coded to about 45 degrees in either direction)
     TUNING_ACRO_YAW_KP =                40, // acro controller's P term.  converts pilot input to a desired roll, pitch or yaw rate
     TUNING_RANGEFINDER_GAIN =           41, // rangefinder gain
-    TUNING_EKF_VERTICAL_POS =           42, // EKF's baro vs accel (higher rely on accels more, baro impact is reduced).  Range should be 0.2 ~ 4.0?  2.0 is default
-    TUNING_EKF_HORIZONTAL_POS =         43, // EKF's gps vs accel (higher rely on accels more, gps impact is reduced).  Range should be 1.0 ~ 3.0?  1.5 is default
-    TUNING_EKF_ACCEL_NOISE =            44, // EKF's accel noise (lower means trust accels more, gps & baro less).  Range should be 0.02 ~ 0.5  0.5 is default (but very robust at that level)
+    TUNING_EKF_VERTICAL_POS =           42, // unused
+    TUNING_EKF_HORIZONTAL_POS =         43, // unused
+    TUNING_EKF_ACCEL_NOISE =            44, // unused
     TUNING_RC_FEEL_RP =                 45, // roll-pitch input smoothing
     TUNING_RATE_PITCH_KP =              46, // body frame pitch rate controller's P term
     TUNING_RATE_PITCH_KI =              47, // body frame pitch rate controller's I term
@@ -75,11 +76,6 @@ enum tuning_func {
     TUNING_WINCH =                      57, // winch control (not actually a value to be tuned)
     TUNING_SYSTEM_ID_MAGNITUDE =        58  // magnitude of the system ID signal
 };
-
-// Acro Trainer types
-#define ACRO_TRAINER_DISABLED   0
-#define ACRO_TRAINER_LEVELING   1
-#define ACRO_TRAINER_LIMITED    2
 
 // Yaw behaviours during missions - possible values for WP_YAW_BEHAVIOR parameter
 #define WP_YAW_BEHAVIOR_NONE                          0   // auto pilot will never control yaw during missions or rtl (except for DO_CONDITIONAL_YAW command received)
@@ -111,14 +107,11 @@ enum GuidedMode {
     Guided_Angle,
 };
 
-// RTL states
-enum RTLState {
-    RTL_Starting,
-    RTL_InitialClimb,
-    RTL_ReturnHome,
-    RTL_LoiterAtHome,
-    RTL_FinalDescent,
-    RTL_Land
+// Airmode
+enum class AirMode {
+    AIRMODE_NONE,
+    AIRMODE_DISABLED,
+    AIRMODE_ENABLED,
 };
 
 // Safe RTL states
@@ -128,11 +121,6 @@ enum SmartRTLState {
     SmartRTL_PreLandPosition,
     SmartRTL_Descend,
     SmartRTL_Land
-};
-
-enum LandStateType {
-    LandStateType_FlyToLocation = 0,
-    LandStateType_Descending = 1
 };
 
 enum PayloadPlaceStateType {
@@ -153,6 +141,7 @@ enum PayloadPlaceStateType {
 enum DevOptions {
     DevOptionADSBMAVLink = 1,
     DevOptionVFR_HUDRelativeAlt = 2,
+    DevOptionSetAttitudeTarget_ThrustAsThrust = 4,
 };
 
 //  Logging parameters

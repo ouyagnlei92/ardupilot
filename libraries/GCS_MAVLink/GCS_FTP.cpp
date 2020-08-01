@@ -19,13 +19,23 @@
 #include "GCS.h"
 
 #include <AP_Filesystem/AP_Filesystem.h>
+<<<<<<< HEAD
 
 #if HAVE_FILESYSTEM_SUPPORT
+=======
+#include <AP_HAL/utility/sparse-endian.h>
+>>>>>>> upstream/master
 
 extern const AP_HAL::HAL& hal;
 
 struct GCS_MAVLINK::ftp_state GCS_MAVLINK::ftp;
 
+<<<<<<< HEAD
+=======
+// timeout for session inactivity
+#define FTP_SESSION_TIMEOUT 3000
+
+>>>>>>> upstream/master
 bool GCS_MAVLINK::ftp_init(void) {
     // we can simply check if we allocated everything we need
     if (ftp.requests != nullptr) {
@@ -65,14 +75,22 @@ void GCS_MAVLINK::handle_file_transfer_protocol(const mavlink_message_t &msg) {
         struct pending_ftp request;
 
         request.chan = chan;
+<<<<<<< HEAD
         request.seq_number = *(uint16_t *)packet.payload;
+=======
+        request.seq_number = le16toh_ptr(packet.payload);
+>>>>>>> upstream/master
 
         request.session = packet.payload[2];
         request.opcode = static_cast<FTP_OP>(packet.payload[3]);
         request.size = packet.payload[4];
         request.req_opcode = static_cast<FTP_OP>(packet.payload[5]);
         request.burst_complete = packet.payload[6];
+<<<<<<< HEAD
         request.offset = *(uint32_t *)(&packet.payload[8]);
+=======
+        request.offset = le32toh_ptr(&packet.payload[8]);
+>>>>>>> upstream/master
         request.sysid = msg.sysid;
         request.compid = msg.compid;
         memcpy(request.data, &packet.payload[12], sizeof(packet.payload) - 12);
@@ -84,8 +102,22 @@ void GCS_MAVLINK::handle_file_transfer_protocol(const mavlink_message_t &msg) {
     }
 }
 
+<<<<<<< HEAD
 void GCS_MAVLINK::send_ftp_replies(void) {
     if (ftp.replies == nullptr) {
+=======
+void GCS_MAVLINK::send_ftp_replies(void)
+{
+    /*
+      provide same banner we would give with old param download
+    */
+    if (ftp.need_banner_send_mask & (1U<<chan)) {
+        ftp.need_banner_send_mask &= ~(1U<<chan);
+        send_banner();
+    }
+    
+    if (ftp.replies == nullptr || ftp.replies->is_empty()) {
+>>>>>>> upstream/master
         return;
     }
 
@@ -101,6 +133,7 @@ void GCS_MAVLINK::send_ftp_replies(void) {
         struct pending_ftp reply;
         uint8_t payload[251] = {};
         if (ftp.replies->peek(reply) && (reply.chan == chan)) {
+<<<<<<< HEAD
                 ((uint16_t *)payload)[0] = reply.seq_number;
                 payload[2] = reply.session;
                 payload[3] = static_cast<uint8_t>(reply.opcode);
@@ -114,6 +147,22 @@ void GCS_MAVLINK::send_ftp_replies(void) {
                     0, reply.sysid, reply.compid,
                     payload);
                 ftp.replies->pop(reply);
+=======
+            put_le16_ptr(payload, reply.seq_number);
+            payload[2] = reply.session;
+            payload[3] = static_cast<uint8_t>(reply.opcode);
+            payload[4] = reply.size;
+            payload[5] = static_cast<uint8_t>(reply.req_opcode);
+            payload[6] = reply.burst_complete ? 1 : 0;
+            put_le32_ptr(&payload[8], reply.offset);
+            memcpy(&payload[12], reply.data, sizeof(reply.data));
+            mavlink_msg_file_transfer_protocol_send(
+                reply.chan,
+                0, reply.sysid, reply.compid,
+                payload);
+            ftp.replies->pop();
+            ftp.last_send_ms = AP_HAL::millis();
+>>>>>>> upstream/master
         } else {
             return;
         }
@@ -147,7 +196,11 @@ void GCS_MAVLINK::ftp_error(struct pending_ftp &response, FTP_ERROR error) {
 void GCS_MAVLINK::ftp_push_replies(pending_ftp &reply)
 {
     while (!ftp.replies->push(reply)) { // we must fit the response, keep shoving it in
+<<<<<<< HEAD
         hal.scheduler->delay(10);
+=======
+        hal.scheduler->delay(2);
+>>>>>>> upstream/master
     }
 }
 
@@ -157,9 +210,17 @@ void GCS_MAVLINK::ftp_worker(void) {
     reply.session = -1; // flag the reply as invalid for any reuse
 
     while (true) {
+<<<<<<< HEAD
         while (!ftp.requests->pop(request)) {
             // nothing to handle, delay ourselves a bit then check again. Ideally we'd use conditional waits here
             hal.scheduler->delay(10);
+=======
+        bool skip_push_reply = false;
+
+        while (!ftp.requests->pop(request)) {
+            // nothing to handle, delay ourselves a bit then check again. Ideally we'd use conditional waits here
+            hal.scheduler->delay(2);
+>>>>>>> upstream/master
         }
 
         // if it's a rerequest and we still have the last response then send it
@@ -185,16 +246,39 @@ void GCS_MAVLINK::ftp_worker(void) {
             continue;
         }
 
+<<<<<<< HEAD
+=======
+        uint32_t now = AP_HAL::millis();
+
+>>>>>>> upstream/master
         // check for session termination
         if (request.session != ftp.current_session &&
             (request.opcode == FTP_OP::TerminateSession || request.opcode == FTP_OP::ResetSessions)) {
             // terminating a different session, just ack
             reply.opcode = FTP_OP::Ack;
+<<<<<<< HEAD
         } else if (ftp.fd != -1 && request.session != ftp.current_session) {
+=======
+        } else if (ftp.fd != -1 && request.session != ftp.current_session &&
+                   now - ftp.last_send_ms < FTP_SESSION_TIMEOUT) {
+>>>>>>> upstream/master
             // if we have an open file and the session isn't right
             // then reject. This prevents IO on the wrong file
             ftp_error(reply, FTP_ERROR::InvalidSession);
         } else {
+<<<<<<< HEAD
+=======
+            if (ftp.fd != -1 &&
+                request.session != ftp.current_session &&
+                now - ftp.last_send_ms >= FTP_SESSION_TIMEOUT) {
+                // if a new session appears and the old session has
+                // been idle for more than the timeout then force
+                // close the old session
+                AP::FS().close(ftp.fd);
+                ftp.fd = -1;
+                ftp.current_session = -1;
+            }
+>>>>>>> upstream/master
             // dispatch the command as needed
             switch (request.opcode) {
                 case FTP_OP::None:
@@ -216,6 +300,17 @@ void GCS_MAVLINK::ftp_worker(void) {
                 case FTP_OP::OpenFileRO:
                     {
                         // only allow one file to be open per session
+<<<<<<< HEAD
+=======
+                        if (ftp.fd != -1 && now - ftp.last_send_ms > FTP_SESSION_TIMEOUT) {
+                            // no activity for 3s, assume client has
+                            // timed out receiving open reply, close
+                            // the file
+                            AP::FS().close(ftp.fd);
+                            ftp.fd = -1;
+                            ftp.current_session = -1;
+                        }
+>>>>>>> upstream/master
                         if (ftp.fd != -1) {
                             ftp_error(reply, FTP_ERROR::Fail);
                             break;
@@ -249,7 +344,16 @@ void GCS_MAVLINK::ftp_worker(void) {
 
                         reply.opcode = FTP_OP::Ack;
                         reply.size = sizeof(uint32_t);
+<<<<<<< HEAD
                         *((int32_t *)reply.data) = (int32_t)file_size;
+=======
+                        put_le32_ptr(reply.data, (uint32_t)file_size);
+
+                        // provide compatibility with old protocol banner download
+                        if (strncmp((const char *)request.data, "@PARAM/param.pck", 16) == 0) {
+                            ftp.need_banner_send_mask |= 1U<<reply.chan;
+                        }
+>>>>>>> upstream/master
                         break;
                     }
                 case FTP_OP::ReadFile:
@@ -430,12 +534,20 @@ void GCS_MAVLINK::ftp_worker(void) {
                         // reset our scratch area so we don't leak data, and can leverage trimming
                         memset(reply.data, 0, sizeof(reply.data));
                         reply.size = sizeof(uint32_t);
+<<<<<<< HEAD
                         ((uint32_t *)reply.data)[0] = checksum;
+=======
+                        put_le32_ptr(reply.data, checksum);
+>>>>>>> upstream/master
                         reply.opcode = FTP_OP::Ack;
                         break;
                     }
                 case FTP_OP::BurstReadFile:
                     {
+<<<<<<< HEAD
+=======
+                        const uint16_t max_read = (request.size == 0?sizeof(reply.data):request.size);
+>>>>>>> upstream/master
                         // must actually be working on a file
                         if (ftp.fd == -1) {
                             ftp_error(reply, FTP_ERROR::FileNotFound);
@@ -454,6 +566,7 @@ void GCS_MAVLINK::ftp_worker(void) {
                             break;
                         }
 
+<<<<<<< HEAD
                         bool more_pending = true;
                         const uint32_t transfer_size = 100;
                         for (uint32_t i = 0; (i < transfer_size) && more_pending; i++) {
@@ -462,6 +575,14 @@ void GCS_MAVLINK::ftp_worker(void) {
                             if (read_bytes == -1) {
                                 ftp_error(reply, FTP_ERROR::FailErrno);
                                 more_pending = false;
+=======
+                        const uint32_t transfer_size = 100;
+                        for (uint32_t i = 0; (i < transfer_size); i++) {
+                            // fill the buffer
+                            const ssize_t read_bytes = AP::FS().read(ftp.fd, reply.data, max_read);
+                            if (read_bytes == -1) {
+                                ftp_error(reply, FTP_ERROR::FailErrno);
+>>>>>>> upstream/master
                                 break;
                             }
 
@@ -472,21 +593,44 @@ void GCS_MAVLINK::ftp_worker(void) {
 
                             if (read_bytes == 0) {
                                 ftp_error(reply, FTP_ERROR::EndOfFile);
+<<<<<<< HEAD
                                 more_pending = false;
+=======
+>>>>>>> upstream/master
                                 break;
                             }
 
                             reply.opcode = FTP_OP::Ack;
+<<<<<<< HEAD
                             reply.offset = request.offset + i * sizeof(reply.data);
+=======
+                            reply.offset = request.offset + i * max_read;
+>>>>>>> upstream/master
                             reply.burst_complete = (i == (transfer_size - 1));
                             reply.size = (uint8_t)read_bytes;
 
                             ftp_push_replies(reply);
 
+<<<<<<< HEAD
+=======
+                            if (read_bytes < max_read) {
+                                // ensure the NACK which we send next is at the right offset
+                                reply.offset += read_bytes;
+                            }
+
+>>>>>>> upstream/master
                             // prep the reply to be used again
                             reply.seq_number++;
                         }
 
+<<<<<<< HEAD
+=======
+                        if (reply.opcode != FTP_OP::Nack) {
+                            // prevent a duplicate packet send for
+                            // normal replies of burst reads
+                            skip_push_reply = true;
+                        }
+>>>>>>> upstream/master
                         break;
                     }
                 case FTP_OP::TruncateFile:
@@ -499,7 +643,14 @@ void GCS_MAVLINK::ftp_worker(void) {
             }
         }
 
+<<<<<<< HEAD
         ftp_push_replies(reply);
+=======
+        if (!skip_push_reply) {
+            ftp_push_replies(reply);
+        }
+
+>>>>>>> upstream/master
         continue;
     }
 }
@@ -545,10 +696,16 @@ void GCS_MAVLINK::ftp_list_dir(struct pending_ftp &request, struct pending_ftp &
     request.data[sizeof(request.data) - 1] = 0; // ensure the path is null terminated
 
     // open the dir
+<<<<<<< HEAD
     DIR *dir = AP::FS().opendir((char *)request.data);
     if (dir == nullptr) {
         ftp_error(response, FTP_ERROR::FailErrno);
         AP::FS().closedir(dir);
+=======
+    auto *dir = AP::FS().opendir((char *)request.data);
+    if (dir == nullptr) {
+        ftp_error(response, FTP_ERROR::FailErrno);
+>>>>>>> upstream/master
         return;
     }
 
@@ -608,5 +765,8 @@ void GCS_MAVLINK::ftp_list_dir(struct pending_ftp &request, struct pending_ftp &
 
     AP::FS().closedir(dir);
 }
+<<<<<<< HEAD
 
 #endif // HAVE_FILESYSTEM_SUPPORT
+=======
+>>>>>>> upstream/master

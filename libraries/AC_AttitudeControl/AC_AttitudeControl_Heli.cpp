@@ -58,7 +58,11 @@ const AP_Param::GroupInfo AC_AttitudeControl_Heli::var_info[] = {
     // @Param: RAT_RLL_FLTT
     // @DisplayName: Roll axis rate controller target frequency in Hz
     // @Description: Roll axis rate controller target frequency in Hz
+<<<<<<< HEAD
     // @Range: 1 50
+=======
+    // @Range: 5 50
+>>>>>>> upstream/master
     // @Increment: 1
     // @Units: Hz
     // @User: Standard
@@ -66,7 +70,11 @@ const AP_Param::GroupInfo AC_AttitudeControl_Heli::var_info[] = {
     // @Param: RAT_RLL_FLTE
     // @DisplayName: Roll axis rate controller error frequency in Hz
     // @Description: Roll axis rate controller error frequency in Hz
+<<<<<<< HEAD
     // @Range: 1 50
+=======
+    // @Range: 5 50
+>>>>>>> upstream/master
     // @Increment: 1
     // @Units: Hz
     // @User: Standard
@@ -74,7 +82,11 @@ const AP_Param::GroupInfo AC_AttitudeControl_Heli::var_info[] = {
     // @Param: RAT_RLL_FLTD
     // @DisplayName: Roll axis rate controller derivative frequency in Hz
     // @Description: Roll axis rate controller derivative frequency in Hz
+<<<<<<< HEAD
     // @Range: 1 50
+=======
+    // @Range: 0 50
+>>>>>>> upstream/master
     // @Increment: 1
     // @Units: Hz
     // @User: Standard
@@ -124,7 +136,11 @@ const AP_Param::GroupInfo AC_AttitudeControl_Heli::var_info[] = {
     // @Param: RAT_PIT_FLTT
     // @DisplayName: Pitch axis rate controller target frequency in Hz
     // @Description: Pitch axis rate controller target frequency in Hz
+<<<<<<< HEAD
     // @Range: 1 50
+=======
+    // @Range: 5 50
+>>>>>>> upstream/master
     // @Increment: 1
     // @Units: Hz
     // @User: Standard
@@ -132,7 +148,11 @@ const AP_Param::GroupInfo AC_AttitudeControl_Heli::var_info[] = {
     // @Param: RAT_PIT_FLTE
     // @DisplayName: Pitch axis rate controller error frequency in Hz
     // @Description: Pitch axis rate controller error frequency in Hz
+<<<<<<< HEAD
     // @Range: 1 50
+=======
+    // @Range: 5 50
+>>>>>>> upstream/master
     // @Increment: 1
     // @Units: Hz
     // @User: Standard
@@ -140,7 +160,11 @@ const AP_Param::GroupInfo AC_AttitudeControl_Heli::var_info[] = {
     // @Param: RAT_PIT_FLTD
     // @DisplayName: Pitch axis rate controller derivative frequency in Hz
     // @Description: Pitch axis rate controller derivative frequency in Hz
+<<<<<<< HEAD
     // @Range: 1 50
+=======
+    // @Range: 0 50
+>>>>>>> upstream/master
     // @Increment: 1
     // @Units: Hz
     // @User: Standard
@@ -190,7 +214,11 @@ const AP_Param::GroupInfo AC_AttitudeControl_Heli::var_info[] = {
     // @Param: RAT_YAW_FLTT
     // @DisplayName: Yaw axis rate controller target frequency in Hz
     // @Description: Yaw axis rate controller target frequency in Hz
+<<<<<<< HEAD
     // @Range: 1 50
+=======
+    // @Range: 5 50
+>>>>>>> upstream/master
     // @Increment: 1
     // @Units: Hz
     // @User: Standard
@@ -198,7 +226,11 @@ const AP_Param::GroupInfo AC_AttitudeControl_Heli::var_info[] = {
     // @Param: RAT_YAW_FLTE
     // @DisplayName: Yaw axis rate controller error frequency in Hz
     // @Description: Yaw axis rate controller error frequency in Hz
+<<<<<<< HEAD
     // @Range: 1 50
+=======
+    // @Range: 5 50
+>>>>>>> upstream/master
     // @Increment: 1
     // @Units: Hz
     // @User: Standard
@@ -206,7 +238,11 @@ const AP_Param::GroupInfo AC_AttitudeControl_Heli::var_info[] = {
     // @Param: RAT_YAW_FLTD
     // @DisplayName: Yaw axis rate controller derivative frequency in Hz
     // @Description: Yaw axis rate controller derivative frequency in Hz
+<<<<<<< HEAD
     // @Range: 1 50
+=======
+    // @Range: 0 50
+>>>>>>> upstream/master
     // @Increment: 1
     // @Units: Hz
     // @User: Standard
@@ -343,7 +379,7 @@ void AC_AttitudeControl_Heli::rate_controller_run()
 // Update Alt_Hold angle maximum
 void AC_AttitudeControl_Heli::update_althold_lean_angle_max(float throttle_in)
 {
-    float althold_lean_angle_max = acosf(constrain_float(_throttle_in / AC_ATTITUDE_HELI_ANGLE_LIMIT_THROTTLE_MAX, 0.0f, 1.0f));
+    float althold_lean_angle_max = acosf(constrain_float(throttle_in / AC_ATTITUDE_HELI_ANGLE_LIMIT_THROTTLE_MAX, 0.0f, 1.0f));
     _althold_lean_angle_max = _althold_lean_angle_max + (_dt / (_dt + _angle_limit_tc)) * (althold_lean_angle_max - _althold_lean_angle_max);
 }
 

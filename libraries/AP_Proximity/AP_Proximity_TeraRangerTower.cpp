@@ -15,13 +15,13 @@
 
 #include <AP_HAL/AP_HAL.h>
 #include "AP_Proximity_TeraRangerTower.h"
-#include <AP_SerialManager/AP_SerialManager.h>
 #include <AP_Math/crc.h>
 #include <ctype.h>
 #include <stdio.h>
 
 extern const AP_HAL::HAL& hal;
 
+<<<<<<< HEAD
 /*
    The constructor also initialises the proximity sensor. Note that this
    constructor is not called until detect() returns true, so we
@@ -48,10 +48,12 @@ bool AP_Proximity_TeraRangerTower::detect()
     return uart != nullptr;
 }
 
+=======
+>>>>>>> upstream/master
 // update the state of the sensor
 void AP_Proximity_TeraRangerTower::update(void)
 {
-    if (uart == nullptr) {
+    if (_uart == nullptr) {
         return;
     }
 
@@ -79,15 +81,15 @@ float AP_Proximity_TeraRangerTower::distance_min() const
 // check for replies from sensor, returns true if at least one message was processed
 bool AP_Proximity_TeraRangerTower::read_sensor_data()
 {
-    if (uart == nullptr) {
+    if (_uart == nullptr) {
         return false;
     }
 
     uint16_t message_count = 0;
-    int16_t nbytes = uart->available();
+    int16_t nbytes = _uart->available();
 
     while (nbytes-- > 0) {
-        char c = uart->read();
+        char c = _uart->read();
         if (c == 'T' ) {
             buffer_count = 0;
         }
@@ -119,13 +121,11 @@ bool AP_Proximity_TeraRangerTower::read_sensor_data()
 // process reply
 void AP_Proximity_TeraRangerTower::update_sector_data(int16_t angle_deg, uint16_t distance_cm)
 {
-    uint8_t sector;
-    if (convert_angle_to_sector(angle_deg, sector)) {
-        _angle[sector] = angle_deg;
-        _distance[sector] = ((float) distance_cm) / 1000;
-        _distance_valid[sector] = distance_cm != 0xffff;
-        _last_distance_received_ms = AP_HAL::millis();
-        // update boundary used for avoidance
-        update_boundary_for_sector(sector, true);
-    }
+    const uint8_t sector = convert_angle_to_sector(angle_deg);
+    _angle[sector] = angle_deg;
+    _distance[sector] = ((float) distance_cm) / 1000;
+    _distance_valid[sector] = distance_cm != 0xffff;
+    _last_distance_received_ms = AP_HAL::millis();
+    // update boundary used for avoidance
+    update_boundary_for_sector(sector, true);
 }

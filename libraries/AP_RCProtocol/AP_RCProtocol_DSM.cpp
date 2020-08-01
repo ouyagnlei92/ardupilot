@@ -15,9 +15,16 @@
  * Code by Andrew Tridgell and Siddharth Bharat Purohit
  */
 /*
-  with thanks to PX4 dsm.c for DSM decoding approach
+ * See https://www.spektrumrc.com/ProdInfo/Files/Remote%20Receiver%20Interfacing%20Rev%20A.pdf for official
+ * Spektrum documentation on the format.
  */
+
+#include <AP_Vehicle/AP_Vehicle_Type.h>
 #include "AP_RCProtocol_DSM.h"
+#if !APM_BUILD_TYPE(APM_BUILD_iofirmware)
+#include "AP_RCProtocol_SRXL2.h"
+#endif
+#include <stdio.h>
 
 extern const AP_HAL::HAL& hal;
 
@@ -31,11 +38,28 @@ extern const AP_HAL::HAL& hal;
 
 #define DSM_FRAME_SIZE		16		/**<DSM frame size in bytes*/
 #define DSM_FRAME_CHANNELS	7		/**<Max supported DSM channels*/
+#define DSM2_1024_22MS      0x01
+#define DSM2_2048_11MS      0x12
+#define DSMX_2048_22MS      0xa2
+#define DSMX_2048_11MS      0xb2
+#define SPEKTRUM_VTX_CONTROL_FRAME_MASK 0xf000f000
+#define SPEKTRUM_VTX_CONTROL_FRAME      0xe000e000
+
+#define SPEKTRUM_VTX_BAND_MASK          0x00e00000
+#define SPEKTRUM_VTX_CHANNEL_MASK       0x000f0000
+#define SPEKTRUM_VTX_PIT_MODE_MASK      0x00000010
+#define SPEKTRUM_VTX_POWER_MASK         0x00000007
+
+#define SPEKTRUM_VTX_BAND_SHIFT         21
+#define SPEKTRUM_VTX_CHANNEL_SHIFT      16
+#define SPEKTRUM_VTX_PIT_MODE_SHIFT     4
+#define SPEKTRUM_VTX_POWER_SHIFT        0
 
 void AP_RCProtocol_DSM::process_pulse(uint32_t width_s0, uint32_t width_s1)
 {
     uint8_t b;
     if (ss.process_pulse(width_s0, width_s1, b)) {
+<<<<<<< HEAD
         _process_byte(ss.get_byte_timestamp_us()/1000U, b);
     }
 }
@@ -168,57 +192,48 @@ void AP_RCProtocol_DSM::dsm_guess_format(bool reset, const uint8_t dsm_frame[16]
         channel_shift = 10;
         debug("DSM: 10-bit format");
         return;
+=======
+        _process_byte(ss.get_byte_timestamp_us(), b);
+>>>>>>> upstream/master
     }
-
-    /* call ourselves to reset our state ... we have to try again */
-    debug("DSM: format detect fail, 10: 0x%08x %u 11: 0x%08x %u", cs10, votes10, cs11, votes11);
-    dsm_guess_format(true, dsm_frame);
 }
 
 /**
  * Decode the entire dsm frame (all contained channels)
  *
  */
-bool AP_RCProtocol_DSM::dsm_decode(uint32_t frame_time_ms, const uint8_t dsm_frame[16],
+bool AP_RCProtocol_DSM::dsm_decode(uint32_t frame_time_us, const uint8_t dsm_frame[16],
                                    uint16_t *values, uint16_t *num_values, uint16_t max_values)
 {
-    /*
-     * If we have lost signal for at least 200ms, reset the
-     * format guessing heuristic.
-     */
-    if (((frame_time_ms - last_frame_time_ms) > 200U) && (channel_shift != 0)) {
-        dsm_guess_format(true, dsm_frame);
-    }
-
     /* we have received something we think is a dsm_frame */
-    last_frame_time_ms = frame_time_ms;
+    last_frame_time_us = frame_time_us;
+    // Get the VTX control bytes in a frame
+    uint32_t vtxControl = ((dsm_frame[AP_DSM_FRAME_SIZE-4] << 24)
+        | (dsm_frame[AP_DSM_FRAME_SIZE-3] << 16)
+        | (dsm_frame[AP_DSM_FRAME_SIZE-2] <<  8)
+        | (dsm_frame[AP_DSM_FRAME_SIZE-1] <<  0));
 
-    /* if we don't know the dsm_frame format, update the guessing state machine */
-    if (channel_shift == 0) {
-        dsm_guess_format(false, dsm_frame);
-        return false;
+    uint8_t dsm_frame_data_size;
+    // Handle VTX control frame.
+    if ((vtxControl & SPEKTRUM_VTX_CONTROL_FRAME_MASK) == SPEKTRUM_VTX_CONTROL_FRAME 
+        && (dsm_frame[2] & 0x80) == 0)  {
+        dsm_frame_data_size = AP_DSM_FRAME_SIZE - 4;
+#if !APM_BUILD_TYPE(APM_BUILD_iofirmware)
+        AP_RCProtocol_SRXL2::configure_vtx(
+            (vtxControl & SPEKTRUM_VTX_BAND_MASK)     >> SPEKTRUM_VTX_BAND_SHIFT,
+            (vtxControl & SPEKTRUM_VTX_CHANNEL_MASK)  >> SPEKTRUM_VTX_CHANNEL_SHIFT,
+            (vtxControl & SPEKTRUM_VTX_POWER_MASK)    >> SPEKTRUM_VTX_POWER_SHIFT,
+            (vtxControl & SPEKTRUM_VTX_PIT_MODE_MASK) >> SPEKTRUM_VTX_PIT_MODE_SHIFT);
+#endif
+    } else {
+        dsm_frame_data_size = AP_DSM_FRAME_SIZE;
     }
 
-    /*
-     * The encoding of the first two bytes is uncertain, so we're
-     * going to ignore them for now.
-     *
-     * Each channel is a 16-bit unsigned value containing either a 10-
-     * or 11-bit channel value and a 4-bit channel number, shifted
-     * either 10 or 11 bits. The MSB may also be set to indicate the
-     * second dsm_frame in variants of the protocol where more than
-     * seven channels are being transmitted.
-     */
+    // Get the RC control channel inputs
+    for (uint8_t b = 3; b < dsm_frame_data_size; b += 2) {
+        uint8_t channel = 0x0F & (dsm_frame[b - 1] >> channel_shift);
 
-    for (unsigned i = 0; i < DSM_FRAME_CHANNELS; i++) {
-
-        const uint8_t *dp = &dsm_frame[2 + (2 * i)];
-        uint16_t raw = (dp[0] << 8) | dp[1];
-        unsigned channel, value;
-
-        if (!dsm_decode_channel(raw, channel_shift, &channel, &value)) {
-            continue;
-        }
+        uint32_t value = ((uint32_t)(dsm_frame[b - 1] & channel_mask) << 8) + dsm_frame[b];
 
         /* ignore channels out of range */
         if (channel >= max_values) {
@@ -231,33 +246,23 @@ bool AP_RCProtocol_DSM::dsm_decode(uint32_t frame_time_ms, const uint8_t dsm_fra
         }
 
         /* convert 0-1024 / 0-2048 values to 1000-2000 ppm encoding. */
-        if (channel_shift == 10) {
+        if (channel_shift == 2) {
             value *= 2;
         }
 
-        /*
-         * Spektrum scaling is special. There are these basic considerations
-         *
-         *   * Midpoint is 1520 us
-         *   * 100% travel channels are +- 400 us
-         *
-         * We obey the original Spektrum scaling (so a default setup will scale from
-         * 1100 - 1900 us), but we do not obey the weird 1520 us center point
-         * and instead (correctly) center the center around 1500 us. This is in order
-         * to get something useful without requiring the user to calibrate on a digital
-         * link for no reason.
-         */
-
+        /* Spektrum scaling is defined as (see reference):
+            2048: PWM_OUT = (ServoPosition x 58.3μs) + 903
+            1024: PWM_OUT = (ServoPosition x 116.6μs) + 903 */
         /* scaled integer for decent accuracy while staying efficient */
-        value = ((((int)value - 1024) * 1000) / 1700) + 1500;
+        value = ((int32_t)value * 1194) / 2048 + 903;
 
         /*
-         * Store the decoded channel into the R/C input buffer, taking into
-         * account the different ideas about channel assignement that we have.
-         *
-         * Specifically, the first four channels in rc_channel_data are roll, pitch, thrust, yaw,
-         * but the first four channels from the DSM receiver are thrust, roll, pitch, yaw.
-         */
+        * Store the decoded channel into the R/C input buffer, taking into
+        * account the different ideas about channel assignement that we have.
+        *
+        * Specifically, the first four channels in rc_channel_data are roll, pitch, thrust, yaw,
+        * but the first four channels from the DSM receiver are thrust, roll, pitch, yaw.
+        */
         switch (channel) {
         case 0:
             channel = 2;
@@ -269,6 +274,7 @@ bool AP_RCProtocol_DSM::dsm_decode(uint32_t frame_time_ms, const uint8_t dsm_fra
 
         case 2:
             channel = 1;
+            break;
 
         default:
             break;
@@ -276,23 +282,6 @@ bool AP_RCProtocol_DSM::dsm_decode(uint32_t frame_time_ms, const uint8_t dsm_fra
 
         values[channel] = value;
     }
-
-    /*
-     * Spektrum likes to send junk in higher channel numbers to fill
-     * their packets. We don't know about a 13 channel model in their TX
-     * lines, so if we get a channel count of 13, we'll return 12 (the last
-     * data index that is stable).
-     */
-    if (*num_values == 13) {
-        *num_values = 12;
-    }
-
-#if 0
-    if (channel_shift == 11) {
-        /* Set the 11-bit data indicator */
-        *num_values |= 0x8000;
-    }
-#endif
 
     /*
      * XXX Note that we may be in failsafe here; we need to work out how to detect that.
@@ -371,7 +360,7 @@ void AP_RCProtocol_DSM::update(void)
 /*
   parse one DSM byte, maintaining decoder state
  */
-bool AP_RCProtocol_DSM::dsm_parse_byte(uint32_t frame_time_ms, uint8_t b, uint16_t *values,
+bool AP_RCProtocol_DSM::dsm_parse_byte(uint32_t frame_time_us, uint8_t b, uint16_t *values,
                                        uint16_t *num_values, uint16_t max_channels)
 {
     /* this is set by the decoding state machine and will default to false
@@ -379,90 +368,82 @@ bool AP_RCProtocol_DSM::dsm_parse_byte(uint32_t frame_time_ms, uint8_t b, uint16
 	 */
 	bool decode_ret = false;
 
+    // we took too long decoding, start again
+    if (byte_input.ofs > 0 && (frame_time_us - start_frame_time_us) > 6000U) {
+        start_frame_time_us = frame_time_us;
+        byte_input.ofs = 0;
+    }
+
+    // there will be at least a 5ms gap between successive DSM frames. if we see it
+    // assume we are starting a new frame
+    if ((frame_time_us - last_rx_time_us) > 5000U) {
+        start_frame_time_us = frame_time_us;
+        byte_input.ofs = 0;
+    }
+
     /* overflow check */
-    if (byte_input.ofs == sizeof(byte_input.buf) / sizeof(byte_input.buf[0])) {
+    if (byte_input.ofs >= AP_DSM_FRAME_SIZE) {
+        start_frame_time_us = frame_time_us;
         byte_input.ofs = 0;
-        dsm_decode_state = DSM_DECODE_STATE_DESYNC;
-        debug("DSM: RESET (BUF LIM)\n");
     }
 
-    if (byte_input.ofs == DSM_FRAME_SIZE) {
-        byte_input.ofs = 0;
-        dsm_decode_state = DSM_DECODE_STATE_DESYNC;
-        debug("DSM: RESET (PACKET LIM)\n");
+    if (byte_input.ofs == 1) {
+        // saw a beginning of frame marker
+        if (b == DSM2_1024_22MS || b == DSM2_2048_11MS || b == DSMX_2048_22MS || b == DSMX_2048_11MS) {
+            if (b == DSM2_1024_22MS) {
+                // 10 bit frames
+                channel_shift = 2;
+                channel_mask = 0x03;
+            } else {
+                // 11 bit frames
+                channel_shift = 3;
+                channel_mask = 0x07;
+            }
+        // bad frame marker so reset
+        } else {
+            start_frame_time_us = frame_time_us;
+            byte_input.ofs = 0;
+        }
     }
 
+    byte_input.buf[byte_input.ofs++] = b;
+
+    /* decode whatever we got and expect */
+    if (byte_input.ofs == AP_DSM_FRAME_SIZE) {
+        log_data(AP_RCProtocol::DSM, frame_time_us, byte_input.buf, byte_input.ofs);
 #ifdef DSM_DEBUG
-    debug("dsm state: %s%s, count: %d, val: %02x\n",
-          (dsm_decode_state == DSM_DECODE_STATE_DESYNC) ? "DSM_DECODE_STATE_DESYNC" : "",
-          (dsm_decode_state == DSM_DECODE_STATE_SYNC) ? "DSM_DECODE_STATE_SYNC" : "",
-          byte_input.ofs,
-          (unsigned)b);
+        for (uint16_t i = 0; i < 16; i++) {
+            printf("%02x", byte_input.buf[i]);
+        }
+        printf("\n%02x%02x", byte_input.buf[0], byte_input.buf[1]);
+        for (uint16_t i = 2; i < 16; i+=2) {
+            printf(" %01x/%03x", (byte_input.buf[i] & 0x78) >> 4, (byte_input.buf[i] & 0x7) << 8 | byte_input.buf[i+1]);
+        }
+        printf("\n");
 #endif
-
-    switch (dsm_decode_state) {
-    case DSM_DECODE_STATE_DESYNC:
-
-        /* we are de-synced and only interested in the frame marker */
-        if ((frame_time_ms - last_rx_time_ms) >= 5) {
-            dsm_decode_state = DSM_DECODE_STATE_SYNC;
-            byte_input.ofs = 0;
-            byte_input.buf[byte_input.ofs++] = b;
-        }
-        break;
-
-    case DSM_DECODE_STATE_SYNC: {
-        if ((frame_time_ms - last_rx_time_ms) >= 5 && byte_input.ofs > 0) {
-            byte_input.ofs = 0;
-            dsm_decode_state = DSM_DECODE_STATE_DESYNC;
-            break;
-        }
-        byte_input.buf[byte_input.ofs++] = b;
-
-        /* decode whatever we got and expect */
-        if (byte_input.ofs < DSM_FRAME_SIZE) {
-            break;
-        }
-
-        /*
-         * Great, it looks like we might have a frame.  Go ahead and
-         * decode it.
-         */
-        decode_ret = dsm_decode(frame_time_ms, byte_input.buf, values, &chan_count, max_channels);
+        decode_ret = dsm_decode(frame_time_us, byte_input.buf, values, &chan_count, max_channels);
 
         /* we consumed the partial frame, reset */
         byte_input.ofs = 0;
-
-        /* if decoding failed, set proto to desync */
-        if (decode_ret == false) {
-            dsm_decode_state = DSM_DECODE_STATE_DESYNC;
-        }
-        break;
     }
-
-    default:
-        debug("UNKNOWN PROTO STATE");
-        decode_ret = false;
-    }
-
 
     if (decode_ret) {
 		*num_values = chan_count;
 	}
 
-    last_rx_time_ms = frame_time_ms;
+    last_rx_time_us = frame_time_us;
 
 	/* return false as default */
 	return decode_ret;
 }
 
 // support byte input
-void AP_RCProtocol_DSM::_process_byte(uint32_t timestamp_ms, uint8_t b)
+void AP_RCProtocol_DSM::_process_byte(uint32_t timestamp_us, uint8_t b)
 {
     uint16_t v[AP_DSM_MAX_CHANNELS];
     uint16_t nchan;
     memcpy(v, last_values, sizeof(v));
-    if (dsm_parse_byte(timestamp_ms, b, v, &nchan, AP_DSM_MAX_CHANNELS)) {
+    if (dsm_parse_byte(timestamp_us, b, v, &nchan, AP_DSM_MAX_CHANNELS)) {
         memcpy(last_values, v, sizeof(v));
         if (nchan >= MIN_RCIN_CHANNELS) {
             add_input(nchan, last_values, false);
@@ -476,5 +457,5 @@ void AP_RCProtocol_DSM::process_byte(uint8_t b, uint32_t baudrate)
     if (baudrate != 115200) {
         return;
     }
-    _process_byte(AP_HAL::millis(), b);
+    _process_byte(AP_HAL::micros(), b);
 }

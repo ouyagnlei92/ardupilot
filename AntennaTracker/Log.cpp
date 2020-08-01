@@ -65,6 +65,22 @@ void Tracker::Log_Write_Vehicle_Pos(int32_t lat, int32_t lng, int32_t alt, const
     logger.WriteBlock(&pkt, sizeof(pkt));
 }
 
+// @LoggerMessage: VBAR
+// @Description: Information received from tracked vehicle; barometer data
+// @Field: TimeUS: Time since system startup
+// @Field: Press: vehicle barometric pressure
+// @Field: AltDiff: altitude difference based on difference on barometric pressure
+
+// @LoggerMessage: VPOS
+// @Description: Information received from tracked vehicle; barometer position data
+// @Field: TimeUS: Time since system startup
+// @Field: Lat: tracked vehicle latitude
+// @Field: Lng: tracked vehicle longitude
+// @Field: Alt: tracked vehicle altitude
+// @Field: VelX: tracked vehicle velocity, latitude component
+// @Field: VelY: tracked vehicle velocity, longitude component
+// @Field: VelZ: tracked vehicle velocity, vertical component, down
+
 // type and unit information can be found in
 // libraries/AP_Logger/Logstructure.h; search for "log_Units" for
 // units and "Format characters" for field type information
@@ -78,7 +94,7 @@ const struct LogStructure Tracker::log_structure[] = {
 
 void Tracker::Log_Write_Vehicle_Startup_Messages()
 {
-    logger.Write_Mode(control_mode, ModeReason::INITIALISED);
+    logger.Write_Mode((uint8_t)mode->number(), ModeReason::INITIALISED);
     gps.Write_AP_Logger_Log_Startup_messages();
 }
 

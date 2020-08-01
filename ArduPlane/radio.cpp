@@ -40,8 +40,11 @@ void Plane::set_control_channels(void)
         SRV_Channels::set_angle(SRV_Channel::k_throttleRight, 100);
     }
 
+    // update manual forward throttle channel assignment
+    quadplane.rc_fwd_thr_ch = rc().find_channel_for_option(RC_Channel::AUX_FUNC::FWD_THR);
+
     if (!arming.is_armed() && arming.arming_required() == AP_Arming::Required::YES_MIN_PWM) {
-        SRV_Channels::set_safety_limit(SRV_Channel::k_throttle, have_reverse_thrust()?SRV_Channel::SRV_CHANNEL_LIMIT_TRIM:SRV_Channel::SRV_CHANNEL_LIMIT_MIN);
+        SRV_Channels::set_safety_limit(SRV_Channel::k_throttle, have_reverse_thrust()?SRV_Channel::Limit::TRIM:SRV_Channel::Limit::MIN);
     }
 
     if (!quadplane.enable) {
@@ -79,15 +82,15 @@ void Plane::init_rc_out_main()
         SRV_Channels::set_trim_to_min_for(SRV_Channel::k_throttle);
     }
 
-    SRV_Channels::set_failsafe_limit(SRV_Channel::k_aileron, SRV_Channel::SRV_CHANNEL_LIMIT_TRIM);
-    SRV_Channels::set_failsafe_limit(SRV_Channel::k_elevator, SRV_Channel::SRV_CHANNEL_LIMIT_TRIM);
-    SRV_Channels::set_failsafe_limit(SRV_Channel::k_throttle, SRV_Channel::SRV_CHANNEL_LIMIT_TRIM);
-    SRV_Channels::set_failsafe_limit(SRV_Channel::k_rudder, SRV_Channel::SRV_CHANNEL_LIMIT_TRIM);
+    SRV_Channels::set_failsafe_limit(SRV_Channel::k_aileron, SRV_Channel::Limit::TRIM);
+    SRV_Channels::set_failsafe_limit(SRV_Channel::k_elevator, SRV_Channel::Limit::TRIM);
+    SRV_Channels::set_failsafe_limit(SRV_Channel::k_throttle, SRV_Channel::Limit::TRIM);
+    SRV_Channels::set_failsafe_limit(SRV_Channel::k_rudder, SRV_Channel::Limit::TRIM);
     
     // setup flight controller to output the min throttle when safety off if arming
     // is setup for min on disarm
     if (arming.arming_required() == AP_Arming::Required::YES_MIN_PWM) {
-        SRV_Channels::set_safety_limit(SRV_Channel::k_throttle, have_reverse_thrust()?SRV_Channel::SRV_CHANNEL_LIMIT_TRIM:SRV_Channel::SRV_CHANNEL_LIMIT_MIN);
+        SRV_Channels::set_safety_limit(SRV_Channel::k_throttle, have_reverse_thrust()?SRV_Channel::Limit::TRIM:SRV_Channel::Limit::MIN);
     }
 }
 
@@ -165,7 +168,7 @@ void Plane::rudder_arm_disarm_check()
                 }
 			} else {
 				//time to disarm!
-				arming.disarm();
+				arming.disarm(AP_Arming::Method::RUDDER);
 				rudder_arm_timer = 0;
 			}
 		} else {
@@ -179,6 +182,8 @@ void Plane::read_radio()
 {
     if (!rc().read_input()) {
         control_failsafe();
+        airspeed_nudge_cm = 0;
+        throttle_nudge = 0;
         return;
     }
 
@@ -247,7 +252,7 @@ int16_t Plane::rudder_input(void)
 
 void Plane::control_failsafe()
 {
-    if (millis() - failsafe.last_valid_rc_ms > 1000 || rc_failsafe_active()) {
+    if (rc_failsafe_active()) {
         // we do not have valid RC input. Set all primary channel
         // control inputs to the trim value and throttle to min
         channel_roll->set_radio_in(channel_roll->get_radio_trim());

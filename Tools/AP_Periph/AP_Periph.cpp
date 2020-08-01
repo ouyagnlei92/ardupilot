@@ -25,6 +25,7 @@
 #include "hal.h"
 #include <stdio.h>
 #include <AP_HAL_ChibiOS/hwdef/common/stm32_util.h>
+#include <AP_HAL_ChibiOS/hwdef/common/watchdog.h>
 
 extern const AP_HAL::HAL &hal;
 
@@ -47,17 +48,31 @@ void loop(void)
 
 static uint32_t start_ms;
 
-const struct app_descriptor app_descriptor __attribute__((section(".app_descriptor")));;
+/*
+  declare constant app_descriptor in flash
+ */
+const struct app_descriptor app_descriptor __attribute__((section(".app_descriptor")));
 
 void AP_Periph_FW::init()
 {
-    hal.uartA->begin(AP_SERIALMANAGER_CONSOLE_BAUD, 32, 128);
-    hal.uartB->begin(115200, 32, 128);
+    // always run with watchdog enabled. This should have already been
+    // setup by the bootloader, but if not then enable now
+    stm32_watchdog_init();
+
+    stm32_watchdog_pat();
+
+    hal.uartA->begin(AP_SERIALMANAGER_CONSOLE_BAUD, 32, 32);
+    hal.uartB->begin(115200, 128, 256);
 
     load_parameters();
+
+    stm32_watchdog_pat();
+
     can_start();
 
     serial_manager.init();
+
+    stm32_watchdog_pat();
 
 #ifdef HAL_BOARD_AP_PERIPH_ZUBAXGNSS
     // setup remapping register for ZubaxGNSS
@@ -79,21 +94,24 @@ void AP_Periph_FW::init()
     }
 
 #ifdef HAL_PERIPH_ENABLE_GPS
-    gps.init(serial_manager);
+    if (gps.get_type(0) != AP_GPS::GPS_Type::GPS_TYPE_NONE) {
+        gps.init(serial_manager);
+    }
 #endif
 
 #ifdef HAL_PERIPH_ENABLE_MAG
-    compass.init();
+    if (compass.enabled()) {
+        compass.init();
+    }
 #endif
 
 #ifdef HAL_PERIPH_ENABLE_BARO
     baro.init();
-    baro.calibrate(false);
 #endif
 
 #ifdef HAL_PERIPH_NEOPIXEL_COUNT
     hal.rcout->init();
-    hal.rcout->set_neopixel_num_LEDs(HAL_PERIPH_NEOPIXEL_CHAN, HAL_PERIPH_NEOPIXEL_COUNT);
+    hal.rcout->set_serial_led_num_LEDs(HAL_PERIPH_NEOPIXEL_CHAN, AP_HAL::RCOutput::MODE_NEOPIXEL);
 #endif
 
 #ifdef HAL_PERIPH_ENABLE_ADSB
@@ -101,11 +119,26 @@ void AP_Periph_FW::init()
 #endif
 
 #ifdef HAL_PERIPH_ENABLE_AIRSPEED
-    airspeed.init();
+    if (airspeed.enabled()) {
+        airspeed.init();
+    }
 #endif
 
 #ifdef HAL_PERIPH_ENABLE_RANGEFINDER
-    rangefinder.init(ROTATION_NONE);
+    if (rangefinder.get_type(0) != RangeFinder::Type::NONE) {
+        const uint8_t sernum = 3; // uartB
+        hal.uartB->begin(g.rangefinder_baud);
+        serial_manager.set_protocol_and_baud(sernum, AP_SerialManager::SerialProtocol_Rangefinder, g.rangefinder_baud);
+        rangefinder.init(ROTATION_NONE);
+    }
+#endif
+
+#ifdef HAL_PERIPH_ENABLE_PWM_HARDPOINT
+    pwm_hardpoint_init();
+#endif
+
+#ifdef HAL_PERIPH_ENABLE_HWESC
+    hwesc_telem.init(hal.uartB);
 #endif
     
     start_ms = AP_HAL::millis();
@@ -124,8 +157,8 @@ static void update_rainbow()
     uint32_t now = AP_HAL::millis();
     if (now-start_ms > 1500) {
         rainbow_done = true;
-        hal.rcout->set_neopixel_rgb_data(HAL_PERIPH_NEOPIXEL_CHAN, 0xFF, 0, 0, 0);
-        hal.rcout->neopixel_send();
+        hal.rcout->set_serial_led_rgb_data(HAL_PERIPH_NEOPIXEL_CHAN, -1, 0, 0, 0);
+        hal.rcout->serial_led_send(HAL_PERIPH_NEOPIXEL_CHAN);
         return;
     }
     static uint32_t last_update_ms;
@@ -153,13 +186,13 @@ static void update_rainbow()
     float brightness = 0.3;
     for (uint8_t n=0; n<8; n++) {
         uint8_t i = (step + n) % nsteps;
-        hal.rcout->set_neopixel_rgb_data(HAL_PERIPH_NEOPIXEL_CHAN, 1U<<n,
+        hal.rcout->set_serial_led_rgb_data(HAL_PERIPH_NEOPIXEL_CHAN, n,
                                          rgb_rainbow[i].red*brightness,
                                          rgb_rainbow[i].green*brightness,
                                          rgb_rainbow[i].blue*brightness);
     }
     step++;
-    hal.rcout->neopixel_send();
+    hal.rcout->serial_led_send(HAL_PERIPH_NEOPIXEL_CHAN);
 }
 #endif
 
@@ -183,11 +216,14 @@ void AP_Periph_FW::update()
 #ifdef HAL_PERIPH_ENABLE_BARO
         hal.uartA->printf("BARO H=%u P=%.2f T=%.2f\n", baro.healthy(), baro.get_pressure(), baro.get_temperature());
 #endif
+#ifdef HAL_PERIPH_ENABLE_RANGEFINDER
+        hal.uartA->printf("RNG %u %ucm\n", rangefinder.num_sensors(), rangefinder.distance_cm_orient(ROTATION_NONE));
+#endif
         hal.scheduler->delay(1);
         show_stack_usage();
 #endif
 #ifdef HAL_PERIPH_NEOPIXEL_COUNT
-        hal.rcout->set_neopixel_num_LEDs(HAL_PERIPH_NEOPIXEL_CHAN, HAL_PERIPH_NEOPIXEL_COUNT);
+        hal.rcout->set_serial_led_num_LEDs(HAL_PERIPH_NEOPIXEL_CHAN, HAL_PERIPH_NEOPIXEL_COUNT, AP_HAL::RCOutput::MODE_NEOPIXEL);
 #endif
     }
     can_update();

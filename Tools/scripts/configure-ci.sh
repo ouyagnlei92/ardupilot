@@ -18,17 +18,17 @@ CCACHE_TARBALL="$CCACHE_ROOT.tar.bz2"
 mkdir -p $HOME/opt
 pushd $HOME
 
-# PX4 toolchain
+# STM32 toolchain
 dir=$ARM_ROOT
 if [ ! -d "$HOME/opt/$dir" -o ! -x "$HOME/opt/$dir/bin/arm-none-eabi-g++" ]; then
-  wget http://firmware.ardupilot.org/Tools/STM32-tools/$ARM_TARBALL
+  wget https://firmware.ardupilot.org/Tools/STM32-tools/$ARM_TARBALL
   tar -xf $ARM_TARBALL -C opt
 fi
 
 # RPi/BBB toolchain
 dir="tools-master/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian-x64"
 if [ ! -d "$HOME/opt/$dir" -o ! -x "$HOME/opt/$dir/bin/arm-linux-gnueabihf-g++" ]; then
-  wget http://firmware.ardupilot.org/Tools/Travis/NavIO/$RPI_TARBALL
+  wget https://firmware.ardupilot.org/Tools/Travis/NavIO/$RPI_TARBALL
   tar -xf $RPI_TARBALL -C opt $dir
 fi
 
@@ -77,7 +77,7 @@ exportline="${exportline}:$HOME/opt/$CCACHE_ROOT"
 exportline="${exportline}:\$PATH"
 
 if grep -Fxq "$exportline" ~/.profile; then
-    echo nothing to do;
+    echo "nothing to do";
 else
     echo $exportline >> ~/.profile;
 fi
@@ -85,7 +85,7 @@ fi
 . ~/.profile
 
 pip install --user -U argparse empy pyserial pexpect future lxml
-pip install --user -U mavproxy
 pip install --user -U intelhex
 pip install --user -U numpy
 pip install --user -U edn_format
+

@@ -60,6 +60,13 @@ bool AP_MotorsHeli_Quad::init_outputs()
     // set rotor servo range
     _main_rotor.init_servo();
 
+    // set signal value for main rotor external governor to know when to use autorotation bailout ramp up
+    if (_main_rotor._rsc_mode.get() == ROTOR_CONTROL_MODE_SPEED_SETPOINT  ||  _main_rotor._rsc_mode.get() == ROTOR_CONTROL_MODE_SPEED_PASSTHROUGH) {
+        _main_rotor.set_ext_gov_arot_bail(_main_rotor._ext_gov_arot_pct.get());
+    } else {
+        _main_rotor.set_ext_gov_arot_bail(0);
+    }
+
     _flags.initialised_ok = true;
 
     return true;
@@ -123,6 +130,15 @@ void AP_MotorsHeli_Quad::calculate_armed_scalars()
 
     // set bailout ramp time
     _main_rotor.use_bailout_ramp_time(_heliflags.enable_bailout);
+<<<<<<< HEAD
+=======
+
+    // allow use of external governor autorotation bailout window on main rotor
+    if (_main_rotor._ext_gov_arot_pct.get() > 0  &&  (_main_rotor._rsc_mode.get() == ROTOR_CONTROL_MODE_SPEED_SETPOINT  ||  _main_rotor._rsc_mode.get() == ROTOR_CONTROL_MODE_SPEED_PASSTHROUGH)){
+        // RSC only needs to know that the vehicle is in an autorotation if using the bailout window on an external governor
+        _main_rotor.set_autorotaion_flag(_heliflags.in_autorotation);
+    }
+>>>>>>> upstream/master
 }
 
 // calculate_scalars
@@ -189,10 +205,10 @@ void AP_MotorsHeli_Quad::update_motor_control(RotorControlState state)
 
     if (state == ROTOR_CONTROL_STOP) {
         // set engine run enable aux output to not run position to kill engine when disarmed
-        SRV_Channels::set_output_limit(SRV_Channel::k_engine_run_enable, SRV_Channel::SRV_CHANNEL_LIMIT_MIN);
+        SRV_Channels::set_output_limit(SRV_Channel::k_engine_run_enable, SRV_Channel::Limit::MIN);
     } else {
         // else if armed, set engine run enable output to run position
-        SRV_Channels::set_output_limit(SRV_Channel::k_engine_run_enable, SRV_Channel::SRV_CHANNEL_LIMIT_MAX);
+        SRV_Channels::set_output_limit(SRV_Channel::k_engine_run_enable, SRV_Channel::Limit::MAX);
     }
 
     // Check if rotors are run-up
