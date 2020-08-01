@@ -137,6 +137,9 @@ public:
         return _airspeed;
     }
 
+    // return the index of the primary core or -1 if no primary core selected
+    virtual int8_t get_primary_core_index() const { return -1; }
+
     // get the index of the current primary accelerometer sensor
     virtual uint8_t get_primary_accel_index(void) const {
         return AP::ins().get_primary_accel();
@@ -186,6 +189,9 @@ public:
 
     // check whether external navigation is providing yaw.  Allows compass pre-arm checks to be bypassed
     virtual bool is_ext_nav_used_for_yaw(void) const { return false; }
+    
+    // request EKF yaw reset to try and avoid the need for an EKF lane switch or failsafe
+    virtual void request_yaw_reset(void) {}
 
     // Euler angles (radians)
     float roll;
@@ -537,12 +543,22 @@ public:
 
     // rotate a 2D vector from earth frame to body frame
     // in result, x is forward, y is right
-    Vector2f rotate_earth_to_body2D(const Vector2f &ef_vector) const;
+    Vector2f earth_to_body2D(const Vector2f &ef_vector) const;
 
     // rotate a 2D vector from earth frame to body frame
     // in input, x is forward, y is right
-    Vector2f rotate_body_to_earth2D(const Vector2f &bf) const;
+    Vector2f body_to_earth2D(const Vector2f &bf) const;
 
+    // convert a vector from body to earth frame
+    Vector3f body_to_earth(const Vector3f &v) const {
+        return v * get_rotation_body_to_ned();
+    }
+
+    // convert a vector from earth to body frame
+    Vector3f earth_to_body(const Vector3f &v) const {
+        return get_rotation_body_to_ned().mul_transpose(v);
+    }
+    
     virtual void update_AOA_SSA(void);
 
     // get_hgt_ctrl_limit - get maximum height to be observed by the
@@ -550,12 +566,22 @@ public:
     // false when no limiting is required
     virtual bool get_hgt_ctrl_limit(float &limit) const WARN_IF_UNUSED { return false; };
 
+    // Set to true if the terrain underneath is stable enough to be used as a height reference
+    // this is not related to terrain following
+    virtual void set_terrain_hgt_stable(bool stable) {}
+
     // Write position and quaternion data from an external navigation system
-    virtual void writeExtNavData(const Vector3f &sensOffset, const Vector3f &pos, const Quaternion &quat, float posErr, float angErr, uint32_t timeStamp_ms, uint32_t resetTime_ms) { }
+    virtual void writeExtNavData(const Vector3f &pos, const Quaternion &quat, float posErr, float angErr, uint32_t timeStamp_ms, uint16_t delay_ms, uint32_t resetTime_ms) { }
+
+    // Write velocity data from an external navigation system
+    virtual void writeExtNavVelData(const Vector3f &vel, float err, uint32_t timeStamp_ms, uint16_t delay_ms) { }
 
     // return current vibration vector for primary IMU
     Vector3f get_vibration(void) const;
-    
+
+    // set and save the alt noise parameter value
+    virtual void set_alt_measurement_noise(float noise) {};
+
     // allow threads to lock against AHRS update
     HAL_Semaphore &get_semaphore(void) {
         return _rsem;

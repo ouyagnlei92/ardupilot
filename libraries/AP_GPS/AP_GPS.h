@@ -42,6 +42,10 @@
 
 #define UNIX_OFFSET_MSEC (17000ULL * 86400ULL + 52ULL * 10ULL * AP_MSEC_PER_WEEK - GPS_LEAPSECONDS_MILLIS)
 
+#ifndef GPS_UBLOX_MOVING_BASELINE
+#define GPS_UBLOX_MOVING_BASELINE !HAL_MINIMIZE_FEATURES && GPS_MAX_RECEIVERS>1
+#endif
+
 class AP_GPS_Backend;
 
 /// @class AP_GPS
@@ -375,7 +379,7 @@ public:
 
     // return true if the GPS currently has yaw available
     bool have_gps_yaw(uint8_t instance) const {
-        return state[instance].have_gps_yaw;
+        return !_force_disable_gps_yaw && state[instance].have_gps_yaw;
     }
     bool have_gps_yaw(void) const {
         return have_gps_yaw(primary_instance);
@@ -464,6 +468,11 @@ public:
         _force_disable_gps = disable;
     }
 
+    // used to disable GPS yaw for GPS failure testing in flight
+    void set_force_disable_yaw(bool disable) {
+        _force_disable_gps_yaw = disable;
+    }
+
     // handle possibly fragmented RTCM injection data
     void handle_gps_rtcm_fragment(uint8_t flags, const uint8_t *data, uint8_t len);
 
@@ -493,6 +502,7 @@ protected:
     AP_Int16 _delay_ms[GPS_MAX_RECEIVERS];
     AP_Int8 _blend_mask;
     AP_Float _blend_tc;
+    AP_Int16 _driver_options;
 
     uint32_t _log_gps_bit = -1;
 
@@ -515,6 +525,12 @@ private:
 
         // delta time between the last pair of GPS updates in system milliseconds
         uint16_t delta_time_ms;
+
+        // count of delayed frames
+        uint8_t delayed_count;
+
+        // the average time delta
+        float average_delta_ms;
     };
     // Note allowance for an additional instance to contain blended data
     GPS_timing timing[GPS_MAX_INSTANCES];
@@ -616,8 +632,18 @@ private:
         GPS_AUTO_CONFIG_ENABLE  = 1
     };
 
+    enum class GPSAutoSwitch {
+        NONE        = 0,
+        USE_BEST    = 1,
+        BLEND       = 2,
+        USE_SECOND  = 3,
+    };
+
     // used for flight testing with GPS loss
     bool _force_disable_gps;
+
+    // used for flight testing with GPS yaw loss
+    bool _force_disable_gps_yaw;
 
     // used to ensure we continue sending status messages if we ever detected the second GPS
     bool has_had_second_instance;

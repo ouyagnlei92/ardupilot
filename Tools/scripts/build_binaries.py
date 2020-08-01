@@ -22,6 +22,12 @@ import gzip
 import generate_manifest, gen_stable
 import build_binaries_history
 
+if sys.version_info[0] < 3:
+    running_python3 = False
+else:
+    running_python3 = True
+
+
 class build_binaries(object):
     def __init__(self, tags):
         self.tags = tags
@@ -77,6 +83,8 @@ class build_binaries(object):
                     # select not available on Windows... probably...
                 time.sleep(0.1)
                 continue
+            if running_python3:
+                x = x.decode('ascii')
             output += x
             x = x.rstrip()
             if show_output:
@@ -117,7 +125,11 @@ is bob we will attempt to checkout bob-AVR'''
         if ctag == "latest":
             vtag = "master"
         else:
-            vtag = "%s-%s" % (vehicle, ctag)
+            tagvehicle = vehicle
+            if tagvehicle == "Rover":
+                # FIXME: Rover tags in git still named APMrover2 :-(
+                tagvehicle = "APMrover2"
+            vtag = "%s-%s" % (tagvehicle, ctag)
 
         branches = []
         if cframe is not None:
@@ -544,7 +556,6 @@ is bob we will attempt to checkout bob-AVR'''
         '''returns list of boards common to all vehicles'''
         return ["fmuv2",
                 "fmuv3",
-                "fmuv4",
                 "fmuv5",
                 "mindpx-v2",
                 "erlebrain2",
@@ -560,6 +571,7 @@ is bob we will attempt to checkout bob-AVR'''
                 "MatekF405-STD",
                 "MatekF405-Wing",
                 "MatekF765-Wing",
+                "MatekH743",
                 "OMNIBUSF7V2",
                 "sparky2",
                 "omnibusf4",
@@ -575,15 +587,19 @@ is bob we will attempt to checkout bob-AVR'''
                 "Pixhawk1",
                 "Pixhawk1-1M",
                 "Pixhawk4",
+                "Pix32v5",
                 "PH4-mini",
                 "CUAVv5",
                 "CUAVv5Nano",
                 "CUAV-Nora",
+                "CUAV-X7",
                 "mRoX21",
                 "Pixracer",
                 "F4BY",
                 "mRoX21-777",
                 "mRoControlZeroF7",
+                "mRoNexus",
+                "mRoPixracerPro",
                 "F35Lightning",
                 "speedybeef4",
                 "SuccexF4",
@@ -611,6 +627,7 @@ is bob we will attempt to checkout bob-AVR'''
                 "f303-GPS",
                 "f303-Universal",
                 "f303-M10025",
+                "f303-M10070",
                 "CUAV_GPS",
                 "ZubaxGNSS",
                 ]
@@ -653,11 +670,11 @@ is bob we will attempt to checkout bob-AVR'''
         '''build Rover binaries'''
         boards = self.common_boards()
         self.build_vehicle(tag,
-                           "APMrover2",
+                           "Rover",
                            boards,
                            "Rover",
                            "ardurover",
-                           "APMrover2")
+                           "Rover")
 
     def build_ardusub(self, tag):
         '''build Sub binaries'''
@@ -693,6 +710,8 @@ is bob we will attempt to checkout bob-AVR'''
         new_json_filepath_gz = os.path.join(self.binaries,
                                             "manifest.json.gz.new")
         with gzip.open(new_json_filepath_gz, 'wb') as gf:
+            if running_python3:
+                content = bytes(content, 'ascii')
             gf.write(content)
         json_filepath = os.path.join(self.binaries, "manifest.json")
         json_filepath_gz = os.path.join(self.binaries, "manifest.json.gz")

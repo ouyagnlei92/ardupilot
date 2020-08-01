@@ -206,7 +206,10 @@ class AutoTestSub(AutoTest):
         self.progress("Mission OK")
 
     def test_gripper_mission(self):
-        self.context_push()
+        with self.Context(self):
+            self.test_gripper_body()
+
+    def test_gripper_body(self):
         ex = None
         try:
             try:
@@ -225,7 +228,6 @@ class AutoTestSub(AutoTest):
         except Exception as e:
             self.progress("Exception caught")
             ex = e
-        self.context_pop()
         if ex is not None:
             raise ex
 
@@ -312,10 +314,13 @@ class AutoTestSub(AutoTest):
              "Move vehicle using SET_POSITION_TARGET_GLOBAL_INT",
              self.dive_set_position_target),
 
-            ("DownLoadLogs", "Download logs", lambda:
-             self.log_download(
-                 self.buildlogs_path("ArduSub-log.bin"),
-                 upload_logs=len(self.fail_list) > 0)),
+            ("TestLogDownloadMAVProxy",
+             "Test Onboard Log Download using MAVProxy",
+             self.test_log_download_mavproxy),
+
+            ("LogUpload",
+             "Upload logs",
+             self.log_upload),
         ])
 
         return ret

@@ -25,7 +25,6 @@
 
 class SoaringController {
     ExtendedKalmanFilter _ekf{};
-    AP_AHRS &_ahrs;
     AP_SpdHgtControl &_spdHgt;
     Variometer _vario;
     const AP_Vehicle::FixedWing &_aparm;
@@ -57,7 +56,6 @@ class SoaringController {
 
 protected:
     AP_Int8 soar_active;
-    AP_Int8 soar_active_ch;
     AP_Float thermal_vspeed;
     AP_Float thermal_q1;
     AP_Float thermal_q2;
@@ -74,7 +72,7 @@ protected:
     AP_Float max_drift;
 
 public:
-    SoaringController(AP_AHRS &ahrs, AP_SpdHgtControl &spdHgt, const AP_Vehicle::FixedWing &parms);
+    SoaringController(AP_SpdHgtControl &spdHgt, const AP_Vehicle::FixedWing &parms);
 
     enum class LoiterStatus {
         DISABLED,
@@ -87,7 +85,7 @@ public:
     };
 
     enum class ActiveStatus {
-        DISABLED,
+        SOARING_DISABLED,
         MANUAL_MODE_CHANGE,
         AUTO_MODE_CHANGE
     };
@@ -124,11 +122,15 @@ public:
 
     bool is_active() const {return _last_update_status>=SoaringController::ActiveStatus::MANUAL_MODE_CHANGE;};
 
+    void set_pilot_desired_state(ActiveStatus pilot_desired_state) {_pilot_desired_state = pilot_desired_state;};
+
 private:
     // slow down messages if they are the same. During loiter we could smap the same message. Only show new messages during loiters
     LoiterStatus _cruise_criteria_msg_last;
 
     ActiveStatus _last_update_status;
+
+    ActiveStatus _pilot_desired_state = ActiveStatus::AUTO_MODE_CHANGE;
 
     ActiveStatus active_state() const;
 };

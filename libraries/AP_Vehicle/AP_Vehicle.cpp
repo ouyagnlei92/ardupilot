@@ -1,5 +1,6 @@
 #include "AP_Vehicle.h"
 
+#include <AP_BLHeli/AP_BLHeli.h>
 #include <AP_Common/AP_FWVersion.h>
 
 #define SCHED_TASK(func, rate_hz, max_time_micros) SCHED_TASK_CLASS(AP_Vehicle, &vehicle, func, rate_hz, max_time_micros)
@@ -25,6 +26,10 @@ const AP_Param::GroupInfo AP_Vehicle::var_info[] = {
     // @Path: ../AP_VisualOdom/AP_VisualOdom.cpp
     AP_SUBGROUPINFO(visual_odom, "VISO",  3, AP_Vehicle, AP_VisualOdom),
 #endif
+
+    // @Group: VTX_
+    // @Path: ../AP_RCTelemetry/AP_VideoTX.cpp
+    AP_SUBGROUPINFO(vtx, "VTX_",  4, AP_Vehicle, AP_VideoTX),
 
     AP_GROUPEND
 };
@@ -101,6 +106,7 @@ void AP_Vehicle::setup()
     // init library used for visual position estimation
     visual_odom.init();
 #endif
+    vtx.init();
 
 #if AP_PARAM_KEY_DUMP
     AP_Param::show_all(hal.console, true);
@@ -114,6 +120,16 @@ void AP_Vehicle::loop()
 }
 
 /*
+ fast loop callback for all vehicles. This will get called at the end of any vehicle-specific fast loop.
+ */
+void AP_Vehicle::fast_loop()
+{
+#if HAL_GYROFFT_ENABLED
+    gyro_fft.sample_gyros();
+#endif
+}
+
+/*
   common scheduler table for fast CPUs - all common vehicle tasks
   should be listed here, along with how often they should be called (in hz)
   and the maximum time they are expected to take (in microseconds)
@@ -123,9 +139,11 @@ const AP_Scheduler::Task AP_Vehicle::scheduler_tasks[] = {
     SCHED_TASK_CLASS(AP_RunCam,    &vehicle.runcam,         update,                   50, 50),
 #endif
 #if HAL_GYROFFT_ENABLED
-    SCHED_TASK_CLASS(AP_GyroFFT,   &vehicle.gyro_fft,       sample_gyros,      LOOP_RATE, 50),
+    SCHED_TASK_CLASS(AP_GyroFFT,   &vehicle.gyro_fft,       update,                  400, 50),
     SCHED_TASK_CLASS(AP_GyroFFT,   &vehicle.gyro_fft,       update_parameters,         1, 50),
 #endif
+    SCHED_TASK(update_dynamic_notch,                   200,    200),
+    SCHED_TASK_CLASS(AP_VideoTX,   &vehicle.vtx,            update,                    2, 100),
     SCHED_TASK(send_watchdog_reset_statustext,         0.1,     20),
 };
 
@@ -178,7 +196,7 @@ void AP_Vehicle::send_watchdog_reset_statustext()
     }
     const AP_HAL::Util::PersistentData &pd = hal.util->last_persistent_data;
     gcs().send_text(MAV_SEVERITY_CRITICAL,
-                    "WDG: T%d SL%u FL%u FT%u FA%x FTP%u FLR%x FICSR%u MM%u MC%u IE%u IEC%u",
+                    "WDG: T%d SL%u FL%u FT%u FA%x FTP%u FLR%x FICSR%u MM%u MC%u IE%u IEC%u TN:%.4s",
                     pd.scheduler_task,
                     pd.semaphore_line,
                     pd.fault_line,
@@ -190,8 +208,25 @@ void AP_Vehicle::send_watchdog_reset_statustext()
                     pd.last_mavlink_msgid,
                     pd.last_mavlink_cmd,
                     (unsigned)pd.internal_errors,
-                    (unsigned)pd.internal_error_count
+                    (unsigned)pd.internal_error_count,
+                    pd.thread_name4
         );
+}
+
+// @LoggerMessage: FTN
+// @Description: Filter Tuning Messages
+// @Field: TimeUS: microseconds since system startup
+// @Field: NDn: number of active dynamic harmonic notches
+// @Field: DnF1: dynamic harmonic notch centre frequency for motor 1
+// @Field: DnF2: dynamic harmonic notch centre frequency for motor 2
+// @Field: DnF3: dynamic harmonic notch centre frequency for motor 3
+// @Field: DnF4: dynamic harmonic notch centre frequency for motor 4
+void AP_Vehicle::write_notch_log_messages() const
+{
+    const float* notches = ins.get_gyro_dynamic_notch_center_frequencies_hz();
+    AP::logger().Write(
+        "FTN", "TimeUS,NDn,DnF1,DnF2,DnF3,DnF4", "s-zzzz", "F-----", "QBffff", AP_HAL::micros64(), ins.get_num_gyro_dynamic_notch_center_frequencies(),
+            notches[0], notches[1], notches[2], notches[3]);
 }
 
 AP_Vehicle *AP_Vehicle::_singleton = nullptr;

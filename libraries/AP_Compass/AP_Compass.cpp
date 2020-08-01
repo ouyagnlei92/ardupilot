@@ -5,6 +5,7 @@
 #include <AP_Vehicle/AP_Vehicle.h>
 #include <AP_BoardConfig/AP_BoardConfig.h>
 #include <AP_Logger/AP_Logger.h>
+#include <AP_Vehicle/AP_Vehicle_Type.h>
 
 #include "AP_Compass_SITL.h"
 #include "AP_Compass_AK8963.h"
@@ -28,7 +29,6 @@
 #include "AP_Compass.h"
 #include "Compass_learn.h"
 #include <stdio.h>
-
 
 extern const AP_HAL::HAL& hal;
 
@@ -87,12 +87,14 @@ const AP_Param::GroupInfo Compass::var_info[] = {
     // @User: Standard
     AP_GROUPINFO("DEC",    2, Compass, _declination, 0),
 
+#if COMPASS_LEARN_ENABLED
     // @Param: LEARN
     // @DisplayName: Learn compass offsets automatically
     // @Description: Enable or disable the automatic learning of compass offsets. You can enable learning either using a compass-only method that is suitable only for fixed wing aircraft or using the offsets learnt by the active EKF state estimator. If this option is enabled then the learnt offsets are saved when you disarm the vehicle. If InFlight learning is enabled then the compass with automatically start learning once a flight starts (must be armed). While InFlight learning is running you cannot use position control modes.
     // @Values: 0:Disabled,1:Internal-Learning,2:EKF-Learning,3:InFlight-Learning
     // @User: Advanced
     AP_GROUPINFO("LEARN",  3, Compass, _learn, COMPASS_LEARN_DEFAULT),
+#endif
 
     // @Param: USE
     // @DisplayName: Use compass for yaw
@@ -108,6 +110,7 @@ const AP_Param::GroupInfo Compass::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("AUTODEC",5, Compass, _auto_declination, 1),
 
+#if COMPASS_MOT_ENABLED
     // @Param: MOTCT
     // @DisplayName: Motor interference compensation type
     // @Description: Set motor interference compensation type to disabled, throttle or current.  Do not change manually.
@@ -142,11 +145,12 @@ const AP_Param::GroupInfo Compass::var_info[] = {
     // @Increment: 1
     // @User: Advanced
     AP_GROUPINFO("MOT",    7, Compass, _state._priv_instance[0].motor_compensation, 0),
+#endif
 
     // @Param: ORIENT
     // @DisplayName: Compass orientation
     // @Description: The orientation of the first external compass relative to the vehicle frame. This value will be ignored unless this compass is set as an external compass. When set correctly in the northern hemisphere, pointing the nose and right side down should increase the MagX and MagY values respectively. Rolling the vehicle upside down should decrease the MagZ value. For southern hemisphere, switch increase and decrease. NOTE: For internal compasses, AHRS_ORIENT is used.
-    // @Values: 0:None,1:Yaw45,2:Yaw90,3:Yaw135,4:Yaw180,5:Yaw225,6:Yaw270,7:Yaw315,8:Roll180,9:Roll180Yaw45,10:Roll180Yaw90,11:Roll180Yaw135,12:Pitch180,13:Roll180Yaw225,14:Roll180Yaw270,15:Roll180Yaw315,16:Roll90,17:Roll90Yaw45,18:Roll90Yaw90,19:Roll90Yaw135,20:Roll270,21:Roll270Yaw45,22:Roll270Yaw90,23:Roll270Yaw135,24:Pitch90,25:Pitch270,26:Pitch180Yaw90,27:Pitch180Yaw270,28:Roll90Pitch90,29:Roll180Pitch90,30:Roll270Pitch90,31:Roll90Pitch180,32:Roll270Pitch180,33:Roll90Pitch270,34:Roll180Pitch270,35:Roll270Pitch270,36:Roll90Pitch180Yaw90,37:Roll90Yaw270,38:Yaw293Pitch68Roll180,39:Pitch315,40:Roll90Pitch315
+    // @Values: 0:None,1:Yaw45,2:Yaw90,3:Yaw135,4:Yaw180,5:Yaw225,6:Yaw270,7:Yaw315,8:Roll180,9:Roll180Yaw45,10:Roll180Yaw90,11:Roll180Yaw135,12:Pitch180,13:Roll180Yaw225,14:Roll180Yaw270,15:Roll180Yaw315,16:Roll90,17:Roll90Yaw45,18:Roll90Yaw90,19:Roll90Yaw135,20:Roll270,21:Roll270Yaw45,22:Roll270Yaw90,23:Roll270Yaw135,24:Pitch90,25:Pitch270,26:Pitch180Yaw90,27:Pitch180Yaw270,28:Roll90Pitch90,29:Roll180Pitch90,30:Roll270Pitch90,31:Roll90Pitch180,32:Roll270Pitch180,33:Roll90Pitch270,34:Roll180Pitch270,35:Roll270Pitch270,36:Roll90Pitch180Yaw90,37:Roll90Yaw270,38:Yaw293Pitch68Roll180,39:Pitch315,40:Roll90Pitch315,100:Custom
     // @User: Advanced
     AP_GROUPINFO("ORIENT", 8, Compass, _state._priv_instance[0].orientation, ROTATION_NONE),
 
@@ -306,7 +310,7 @@ const AP_Param::GroupInfo Compass::var_info[] = {
     // @Param: ORIENT2
     // @DisplayName: Compass2 orientation
     // @Description: The orientation of a second external compass relative to the vehicle frame. This value will be ignored unless this compass is set as an external compass. When set correctly in the northern hemisphere, pointing the nose and right side down should increase the MagX and MagY values respectively. Rolling the vehicle upside down should decrease the MagZ value. For southern hemisphere, switch increase and decrease. NOTE: For internal compasses, AHRS_ORIENT is used.
-    // @Values: 0:None,1:Yaw45,2:Yaw90,3:Yaw135,4:Yaw180,5:Yaw225,6:Yaw270,7:Yaw315,8:Roll180,9:Roll180Yaw45,10:Roll180Yaw90,11:Roll180Yaw135,12:Pitch180,13:Roll180Yaw225,14:Roll180Yaw270,15:Roll180Yaw315,16:Roll90,17:Roll90Yaw45,18:Roll90Yaw90,19:Roll90Yaw135,20:Roll270,21:Roll270Yaw45,22:Roll270Yaw90,23:Roll270Yaw135,24:Pitch90,25:Pitch270,26:Pitch180Yaw90,27:Pitch180Yaw270,28:Roll90Pitch90,29:Roll180Pitch90,30:Roll270Pitch90,31:Roll90Pitch180,32:Roll270Pitch180,33:Roll90Pitch270,34:Roll180Pitch270,35:Roll270Pitch270,36:Roll90Pitch180Yaw90,37:Roll90Yaw270,38:Yaw293Pitch68Roll180,39:Pitch315,40:Roll90Pitch315
+    // @Values: 0:None,1:Yaw45,2:Yaw90,3:Yaw135,4:Yaw180,5:Yaw225,6:Yaw270,7:Yaw315,8:Roll180,9:Roll180Yaw45,10:Roll180Yaw90,11:Roll180Yaw135,12:Pitch180,13:Roll180Yaw225,14:Roll180Yaw270,15:Roll180Yaw315,16:Roll90,17:Roll90Yaw45,18:Roll90Yaw90,19:Roll90Yaw135,20:Roll270,21:Roll270Yaw45,22:Roll270Yaw90,23:Roll270Yaw135,24:Pitch90,25:Pitch270,26:Pitch180Yaw90,27:Pitch180Yaw270,28:Roll90Pitch90,29:Roll180Pitch90,30:Roll270Pitch90,31:Roll90Pitch180,32:Roll270Pitch180,33:Roll90Pitch270,34:Roll180Pitch270,35:Roll270Pitch270,36:Roll90Pitch180Yaw90,37:Roll90Yaw270,38:Yaw293Pitch68Roll180,39:Pitch315,40:Roll90Pitch315,100:Custom
     // @User: Advanced
     AP_GROUPINFO("ORIENT2", 19, Compass, _state._priv_instance[1].orientation, ROTATION_NONE),
 
@@ -329,7 +333,7 @@ const AP_Param::GroupInfo Compass::var_info[] = {
     // @Param: ORIENT3
     // @DisplayName: Compass3 orientation
     // @Description: The orientation of a third external compass relative to the vehicle frame. This value will be ignored unless this compass is set as an external compass. When set correctly in the northern hemisphere, pointing the nose and right side down should increase the MagX and MagY values respectively. Rolling the vehicle upside down should decrease the MagZ value. For southern hemisphere, switch increase and decrease. NOTE: For internal compasses, AHRS_ORIENT is used.
-    // @Values: 0:None,1:Yaw45,2:Yaw90,3:Yaw135,4:Yaw180,5:Yaw225,6:Yaw270,7:Yaw315,8:Roll180,9:Roll180Yaw45,10:Roll180Yaw90,11:Roll180Yaw135,12:Pitch180,13:Roll180Yaw225,14:Roll180Yaw270,15:Roll180Yaw315,16:Roll90,17:Roll90Yaw45,18:Roll90Yaw90,19:Roll90Yaw135,20:Roll270,21:Roll270Yaw45,22:Roll270Yaw90,23:Roll270Yaw135,24:Pitch90,25:Pitch270,26:Pitch180Yaw90,27:Pitch180Yaw270,28:Roll90Pitch90,29:Roll180Pitch90,30:Roll270Pitch90,31:Roll90Pitch180,32:Roll270Pitch180,33:Roll90Pitch270,34:Roll180Pitch270,35:Roll270Pitch270,36:Roll90Pitch180Yaw90,37:Roll90Yaw270,38:Yaw293Pitch68Roll180,39:Pitch315,40:Roll90Pitch315
+    // @Values: 0:None,1:Yaw45,2:Yaw90,3:Yaw135,4:Yaw180,5:Yaw225,6:Yaw270,7:Yaw315,8:Roll180,9:Roll180Yaw45,10:Roll180Yaw90,11:Roll180Yaw135,12:Pitch180,13:Roll180Yaw225,14:Roll180Yaw270,15:Roll180Yaw315,16:Roll90,17:Roll90Yaw45,18:Roll90Yaw90,19:Roll90Yaw135,20:Roll270,21:Roll270Yaw45,22:Roll270Yaw90,23:Roll270Yaw135,24:Pitch90,25:Pitch270,26:Pitch180Yaw90,27:Pitch180Yaw270,28:Roll90Pitch90,29:Roll180Pitch90,30:Roll270Pitch90,31:Roll90Pitch180,32:Roll270Pitch180,33:Roll90Pitch270,34:Roll180Pitch270,35:Roll270Pitch270,36:Roll90Pitch180Yaw90,37:Roll90Yaw270,38:Yaw293Pitch68Roll180,39:Pitch315,40:Roll90Pitch315,100:Custom
     // @User: Advanced
     AP_GROUPINFO("ORIENT3", 22, Compass, _state._priv_instance[2].orientation, ROTATION_NONE),
 
@@ -453,6 +457,7 @@ const AP_Param::GroupInfo Compass::var_info[] = {
     AP_GROUPINFO("ODI3",    29, Compass, _state._priv_instance[2].offdiagonals, 0),
 #endif // COMPASS_MAX_INSTANCES
 
+#if COMPASS_CAL_ENABLED
     // @Param: CAL_FIT
     // @DisplayName: Compass calibration fitness
     // @Description: This controls the fitness level required for a successful compass calibration. A lower value makes for a stricter fit (less likely to pass). This is the value used for the primary magnetometer. Other magnetometers get double the value.
@@ -461,6 +466,7 @@ const AP_Param::GroupInfo Compass::var_info[] = {
     // @Increment: 0.1
     // @User: Advanced
     AP_GROUPINFO("CAL_FIT", 30, Compass, _calibration_threshold, AP_COMPASS_CALIBRATION_FITNESS_DEFAULT),
+#endif
 
     // @Param: OFFS_MAX
     // @DisplayName: Compass maximum offset
@@ -491,22 +497,26 @@ const AP_Param::GroupInfo Compass::var_info[] = {
     // @Increment: 1
     AP_GROUPINFO("FLTR_RNG", 34, Compass, _filter_range, HAL_COMPASS_FILTER_DEFAULT),
 
+#if COMPASS_CAL_ENABLED
     // @Param: AUTO_ROT
     // @DisplayName: Automatically check orientation
     // @Description: When enabled this will automatically check the orientation of compasses on successful completion of compass calibration. If set to 2 then external compasses will have their orientation automatically corrected.
     // @Values: 0:Disabled,1:CheckOnly,2:CheckAndFix
     AP_GROUPINFO("AUTO_ROT", 35, Compass, _rotate_auto, HAL_COMPASS_AUTO_ROT_DEFAULT),
+#endif
 
+#if COMPASS_MAX_INSTANCES > 1
     // @Param: PRIO1_ID
     // @DisplayName: Compass device id with 1st order priority
     // @Description: Compass device id with 1st order priority, set automatically if 0. Reboot required after change.
+    // @RebootRequired: True
     // @User: Advanced
     AP_GROUPINFO("PRIO1_ID",  36, Compass, _priority_did_stored_list._priv_instance[0], 0),
 
-#if COMPASS_MAX_INSTANCES > 1
     // @Param: PRIO2_ID
     // @DisplayName: Compass device id with 2nd order priority
     // @Description: Compass device id with 2nd order priority, set automatically if 0. Reboot required after change.
+    // @RebootRequired: True
     // @User: Advanced
     AP_GROUPINFO("PRIO2_ID", 37, Compass, _priority_did_stored_list._priv_instance[1], 0),
 #endif // COMPASS_MAX_INSTANCES
@@ -515,6 +525,7 @@ const AP_Param::GroupInfo Compass::var_info[] = {
     // @Param: PRIO3_ID
     // @DisplayName: Compass device id with 3rd order priority
     // @Description: Compass device id with 3rd order priority, set automatically if 0. Reboot required after change.
+    // @RebootRequired: True
     // @User: Advanced
     AP_GROUPINFO("PRIO3_ID", 38, Compass, _priority_did_stored_list._priv_instance[2], 0),
 #endif // COMPASS_MAX_INSTANCES
@@ -603,6 +614,37 @@ const AP_Param::GroupInfo Compass::var_info[] = {
     AP_GROUPINFO("DEV_ID8", 48, Compass, extra_dev_id[4], 0),
 #endif // COMPASS_MAX_UNREG_DEV
 
+#if !APM_BUILD_TYPE(APM_BUILD_AP_Periph)
+    // @Param: CUS_ROLL
+    // @DisplayName: Custom orientation roll offset
+    // @Description: Compass mounting position roll offset. Positive values = roll right, negative values = roll left. This parameter is only used when COMPASS_ORIENT/2/3 is set to CUSTOM.
+    // @Range: -180 180
+    // @Units: deg
+    // @Increment: 1
+    // @RebootRequired: True
+    // @User: Advanced
+    AP_GROUPINFO("CUS_ROLL", 49, Compass, _custom_roll, 0),
+
+    // @Param: CUS_PIT
+    // @DisplayName: Custom orientation pitch offset
+    // @Description: Compass mounting position pitch offset. Positive values = pitch up, negative values = pitch down. This parameter is only used when COMPASS_ORIENT/2/3 is set to CUSTOM.
+    // @Range: -180 180
+    // @Units: deg
+    // @Increment: 1
+    // @RebootRequired: True
+    // @User: Advanced
+    AP_GROUPINFO("CUS_PIT", 50, Compass, _custom_pitch, 0),
+
+    // @Param: CUS_YAW
+    // @DisplayName: Custom orientation yaw offset
+    // @Description: Compass mounting position yaw offset. Positive values = yaw right, negative values = yaw left. This parameter is only used when COMPASS_ORIENT/2/3 is set to CUSTOM.
+    // @Range: -180 180
+    // @Units: deg
+    // @Increment: 1
+    // @RebootRequired: True
+    // @User: Advanced
+    AP_GROUPINFO("CUS_YAW", 51, Compass, _custom_yaw, 0),
+#endif
     AP_GROUPEND
 };
 
@@ -630,6 +672,7 @@ void Compass::init()
         return;
     }
 
+#if COMPASS_MAX_INSTANCES > 1
     // Look if there was a primary compass setup in previous version
     // if so and the the primary compass is not set in current setup
     // make the devid as primary.
@@ -653,9 +696,12 @@ void Compass::init()
         if (_priority_did_stored_list[i] != 0) {
             _priority_did_list[i] = _priority_did_stored_list[i];
         } else {
-            // Maintain a list without gaps
+            // Maintain a list without gaps and duplicates
             for (Priority j(i+1); j<COMPASS_MAX_INSTANCES; j++) {
                 int32_t temp;
+                if (_priority_did_stored_list[j] == _priority_did_stored_list[i]) {
+                    _priority_did_stored_list[j].set_and_save(0);
+                }
                 if (_priority_did_stored_list[j] == 0) {
                     continue;
                 }
@@ -667,6 +713,7 @@ void Compass::init()
             }
         }
     }
+#endif // COMPASS_MAX_INSTANCES
 
     // cache expected dev ids for use during runtime detection
     for (StateIndex i(0); i<COMPASS_MAX_INSTANCES; i++) {
@@ -678,7 +725,10 @@ void Compass::init()
     // interface for users to see unreg compasses, we actually never store it
     // in storage.
     for (uint8_t i=_unreg_compass_count; i<COMPASS_MAX_UNREG_DEV; i++) {
-        extra_dev_id[i].set(0);
+        // cache the extra devices detected in last boot
+        // for detecting replacement mag
+        _previously_unreg_mag[i] = extra_dev_id[i];
+        extra_dev_id[i].set_and_save(0);
     }
 #endif
 
@@ -688,6 +738,16 @@ void Compass::init()
         // detect available backends. Only called once
         _detect_backends();
     }
+
+#if COMPASS_MAX_UNREG_DEV
+    // We store the list of unregistered mags detected here,
+    // We don't do this during runtime, as we don't want to detect
+    // compasses connected by user as a replacement while the system
+    // is running
+    for (uint8_t i=0; i<COMPASS_MAX_UNREG_DEV; i++) {
+        extra_dev_id[i].save();
+    }
+#endif
 
     if (_compass_count != 0) {
         // get initial health status
@@ -710,6 +770,7 @@ void Compass::init()
 #endif
 }
 
+#if COMPASS_MAX_INSTANCES > 1 || COMPASS_MAX_UNREG_DEV
 // Update Priority List for Mags, by default, we just
 // load them as they come up the first time
 Compass::Priority Compass::_update_priority_list(int32_t dev_id)
@@ -737,6 +798,8 @@ Compass::Priority Compass::_update_priority_list(int32_t dev_id)
     }
     return Priority(COMPASS_MAX_INSTANCES);
 }
+#endif
+
 
 // This method reorganises devid list to match
 // priority list, only call before detection at boot
@@ -766,13 +829,26 @@ void Compass::mag_state::copy_from(const Compass::mag_state& state)
     dev_id.set_and_save(state.dev_id);
     motor_compensation.set_and_save(state.motor_compensation);
     expected_dev_id = state.expected_dev_id;
+    detected_dev_id = state.detected_dev_id;
 }
 //  Register a new compass instance
 //
 bool Compass::register_compass(int32_t dev_id, uint8_t& instance)
 {
-    Priority priority;
 
+#if COMPASS_MAX_INSTANCES == 1 && !COMPASS_MAX_UNREG_DEV
+    // simple single compass setup for AP_Periph
+    Priority priority(0);
+    StateIndex i(0);
+    if (_state[i].registered) {
+        return false;
+    }
+    _state[i].registered = true;
+    _state[i].priority = priority;
+    instance = uint8_t(i);
+    return true;
+#else
+    Priority priority;
     // Check if we already have this dev_id registered
     for (StateIndex i(0); i<COMPASS_MAX_INSTANCES; i++) {
         priority = _update_priority_list(dev_id);
@@ -806,6 +882,7 @@ bool Compass::register_compass(int32_t dev_id, uint8_t& instance)
             return true;
         }
     }
+#endif
 
 #if COMPASS_MAX_UNREG_DEV
     // Set extra dev id
@@ -835,12 +912,19 @@ bool Compass::register_compass(int32_t dev_id, uint8_t& instance)
 
 Compass::StateIndex Compass::_get_state_id(Compass::Priority priority) const
 {
+#if COMPASS_MAX_INSTANCES > 1
+    if (_priority_did_list[priority] == 0) {
+        return StateIndex(COMPASS_MAX_INSTANCES);
+    }
     for (StateIndex i(0); i<COMPASS_MAX_INSTANCES; i++) {
-        if (_priority_did_list[priority] == _state[i].expected_dev_id) {
+        if (_priority_did_list[priority] == _state[i].detected_dev_id) {
             return i;
         }
     }
     return StateIndex(COMPASS_MAX_INSTANCES);
+#else
+    return StateIndex(0);
+#endif
 }
 
 bool Compass::_add_backend(AP_Compass_Backend *backend)
@@ -939,7 +1023,6 @@ void Compass::_probe_external_i2c_compasses(void)
         }
     }
 
-#if !HAL_MINIMIZE_FEATURES
 #ifndef HAL_BUILD_AP_PERIPH
     // AK09916 on ICM20948
     FOREACH_I2C_EXTERNAL(i) {
@@ -1029,8 +1112,6 @@ void Compass::_probe_external_i2c_compasses(void)
         ADD_BACKEND(DRIVER_RM3100, AP_Compass_RM3100::probe(GET_I2C_DEVICE(i, HAL_COMPASS_RM3100_I2C_ADDR),
                     all_external, ROTATION_NONE));
     }
-
-#endif // HAL_MINIMIZE_FEATURES
 }
 
 /*
@@ -1180,12 +1261,6 @@ void Compass::_detect_backends(void)
 #endif
 
 
-    /* for chibios external board coniguration */
-#ifdef HAL_EXT_COMPASS_HMC5843_I2C_BUS
-    ADD_BACKEND(DRIVER_HMC5843, AP_Compass_HMC5843::probe(GET_I2C_DEVICE(HAL_EXT_COMPASS_HMC5843_I2C_BUS, HAL_COMPASS_HMC5843_I2C_ADDR),
-                true, ROTATION_ROLL_180));
-#endif
-
 #if HAL_WITH_UAVCAN
     if (_driver_enabled(DRIVER_UAVCAN)) {
         for (uint8_t i=0; i<COMPASS_MAX_BACKEND; i++) {
@@ -1193,8 +1268,68 @@ void Compass::_detect_backends(void)
             if (_uavcan_backend) {
                 _add_backend(_uavcan_backend);
             }
-            CHECK_UNREG_LIMIT_RETURN;
+#if COMPASS_MAX_UNREG_DEV > 0
+            if (_unreg_compass_count == COMPASS_MAX_UNREG_DEV)  {
+                break;
+            }
+#endif
         }
+
+#if COMPASS_MAX_UNREG_DEV > 0
+        // check if there's any uavcan compass in prio slot that's not found
+        // and replace it if there's a replacement compass
+        for (Priority i(0); i<COMPASS_MAX_INSTANCES; i++) {
+            if (AP_HAL::Device::devid_get_bus_type(_priority_did_list[i]) != AP_HAL::Device::BUS_TYPE_UAVCAN
+                || _get_state(i).registered) {
+                continue;
+            }
+            // There's a UAVCAN compass missing
+            // Let's check if there's a replacement
+            for (uint8_t j=0; j<COMPASS_MAX_INSTANCES; j++) {
+                uint32_t detected_devid = AP_Compass_UAVCAN::get_detected_devid(j);
+                // Check if this is a potential replacement mag
+                if (!is_replacement_mag(detected_devid)) {
+                    continue;
+                }
+                // We have found a replacement mag, let's replace the existing one
+                // with this by setting the priority to zero and calling uavcan probe 
+                gcs().send_text(MAV_SEVERITY_ALERT, "Mag: Compass #%d with DEVID %lu replaced", uint8_t(i), (unsigned long)_priority_did_list[i]);
+                _priority_did_stored_list[i].set_and_save(0);
+                _priority_did_list[i] = 0;
+
+                AP_Compass_Backend* _uavcan_backend = AP_Compass_UAVCAN::probe(j);
+                if (_uavcan_backend) {
+                    _add_backend(_uavcan_backend);
+                    // we also need to remove the id from unreg list
+                    remove_unreg_dev_id(detected_devid);
+                } else {
+                    // the mag has already been allocated,
+                    // let's begin the replacement
+                    bool found_replacement = false;
+                    for (StateIndex k(0); k<COMPASS_MAX_INSTANCES; k++) {
+                        if ((uint32_t)_state[k].dev_id == detected_devid) {
+                            if (_state[k].priority <= uint8_t(i)) {
+                                // we are already on higher priority
+                                // nothing to do
+                                break;
+                            }
+                            found_replacement = true;
+                            // reset old priority of replacement mag
+                            _priority_did_stored_list[_state[k].priority].set_and_save(0);
+                            _priority_did_list[_state[k].priority] = 0;
+                            // update new priority
+                            _state[k].priority = i;
+                        }
+                    }
+                    if (!found_replacement) {
+                        continue;
+                    }
+                    _priority_did_stored_list[i].set_and_save(detected_devid);
+                    _priority_did_list[i] = detected_devid;
+                }
+            }
+        }
+#endif
     }
 #endif
 
@@ -1202,6 +1337,79 @@ void Compass::_detect_backends(void)
         _compass_count == 0) {
         hal.console->printf("No Compass backends available\n");
     }
+}
+
+// Check if the devid is a potential replacement compass
+// Following are the checks done to ensure the compass is a replacement
+// * The compass is an UAVCAN compass
+// * The compass wasn't seen before this boot as additional unreg mag
+// * The compass might have been seen before but never setup
+bool Compass::is_replacement_mag(uint32_t devid) {
+#if COMPASS_MAX_INSTANCES > 1
+    // We only do this for UAVCAN mag
+    if (devid == 0 || (AP_HAL::Device::devid_get_bus_type(devid) != AP_HAL::Device::BUS_TYPE_UAVCAN)) {
+        return false;
+    }
+
+    // Check that its not an unused additional mag
+    for (uint8_t i = 0; i<COMPASS_MAX_UNREG_DEV; i++) {
+        if (_previously_unreg_mag[i] == devid) {
+            return false;
+        }
+    }
+
+    // Check that its not previously setup mag
+    for (StateIndex i(0); i<COMPASS_MAX_INSTANCES; i++) {
+        if ((uint32_t)_state[i].expected_dev_id == devid) {
+            return false;
+        }
+    }
+#endif
+    return true;
+}
+
+void Compass::remove_unreg_dev_id(uint32_t devid)
+{
+#if COMPASS_MAX_INSTANCES > 1
+    // We only do this for UAVCAN mag
+    if (devid == 0 || (AP_HAL::Device::devid_get_bus_type(devid) != AP_HAL::Device::BUS_TYPE_UAVCAN)) {
+        return;
+    }
+
+    for (uint8_t i = 0; i<COMPASS_MAX_UNREG_DEV; i++) {
+        if ((uint32_t)extra_dev_id[i] == devid) {
+            extra_dev_id[i].set_and_save(0);
+            return;
+        }
+    }
+#endif
+}
+
+void Compass::_reset_compass_id()
+{
+#if COMPASS_MAX_INSTANCES > 1
+    // Check if any of the registered devs are not registered
+    for (Priority i(0); i<COMPASS_MAX_INSTANCES; i++) {
+        if (_priority_did_stored_list[i] != _priority_did_list[i] ||
+            _priority_did_stored_list[i] == 0) {
+            //We don't touch priorities that might have been touched by the user
+            continue;
+        }
+        if (!_get_state(i).registered) {
+            _priority_did_stored_list[i].set_and_save(0);
+            gcs().send_text(MAV_SEVERITY_ALERT, "Mag: Compass #%d with DEVID %lu removed", uint8_t(i), (unsigned long)_priority_did_list[i]);
+        }
+    }
+
+    // Check if any of the old registered devs are not registered
+    // and hence can be removed
+    for (StateIndex i(0); i<COMPASS_MAX_INSTANCES; i++) {
+        if (_state[i].dev_id == 0 && _state[i].expected_dev_id != 0) {
+            // also hard reset dev_ids that are not detected
+            _state[i].dev_id.save();
+        }
+    }
+#endif
 }
 
 // Look for devices beyond initialisation
@@ -1420,6 +1628,24 @@ Compass::use_for_yaw(uint8_t i) const
     return _use_for_yaw[Priority(i)] && _learn.get() != LEARN_INFLIGHT;
 }
 
+/*
+  return the number of enabled sensors. Used to determine if
+  non-compass operation is desired
+ */
+uint8_t Compass::get_num_enabled(void) const
+{
+    if (get_count() == 0) {
+        return 0;
+    }
+    uint8_t count = 0;
+    for (uint8_t i=0; i<COMPASS_MAX_INSTANCES; i++) {
+        if (use_for_yaw(i)) {
+            count++;
+        }
+    }
+    return count;
+}
+
 void
 Compass::set_use_for_yaw(uint8_t i, bool use)
 {
@@ -1493,7 +1719,8 @@ bool Compass::configured(uint8_t i)
 
     StateIndex id = _get_state_id(Priority(i));
     // exit immediately if dev_id hasn't been detected
-    if (_state[id].detected_dev_id == 0) {
+    if (_state[id].detected_dev_id == 0 || 
+        id == COMPASS_MAX_INSTANCES) {
         return false;
     }
 
@@ -1517,6 +1744,7 @@ bool Compass::configured(uint8_t i)
 
 bool Compass::configured(char *failure_msg, uint8_t failure_msg_len)
 {
+#if COMPASS_MAX_INSTANCES > 1
     // Check if any of the registered devs are not registered
     for (Priority i(0); i<COMPASS_MAX_INSTANCES; i++) {
         if (_priority_did_list[i] != 0 && use_for_yaw(uint8_t(i))) {
@@ -1530,6 +1758,7 @@ bool Compass::configured(char *failure_msg, uint8_t failure_msg_len)
             }
         }
     }
+#endif
 
     bool all_configured = true;
     for (uint8_t i=0; i<get_count(); i++) {
@@ -1595,7 +1824,7 @@ const Vector3f& Compass::getHIL(uint8_t instance) const
 void Compass::_setup_earth_field(void)
 {
     // assume a earth field strength of 400
-    _hil.Bearth(400, 0, 0);
+    _hil.Bearth = {400, 0, 0};
 
     // rotate _Bearth for inclination and declination. -66 degrees
     // is the inclination in Canberra, Australia

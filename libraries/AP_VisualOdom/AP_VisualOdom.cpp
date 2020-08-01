@@ -31,7 +31,7 @@ const AP_Param::GroupInfo AP_VisualOdom::var_info[] = {
     // @Param: _TYPE
     // @DisplayName: Visual odometry camera connection type
     // @Description: Visual odometry camera connection type
-    // @Values: 0:None,1:MAV,2:IntelT265
+    // @Values: 0:None,1:MAVLink,2:IntelT265
     // @User: Advanced
     // @RebootRequired: True
     AP_GROUPINFO_FLAGS("_TYPE", 0, AP_VisualOdom, _type, 0, AP_PARAM_FLAG_ENABLE),
@@ -67,6 +67,44 @@ const AP_Param::GroupInfo AP_VisualOdom::var_info[] = {
     // @Values: 0:Forward, 2:Right, 4:Back, 6:Left, 24:Up, 25:Down
     // @User: Advanced
     AP_GROUPINFO("_ORIENT", 2, AP_VisualOdom, _orientation, ROTATION_NONE),
+
+    // @Param: _SCALE
+    // @DisplayName: Visual odometry scaling factor
+    // @Description: Visual odometry scaling factor applied to position estimates from sensor
+    // @User: Advanced
+    AP_GROUPINFO("_SCALE", 3, AP_VisualOdom, _pos_scale, 1.0f),
+
+    // @Param: _DELAY_MS
+    // @DisplayName: Visual odometry sensor delay
+    // @Description: Visual odometry sensor delay relative to inertial measurements
+    // @Units: ms
+    // @Range: 0 250
+    // @User: Advanced
+    AP_GROUPINFO("_DELAY_MS", 4, AP_VisualOdom, _delay_ms, 10),
+
+    // @Param: _VEL_M_NSE
+    // @DisplayName: Visual odometry velocity measurement noise
+    // @Description: Visual odometry velocity measurement noise in m/s
+    // @Units: m/s
+    // @Range: 0.05 5.0
+    // @User: Advanced
+    AP_GROUPINFO("_VEL_M_NSE", 5, AP_VisualOdom, _vel_noise, 0.1),
+
+    // @Param: _POS_M_NSE
+    // @DisplayName: Visual odometry position measurement noise 
+    // @Description: Visual odometry position measurement noise minimum (meters). This value will be used if the sensor provides a lower noise value (or no noise value)
+    // @Units: m
+    // @Range: 0.1 10.0
+    // @User: Advanced
+    AP_GROUPINFO("_POS_M_NSE", 6, AP_VisualOdom, _pos_noise, 0.2f),
+
+    // @Param: _YAW_M_NSE
+    // @DisplayName: Visual odometry yaw measurement noise
+    // @Description: Visual odometry yaw measurement noise minimum (radians), This value will be used if the sensor provides a lower noise value (or no noise value)
+    // @Units: rad
+    // @Range: 0.05 1.0
+    // @User: Advanced
+    AP_GROUPINFO("_YAW_M_NSE", 7, AP_VisualOdom, _yaw_noise, 0.2f),
 
     AP_GROUPEND
 };
@@ -134,7 +172,7 @@ void AP_VisualOdom::handle_vision_position_delta_msg(const mavlink_message_t &ms
 
 // general purpose method to consume position estimate data and send to EKF
 // distances in meters, roll, pitch and yaw are in radians
-void AP_VisualOdom::handle_vision_position_estimate(uint64_t remote_time_us, uint32_t time_ms, float x, float y, float z, float roll, float pitch, float yaw)
+void AP_VisualOdom::handle_vision_position_estimate(uint64_t remote_time_us, uint32_t time_ms, float x, float y, float z, float roll, float pitch, float yaw, float posErr, float angErr, uint8_t reset_counter)
 {
     // exit immediately if not enabled
     if (!enabled()) {
@@ -146,12 +184,12 @@ void AP_VisualOdom::handle_vision_position_estimate(uint64_t remote_time_us, uin
         // convert attitude to quaternion and call backend
         Quaternion attitude;
         attitude.from_euler(roll, pitch, yaw);
-        _driver->handle_vision_position_estimate(remote_time_us, time_ms, x, y, z, attitude);
+        _driver->handle_vision_position_estimate(remote_time_us, time_ms, x, y, z, attitude, posErr, angErr, reset_counter);
     }
 }
 
 // general purpose method to consume position estimate data and send to EKF
-void AP_VisualOdom::handle_vision_position_estimate(uint64_t remote_time_us, uint32_t time_ms, float x, float y, float z, const Quaternion &attitude)
+void AP_VisualOdom::handle_vision_position_estimate(uint64_t remote_time_us, uint32_t time_ms, float x, float y, float z, const Quaternion &attitude, uint8_t reset_counter)
 {
     // exit immediately if not enabled
     if (!enabled()) {
@@ -160,7 +198,20 @@ void AP_VisualOdom::handle_vision_position_estimate(uint64_t remote_time_us, uin
 
     // call backend
     if (_driver != nullptr) {
-        _driver->handle_vision_position_estimate(remote_time_us, time_ms, x, y, z, attitude);
+        _driver->handle_vision_position_estimate(remote_time_us, time_ms, x, y, z, attitude, 0, 0, reset_counter);
+    }
+}
+
+void AP_VisualOdom::handle_vision_speed_estimate(uint64_t remote_time_us, uint32_t time_ms, const Vector3f &vel, uint8_t reset_counter)
+{
+    // exit immediately if not enabled
+    if (!enabled()) {
+        return;
+    }
+
+    // call backend
+    if (_driver != nullptr) {
+        _driver->handle_vision_speed_estimate(remote_time_us, time_ms, vel, reset_counter);
     }
 }
 

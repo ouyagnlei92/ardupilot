@@ -40,7 +40,7 @@ extern const AP_HAL::HAL &hal;
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
  #define ARSPD_DEFAULT_TYPE TYPE_ANALOG
  #define ARSPD_DEFAULT_PIN 1
-#elif APM_BUILD_TYPE(APM_BUILD_APMrover2)
+#elif APM_BUILD_TYPE(APM_BUILD_Rover)
  #define ARSPD_DEFAULT_TYPE TYPE_NONE
  #define ARSPD_DEFAULT_PIN 15
 #else
@@ -62,12 +62,6 @@ extern const AP_HAL::HAL &hal;
 
 #ifndef PSI_RANGE_DEFAULT
 #define PSI_RANGE_DEFAULT 1.0f
-#endif
-
-#ifdef HAL_NO_GCS
-#define GCS_SEND_TEXT(severity, format, args...)
-#else
-#define GCS_SEND_TEXT(severity, format, args...) gcs().send_text(severity, format, ##args)
 #endif
 
 // table of user settable parameters
@@ -374,8 +368,8 @@ void AP_Airspeed::calibrate(bool in_startup)
         state[i].cal.count = 0;
         state[i].cal.sum = 0;
         state[i].cal.read_count = 0;
+        GCS_SEND_TEXT(MAV_SEVERITY_INFO,"Airspeed %u calibration started", i+1);
     }
-    GCS_SEND_TEXT(MAV_SEVERITY_INFO,"Airspeed calibration started");
 }
 
 /*
@@ -475,7 +469,7 @@ void AP_Airspeed::update(bool log)
         read(i);
     }
 
-#if 1
+#ifndef HAL_NO_GCS
     // debugging until we get MAVLink support for 2nd airspeed sensor
     if (enabled(1)) {
         gcs().send_named_float("AS2", get_airspeed(1));

@@ -46,6 +46,24 @@ AP_AHRS_NavEKF::AP_AHRS_NavEKF(uint8_t flags) :
     _dcm_matrix.identity();
 }
 
+// init sets up INS board orientation
+void AP_AHRS_NavEKF::init()
+{
+#if !HAL_NAVEKF2_AVAILABLE && HAL_NAVEKF3_AVAILABLE
+    if (_ekf_type.get() == 2) {
+        _ekf_type.set(3);
+        EKF3.set_enable(true);
+    }
+#elif !HAL_NAVEKF3_AVAILABLE && HAL_NAVEKF2_AVAILABLE
+    if (_ekf_type.get() == 3) {
+        _ekf_type.set(2);
+        EKF2.set_enable(true);
+    }
+#endif
+    // init parent class
+    AP_AHRS_DCM::init();
+}
+
 // return the smoothed gyro vector corrected for drift
 const Vector3f &AP_AHRS_NavEKF::get_gyro(void) const
 {
@@ -164,7 +182,7 @@ void AP_AHRS_NavEKF::update_DCM(bool skip_ins_update)
     AP_AHRS_DCM::update(skip_ins_update);
 
     // keep DCM attitude available for get_secondary_attitude()
-    _dcm_attitude(roll, pitch, yaw);
+    _dcm_attitude = {roll, pitch, yaw};
 }
 
 #if HAL_NAVEKF2_AVAILABLE
@@ -351,6 +369,7 @@ void AP_AHRS_NavEKF::update_SITL(void)
 
     }
 
+#if HAL_NAVEKF3_AVAILABLE
     if (_sitl->odom_enable) {
         // use SITL states to write body frame odometry data at 20Hz
         uint32_t timeStamp_ms = AP_HAL::millis();
@@ -369,9 +388,10 @@ void AP_AHRS_NavEKF::update_SITL(void)
             const Vector3f earth_vel(fdm.speedN,fdm.speedE,fdm.speedD);
             const Vector3f delPos = Tbn.transposed() * (earth_vel * delTime);
             // write to EKF
-            EKF3.writeBodyFrameOdom(quality, delPos, delAng, delTime, timeStamp_ms, posOffset);
+            EKF3.writeBodyFrameOdom(quality, delPos, delAng, delTime, timeStamp_ms, 0, posOffset);
         }
     }
+#endif // HAL_NAVEKF3_AVAILABLE
 }
 #endif // CONFIG_HAL_BOARD
 
@@ -399,7 +419,7 @@ void AP_AHRS_NavEKF::reset(bool recover_eulers)
     WITH_SEMAPHORE(_rsem);
     
     AP_AHRS_DCM::reset(recover_eulers);
-    _dcm_attitude(roll, pitch, yaw);
+    _dcm_attitude = {roll, pitch, yaw};
 #if HAL_NAVEKF2_AVAILABLE
     if (_ekf2_started) {
         _ekf2_started = EKF2.InitialiseFilter();
@@ -419,7 +439,7 @@ void AP_AHRS_NavEKF::reset_attitude(const float &_roll, const float &_pitch, con
     WITH_SEMAPHORE(_rsem);
     
     AP_AHRS_DCM::reset_attitude(_roll, _pitch, _yaw);
-    _dcm_attitude(roll, pitch, yaw);
+    _dcm_attitude = {roll, pitch, yaw};
 #if HAL_NAVEKF2_AVAILABLE
     if (_ekf2_started) {
         _ekf2_started = EKF2.InitialiseFilter();
@@ -469,7 +489,12 @@ bool AP_AHRS_NavEKF::get_position(struct Location &loc) const
     }
 #endif
     }
-    return AP_AHRS_DCM::get_position(loc);
+
+    // fall back to position from DCM
+    if (!always_use_EKF()) {
+        return AP_AHRS_DCM::get_position(loc);
+    }
+    return false;
 }
 
 // status reporting of estimated errors
@@ -736,13 +761,9 @@ bool AP_AHRS_NavEKF::set_origin(const Location &loc)
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
     case EKFType::SITL:
-        if (_sitl) {
-            struct SITL::sitl_fdm &fdm = _sitl->state;
-            fdm.home = loc;
-            return true;
-        } else {
-            return false;
-        }
+        // never allow origin set in SITL. The origin is set by the
+        // simulation backend
+        return false;
 #endif
     }
     // since there is no default case above, this is unreachable
@@ -953,12 +974,15 @@ bool AP_AHRS_NavEKF::get_relative_position_NED_origin(Vector3f &vec) const
         if (!_sitl) {
             return false;
         }
-        Location loc;
-        get_position(loc);
-        const Vector2f diff2d = get_home().get_distance_NE(loc);
+        Location loc, orgn;
+        if (!get_position(loc) ||
+            !get_origin(orgn)) {
+            return false;
+        }
+        const Vector2f diff2d = orgn.get_distance_NE(loc);
         const struct SITL::sitl_fdm &fdm = _sitl->state;
         vec = Vector3f(diff2d.x, diff2d.y,
-                       -(fdm.altitude - get_home().alt*0.01f));
+                       -(fdm.altitude - orgn.alt*0.01f));
         return true;
     }
 #endif
@@ -1010,9 +1034,12 @@ bool AP_AHRS_NavEKF::get_relative_position_NE_origin(Vector2f &posNE) const
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
     case EKFType::SITL: {
-        Location loc;
-        get_position(loc);
-        posNE = get_home().get_distance_NE(loc);
+        Location loc, orgn;
+        if (!get_position(loc) ||
+            !get_origin(orgn)) {
+            return false;
+        }
+        posNE = orgn.get_distance_NE(loc);
         return true;
     }
 #endif
@@ -1070,7 +1097,11 @@ bool AP_AHRS_NavEKF::get_relative_position_D_origin(float &posD) const
             return false;
         }
         const struct SITL::sitl_fdm &fdm = _sitl->state;
-        posD = -(fdm.altitude - get_home().alt*0.01f);
+        Location orgn;
+        if (!get_origin(orgn)) {
+            return false;
+        }
+        posD = -(fdm.altitude - orgn.alt*0.01f);
         return true;
     }
 #endif
@@ -1420,21 +1451,45 @@ void  AP_AHRS_NavEKF::writeOptFlowMeas(const uint8_t rawFlowQuality, const Vecto
 }
 
 // write body frame odometry measurements to the EKF
-void  AP_AHRS_NavEKF::writeBodyFrameOdom(float quality, const Vector3f &delPos, const Vector3f &delAng, float delTime, uint32_t timeStamp_ms, const Vector3f &posOffset)
+void  AP_AHRS_NavEKF::writeBodyFrameOdom(float quality, const Vector3f &delPos, const Vector3f &delAng, float delTime, uint32_t timeStamp_ms, uint16_t delay_ms, const Vector3f &posOffset)
 {
 #if HAL_NAVEKF3_AVAILABLE
-    EKF3.writeBodyFrameOdom(quality, delPos, delAng, delTime, timeStamp_ms, posOffset);
+    EKF3.writeBodyFrameOdom(quality, delPos, delAng, delTime, timeStamp_ms, delay_ms, posOffset);
 #endif
 }
 
 // Write position and quaternion data from an external navigation system
-void AP_AHRS_NavEKF::writeExtNavData(const Vector3f &sensOffset, const Vector3f &pos, const Quaternion &quat, float posErr, float angErr, uint32_t timeStamp_ms, uint32_t resetTime_ms)
+void AP_AHRS_NavEKF::writeExtNavData(const Vector3f &pos, const Quaternion &quat, float posErr, float angErr, uint32_t timeStamp_ms, uint16_t delay_ms, uint32_t resetTime_ms)
 {
 #if HAL_NAVEKF2_AVAILABLE
-    EKF2.writeExtNavData(sensOffset, pos, quat, posErr, angErr, timeStamp_ms, resetTime_ms);
+    EKF2.writeExtNavData(pos, quat, posErr, angErr, timeStamp_ms, delay_ms, resetTime_ms);
+#endif
+#if HAL_NAVEKF3_AVAILABLE
+    EKF3.writeExtNavData(pos, quat, posErr, angErr, timeStamp_ms, delay_ms, resetTime_ms);
 #endif
 }
 
+// Writes the default equivalent airspeed in m/s to be used in forward flight if a measured airspeed is required and not available.
+void AP_AHRS_NavEKF::writeDefaultAirSpeed(float airspeed)
+{
+#if HAL_NAVEKF2_AVAILABLE
+    EKF2.writeDefaultAirSpeed(airspeed);
+#endif
+#if HAL_NAVEKF3_AVAILABLE
+    EKF3.writeDefaultAirSpeed(airspeed);
+#endif
+}
+
+// Write velocity data from an external navigation system
+void AP_AHRS_NavEKF::writeExtNavVelData(const Vector3f &vel, float err, uint32_t timeStamp_ms, uint16_t delay_ms)
+{
+#if HAL_NAVEKF2_AVAILABLE
+    EKF2.writeExtNavVelData(vel, err, timeStamp_ms, delay_ms);
+#endif
+#if HAL_NAVEKF3_AVAILABLE
+    EKF3.writeExtNavVelData(vel, err, timeStamp_ms, delay_ms);
+#endif
+}
 
 // inhibit GPS usage
 uint8_t AP_AHRS_NavEKF::setInhibitGPS(void)
@@ -1591,6 +1646,7 @@ bool AP_AHRS_NavEKF::attitudes_consistent(char *failure_msg, const uint8_t failu
     get_quat_body_to_ned(primary_quat);
     // only check yaw if compasses are being used
     bool check_yaw = _compass && _compass->use_for_yaw();
+    uint8_t total_ekf_cores = 0;
 
 #if HAL_NAVEKF2_AVAILABLE
     // check primary vs ekf2
@@ -1610,6 +1666,7 @@ bool AP_AHRS_NavEKF::attitudes_consistent(char *failure_msg, const uint8_t failu
             return false;
         }
     }
+    total_ekf_cores = EKF2.activeCores();
 #endif
 
 #if HAL_NAVEKF3_AVAILABLE
@@ -1630,22 +1687,34 @@ bool AP_AHRS_NavEKF::attitudes_consistent(char *failure_msg, const uint8_t failu
             return false;
         }
     }
+    total_ekf_cores += EKF3.activeCores();
 #endif
 
     // check primary vs dcm
-    Quaternion dcm_quat;
-    Vector3f angle_diff;
-    dcm_quat.from_rotation_matrix(get_DCM_rotation_body_to_ned());
-    primary_quat.angular_difference(dcm_quat).to_axis_angle(angle_diff);
-    float diff = safe_sqrt(sq(angle_diff.x)+sq(angle_diff.y));
-    if (diff > ATTITUDE_CHECK_THRESH_ROLL_PITCH_RAD) {
-        hal.util->snprintf(failure_msg, failure_msg_len, "DCM Roll/Pitch inconsistent by %d deg", (int)degrees(diff));
-        return false;
-    }
-    diff = fabsf(angle_diff.z);
-    if (check_yaw && (diff > ATTITUDE_CHECK_THRESH_YAW_RAD)) {
-        hal.util->snprintf(failure_msg, failure_msg_len, "DCM Yaw inconsistent by %d deg", (int)degrees(diff));
-        return false;
+    if (!always_use_EKF() || (total_ekf_cores == 1)) {
+        Quaternion dcm_quat;
+        Vector3f angle_diff;
+        dcm_quat.from_rotation_matrix(get_DCM_rotation_body_to_ned());
+        primary_quat.angular_difference(dcm_quat).to_axis_angle(angle_diff);
+        float diff = safe_sqrt(sq(angle_diff.x)+sq(angle_diff.y));
+        if (diff > ATTITUDE_CHECK_THRESH_ROLL_PITCH_RAD) {
+            hal.util->snprintf(failure_msg, failure_msg_len, "DCM Roll/Pitch inconsistent by %d deg", (int)degrees(diff));
+            return false;
+        }
+
+        // Check vs DCM yaw if this vehicle could use DCM in flight
+        // and if not using an external yaw source (DCM does not support external yaw sources)
+        bool using_external_yaw = false;
+#if HAL_NAVEKF3_AVAILABLE
+        using_external_yaw = ekf_type() == EKFType::THREE && EKF3.using_external_yaw();
+#endif
+        if (!always_use_EKF() && !using_external_yaw) {
+            diff = fabsf(angle_diff.z);
+            if (check_yaw && (diff > ATTITUDE_CHECK_THRESH_YAW_RAD)) {
+                hal.util->snprintf(failure_msg, failure_msg_len, "DCM Yaw inconsistent by %d deg", (int)degrees(diff));
+                return false;
+            }
+        }
     }
 
     return true;
@@ -1914,6 +1983,18 @@ bool AP_AHRS_NavEKF::get_hgt_ctrl_limit(float& limit) const
     return false;
 }
 
+// Set to true if the terrain underneath is stable enough to be used as a height reference
+// this is not related to terrain following
+void AP_AHRS_NavEKF::set_terrain_hgt_stable(bool stable)
+{
+#if HAL_NAVEKF2_AVAILABLE
+    EKF2.setTerrainHgtStable(stable);
+#endif
+#if HAL_NAVEKF3_AVAILABLE
+    EKF3.setTerrainHgtStable(stable);
+#endif
+}
+
 // get_location - updates the provided location with the latest calculated location
 //  returns true on success (i.e. the EKF knows it's latest position), false on failure
 bool AP_AHRS_NavEKF::get_location(struct Location &loc) const
@@ -2110,6 +2191,32 @@ const Vector3f &AP_AHRS_NavEKF::get_accel_ef() const
     return get_accel_ef(get_primary_accel_index());
 }
 
+// return the index of the primary core or -1 if no primary core selected
+int8_t AP_AHRS_NavEKF::get_primary_core_index() const
+{
+    switch (active_EKF_type()) {
+    case EKFType::NONE:
+#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
+    case EKFType::SITL:
+#endif
+        // SITL and DCM have only one core
+        return 0;
+
+#if HAL_NAVEKF2_AVAILABLE
+    case EKFType::TWO:
+        return EKF2.getPrimaryCoreIndex();
+#endif
+
+#if HAL_NAVEKF3_AVAILABLE
+    case EKFType::THREE:
+        return EKF3.getPrimaryCoreIndex();
+#endif
+    }
+
+    // we should never get here
+    INTERNAL_ERROR(AP_InternalError::error_t::flow_of_control);
+    return -1;
+}
 
 // get the index of the current primary accelerometer sensor
 uint8_t AP_AHRS_NavEKF::get_primary_accel_index(void) const
@@ -2155,6 +2262,32 @@ void AP_AHRS_NavEKF::check_lane_switch(void)
     }
 }
 
+// request EKF yaw reset to try and avoid the need for an EKF lane switch or failsafe
+void AP_AHRS_NavEKF::request_yaw_reset(void)
+{
+    switch (active_EKF_type()) {
+    case EKFType::NONE:
+        break;
+
+#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
+    case EKFType::SITL:
+        break;
+#endif
+
+#if HAL_NAVEKF2_AVAILABLE
+    case EKFType::TWO:
+        EKF2.requestYawReset();
+        break;
+#endif
+
+#if HAL_NAVEKF3_AVAILABLE
+    case EKFType::THREE:
+        EKF3.requestYawReset();
+        break;
+#endif
+    }
+}
+
 void AP_AHRS_NavEKF::Log_Write()
 {
 #if HAL_NAVEKF2_AVAILABLE
@@ -2181,6 +2314,7 @@ bool AP_AHRS_NavEKF::is_ext_nav_used_for_yaw(void) const
     case EKFType::NONE:
 #if HAL_NAVEKF3_AVAILABLE
     case EKFType::THREE:
+        return EKF3.using_external_yaw();
 #endif
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
     case EKFType::SITL:
@@ -2191,5 +2325,15 @@ bool AP_AHRS_NavEKF::is_ext_nav_used_for_yaw(void) const
     return false;
 }
 
-#endif // AP_AHRS_NAVEKF_AVAILABLE
+// set and save the alt noise parameter value
+void AP_AHRS_NavEKF::set_alt_measurement_noise(float noise)
+{
+#if HAL_NAVEKF2_AVAILABLE
+    EKF2.set_baro_alt_noise(noise);
+#endif
+#if HAL_NAVEKF3_AVAILABLE
+    EKF3.set_baro_alt_noise(noise);
+#endif
+}
 
+#endif // AP_AHRS_NAVEKF_AVAILABLE

@@ -2,7 +2,9 @@
 
 #include <atomic>
 #include <stdint.h>
-#include <AP_HAL/AP_HAL.h>
+#include <AP_HAL/AP_HAL_Boards.h>
+#include <AP_HAL/AP_HAL_Macros.h>
+#include <AP_HAL/Semaphores.h>
 
 /*
  * Circular buffer of bytes.
@@ -22,7 +24,7 @@ public:
     uint32_t space(void) const;
 
     // true if available() is zero
-    bool empty(void) const;
+    bool is_empty(void) const WARN_IF_UNUSED;
 
     // write bytes to ringbuffer. Returns number of bytes written
     uint32_t write(const uint8_t *data, uint32_t len);
@@ -31,7 +33,7 @@ public:
     uint32_t read(uint8_t *data, uint32_t len);
 
     // read a byte from ring buffer. Returns true on success, false otherwise
-    bool read_byte(uint8_t *data);
+    bool read_byte(uint8_t *data) WARN_IF_UNUSED;
 
     /*
       update bytes at the read pointer. Used to update an object without
@@ -99,7 +101,7 @@ private:
 template <class T>
 class ObjectBuffer {
 public:
-    ObjectBuffer(uint32_t _size) {
+    ObjectBuffer(uint32_t _size = 0) {
         // we set size to 1 more than requested as the byte buffer
         // gives one less byte than requested. We round up to a full
         // multiple of the object size so that we always get aligned
@@ -109,6 +111,15 @@ public:
     ~ObjectBuffer(void) {
         delete buffer;
     }
+
+    // return size of ringbuffer
+    uint32_t get_size(void) const { return buffer->get_size() / sizeof(T); }
+
+    // set size of ringbuffer, caller responsible for locking
+    bool set_size(uint32_t size) { return buffer->set_size(((size+1) * sizeof(T))); }
+
+    // read len objects without advancing the read pointer
+    uint32_t peek(T *data, uint32_t len) { return buffer->peekbytes((uint8_t*)data, len * sizeof(T)) / sizeof(T); }
 
     // Discards the buffer content, emptying it.
     // !!! Note ObjectBuffer_TS is a duplicate of this update, in both places !!!
@@ -131,8 +142,8 @@ public:
 
     // true is available() == 0
     // !!! Note ObjectBuffer_TS is a duplicate of this update, in both places !!!
-    bool empty(void) const {
-        return buffer->empty();
+    bool is_empty(void) const WARN_IF_UNUSED {
+        return buffer->is_empty();
     }
 
     // push one object onto the back of the queue
@@ -165,7 +176,7 @@ public:
       pop earliest object off the front of the queue
      */
     // !!! Note ObjectBuffer_TS is a duplicate of this update, in both places !!!
-    bool pop(T &object) {
+    bool pop(T &object) WARN_IF_UNUSED {
         if (buffer->available() < sizeof(T)) {
             return false;
         }
@@ -201,7 +212,7 @@ public:
       peek copies an object out from the front of the queue without advancing the read pointer
      */
     // !!! Note ObjectBuffer_TS is a duplicate of this update, in both places !!!
-    bool peek(T &object) {
+    bool peek(T &object) WARN_IF_UNUSED {
         return buffer->peekbytes((uint8_t*)&object, sizeof(T)) == sizeof(T);
     }
 
@@ -244,7 +255,7 @@ private:
 template <class T>
 class ObjectBuffer_TS {
 public:
-    ObjectBuffer_TS(uint32_t _size) {
+    ObjectBuffer_TS(uint32_t _size = 0) {
         // we set size to 1 more than requested as the byte buffer
         // gives one less byte than requested. We round up to a full
         // multiple of the object size so that we always get aligned
@@ -254,6 +265,25 @@ public:
     ~ObjectBuffer_TS(void) {
         delete buffer;
     }
+
+    // return size of ringbuffer
+    uint32_t get_size(void) const {
+        WITH_SEMAPHORE(sem);
+        return buffer->get_size() / sizeof(T);
+    }
+
+    // set size of ringbuffer, caller responsible for locking
+    bool set_size(uint32_t size) {
+        WITH_SEMAPHORE(sem);
+        return buffer->set_size(((size+1) * sizeof(T)));
+    }
+
+    // read len objects without advancing the read pointer
+    uint32_t peek(T *data, uint32_t len) {
+        WITH_SEMAPHORE(sem);
+        return buffer->peekbytes((uint8_t*)data, len * sizeof(T)) / sizeof(T);
+    }
+
 
     // Discards the buffer content, emptying it.
     // !!! Note this is a duplicate of ObjectBuffer with semaphore, update in both places !!!
@@ -279,9 +309,9 @@ public:
 
     // true is available() == 0
     // !!! Note this is a duplicate of ObjectBuffer with semaphore, update in both places !!!
-    bool empty(void) {
+    bool is_empty(void) WARN_IF_UNUSED {
         WITH_SEMAPHORE(sem);
-        return buffer->empty();
+        return buffer->is_empty();
     }
 
     // push one object onto the back of the queue
@@ -317,7 +347,7 @@ public:
       pop earliest object off the front of the queue
      */
     // !!! Note this is a duplicate of ObjectBuffer with semaphore, update in both places !!!
-    bool pop(T &object) {
+    bool pop(T &object) WARN_IF_UNUSED {
         WITH_SEMAPHORE(sem);
         if (buffer->available() < sizeof(T)) {
             return false;
@@ -355,7 +385,7 @@ public:
       peek copies an object out from the front of the queue without advancing the read pointer
      */
     // !!! Note this is a duplicate of ObjectBuffer with semaphore, update in both places !!!
-    bool peek(T &object) {
+    bool peek(T &object) WARN_IF_UNUSED {
         WITH_SEMAPHORE(sem);
         return buffer->peekbytes((uint8_t*)&object, sizeof(T)) == sizeof(T);
     }
@@ -429,7 +459,7 @@ public:
     }
 
     // true is available() == 0
-    bool empty(void) const {
+    bool is_empty(void) const WARN_IF_UNUSED {
         return _count == 0;
     }
 
@@ -446,8 +476,8 @@ public:
     /*
       throw away an object
      */
-    bool pop(void) {
-        if (empty()) {
+    bool pop(void) WARN_IF_UNUSED {
+        if (is_empty()) {
             return false;
         }
         _head = (_head+1) % _size;
@@ -464,8 +494,8 @@ public:
     /*
       pop earliest object off the queue
      */
-    bool pop(T &object) {
-        if (empty()) {
+    bool pop(T &object) WARN_IF_UNUSED {
+        if (is_empty()) {
             return false;
         }
         object = _buffer[_head];
@@ -479,7 +509,7 @@ public:
      */
     bool push_force(const T &object) {
         if (space() == 0) {
-            pop();
+            UNUSED_RESULT(pop());
         }
         return push(object);
     }
@@ -523,3 +553,7 @@ private:
     uint16_t _count; // number in buffer now
     uint16_t _head;  // first element
 };
+
+typedef ObjectBuffer<float> FloatBuffer;
+typedef ObjectBuffer_TS<float> FloatBuffer_TS;
+typedef ObjectArray<float> FloatArray;
