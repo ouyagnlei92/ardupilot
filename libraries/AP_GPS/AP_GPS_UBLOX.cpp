@@ -1001,6 +1001,20 @@ AP_GPS_UBLOX::_parse_gps(void)
         
         // time
         state.time_week_ms    = _buffer.pvt.itow;
+
+        if( _buffer.pvt.valid&0x03==0x03 )   // time valid
+        {
+            double tt[6];
+            tt[0] = _buffer.pvt.year;
+            tt[1] = _buffer.pvt.month;
+            tt[2] = _buffer.pvt.day;
+            tt[3] = _buffer.pvt.hour;
+            tt[4] = _buffer.pvt.min;
+            tt[5] = _buffer.pvt.sec;
+
+            state.time_week_ms = static_cast<uint32_t>((time2gpst(epoch2time(tt), &state.time_week))*1000) + (static_cast<uint32_t>(state.time_week_ms)%1000);
+        }
+
 #if UBLOX_FAKE_3DLOCK
         state.location.lng = 1491652300L;
         state.location.lat = -353632610L;

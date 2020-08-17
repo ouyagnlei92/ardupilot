@@ -21,9 +21,40 @@
 #include <GCS_MAVLink/GCS_MAVLink.h>
 #include "AP_GPS.h"
 
+#define MAXLEAPS 64
+static const double gpst0[]={1980,1, 6,0,0,0}; /* gps time reference */
+
+static double leaps[MAXLEAPS+1][7]={ /* leap seconds (y,m,d,h,m,s,utc-gpst) */
+    {2017,1,1,0,0,0,-18},
+    {2015,7,1,0,0,0,-17},
+    {2012,7,1,0,0,0,-16},
+    {2009,1,1,0,0,0,-15},
+    {2006,1,1,0,0,0,-14},
+    {1999,1,1,0,0,0,-13},
+    {1997,7,1,0,0,0,-12},
+    {1996,1,1,0,0,0,-11},
+    {1994,7,1,0,0,0,-10},
+    {1993,7,1,0,0,0, -9},
+    {1992,7,1,0,0,0, -8},
+    {1991,1,1,0,0,0, -7},
+    {1990,1,1,0,0,0, -6},
+    {1988,1,1,0,0,0, -5},
+    {1985,7,1,0,0,0, -4},
+    {1983,7,1,0,0,0, -3},
+    {1982,7,1,0,0,0, -2},
+    {1981,7,1,0,0,0, -1},
+    {0}
+};
+
 class AP_GPS_Backend
 {
 public:
+
+    typedef struct {        /* time struct */
+        time_t time;        /* time (s) expressed by standard time_t */
+        __attribute__ ((aligned (8)))double sec; /* fraction of second under 1 s */
+    } gtime_t;
+
     AP_GPS_Backend(AP_GPS &_gps, AP_GPS::GPS_State &_state, AP_HAL::UARTDriver *_port);
 
     // we declare a virtual destructor so that GPS drivers can
@@ -88,4 +119,21 @@ protected:
     void _detection_message(char *buffer, uint8_t buflen) const;
 
     bool should_df_log() const;
+
+    extern gtime_t timeadd(gtime_t t, double sec);
+
+    extern double timediff(gtime_t t1, gtime_t t2);
+
+    void time2epoch(gtime_t t, double *ep);
+
+    gtime_t epoch2time(const double *ep);
+
+    gtime_t gpst2utc(gtime_t t);
+
+    gtime_t utc2gpst(gtime_t t);
+
+    double time2gpst(gtime_t t, int32_t *week);
+
+    void make_time(int32_t date, int32_t time);
+
 };
