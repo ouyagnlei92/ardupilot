@@ -783,7 +783,7 @@ void Plane::update_navigation()
     switch(control_mode) {
     case AUTO:
         if (ahrs.home_is_set()) {
-            mission.update();
+            mission.update(current_loc);
         }
         break;
             

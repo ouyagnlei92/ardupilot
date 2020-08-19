@@ -975,6 +975,7 @@ private:
     void calc_nav_pitch();
     void update_flight_stage();
     void update_navigation();
+    void wp_continue_fly();
     void set_flight_stage(AP_Vehicle::FixedWing::FlightStage fs);
     bool is_flying(void);
     float get_speed_scaler(void);

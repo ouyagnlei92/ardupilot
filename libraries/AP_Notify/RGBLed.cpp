@@ -107,6 +107,32 @@ void RGBLed::update_colours(void)
         // exit so no other status modify this pattern
         return;
     }
+
+    if(AP_Notify::flags.wp_continue)
+    {
+        switch(step) {
+            case 0:
+            case 1:
+            case 2:
+            case 3:
+            case 4:
+                _red_des = brightness;
+                _blue_des = _led_off;
+                _green_des = _led_off;
+                break;
+            case 5:
+            case 6:
+            case 7:
+            case 8:
+            case 9:
+				_red_des = _led_off;
+				_blue_des = _led_off;
+				_green_des = brightness;
+
+                break;
+        }
+        return;
+    }
     
     // save trim and esc calibration pattern
     if (AP_Notify::flags.save_trim || AP_Notify::flags.esc_calibration) {
